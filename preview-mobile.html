@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menstruapp — Vista móvil</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: system-ui, sans-serif;
+      background: #1a1520;
+      color: #e8e0f0;
+    }
+    .preview-toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.6rem 1rem;
+      background: rgba(13, 10, 18, 0.95);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .preview-toolbar label {
+      font-size: 0.8rem;
+      color: #a89bb8;
+    }
+    .preview-toolbar select,
+    .preview-toolbar button {
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #2a2235;
+      color: #f5f0fa;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .preview-toolbar button:hover { background: #3d3250; }
+    .preview-stage {
+      min-height: 100%;
+      padding: 4.5rem 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .phone {
+      position: relative;
+      width: var(--phone-w, 390px);
+      height: var(--phone-h, 844px);
+      max-height: calc(100vh - 6rem);
+      background: #0d0a12;
+      border-radius: 44px;
+      padding: 12px;
+      box-shadow:
+        0 0 0 2px #2a2235,
+        0 0 0 4px #1a1520,
+        0 24px 80px rgba(0,0,0,0.6),
+        inset 0 0 0 1px rgba(255,255,255,0.06);
+      transition: width 0.25s ease, height 0.25s ease;
+    }
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 28px;
+      background: #0d0a12;
+      border-radius: 20px;
+      z-index: 2;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 34px;
+      background: #0d0a12;
+      display: block;
+    }
+    .hint {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: #6b5f7a;
+      max-width: 420px;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-toolbar">
+    <label for="device-select">Dispositivo</label>
+    <select id="device-select" aria-label="Elegir dispositivo">
+      <option value="390,844">iPhone 14 (390×844)</option>
+      <option value="375,812">iPhone SE (375×812)</option>
+      <option value="360,800">Android pequeño (360×800)</option>
+      <option value="412,915">Pixel 7 (412×915)</option>
+      <option value="320,568">Mínimo (320×568)</option>
+    </select>
+    <button type="button" id="btn-reload" aria-label="Recargar app">↻ Recargar</button>
+    <button type="button" id="btn-open-full" aria-label="Abrir sin marco">Abrir pantalla completa</button>
+  </div>
+
+  <div class="preview-stage">
+    <div class="phone-wrap">
+      <div class="phone" id="phone">
+        <iframe
+          id="app-frame"
+          class="phone-screen"
+          src="index.html"
+          title="Menstruapp"
+          allow="notifications"
+        ></iframe>
+      </div>
+      <p class="hint">Vista previa móvil · Los toques y el scroll funcionan dentro del marco. Usa Live Server para recarga al guardar.</p>
+    </div>
+  </div>
+
+  <script>
+    const phone = document.getElementById('phone');
+    const frame = document.getElementById('app-frame');
+    const select = document.getElementById('device-select');
+
+    select.addEventListener('change', () => {
+      const [w, h] = select.value.split(',').map(Number);
+      phone.style.setProperty('--phone-w', w + 'px');
+      phone.style.setProperty('--phone-h', h + 'px');
+    });
+
+    document.getElementById('btn-reload').addEventListener('click', () => {
+      frame.src = frame.src.split('?')[0] + '?t=' + Date.now();
+    });
+
+    document.getElementById('btn-open-full').addEventListener('click', () => {
+      window.open('index.html', '_blank');
+    });
+
+    select.dispatchEvent(new Event('change'));
+  </script>
+</body>
+</html>
