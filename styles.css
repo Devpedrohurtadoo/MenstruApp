@@ -1038,6 +1038,43 @@ body.camouflage-mode #camouflage-ui {
 .settings-panel { display: none; flex-direction: column; gap: 1rem; }
 .settings-panel--active { display: flex; }
 
+.settings-panel label,
+.calc-panel label,
+#reminders-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.settings-panel input:not([type="checkbox"]):not([type="range"]):not([type="file"]),
+.settings-panel select,
+.calc-panel input,
+.calc-panel select,
+#reminders-panel input:not([type="checkbox"]),
+#reminders-panel select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.settings-panel input[readonly] {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.settings-panel .checkbox-label,
+#reminders-panel .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+}
+
 .accent-swatches {
   display: flex;
   flex-wrap: wrap;

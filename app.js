@@ -249,12 +249,20 @@
    */
   const completeLogin = (user, remember) => {
     AppState.currentUser = user;
-    if (remember) {
-      try {
+    try {
+      const existing = JSON.parse(localStorage.getItem(window.SettingsModule.USER_KEY) || 'null');
+      const userToStore = {
+        ...existing,
+        ...user,
+        password: user.password || existing?.password || (user.email === 'beta@menstruapp.com' ? 'beta123' : '')
+      };
+      localStorage.setItem(window.SettingsModule.USER_KEY, JSON.stringify(userToStore));
+      AppState.currentUser = userToStore;
+      if (remember) {
         localStorage.setItem(window.SettingsModule.SESSION_KEY, JSON.stringify({ token: 'session_xyz', email: user.email }));
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error('[Menstruapp] Error al persistir sesión:', e);
     }
     const authScreen = document.getElementById('auth-screen');
     authScreen.classList.add('slide-out');
@@ -360,7 +368,7 @@
     grid.innerHTML = '';
     for (let i = 0; i < startDow; i++) {
       const prevDate = new Date(AppState.calendarYear, AppState.calendarMonth, -startDow + i + 1);
-      grid.appendChild(createDayCell(window.CalendarModule.formatDateISO(prevDate), true, {}, today));
+      grid.appendChild(createDayCell(window.CalendarModule.formatDateISO(prevDate), true, [], today));
     }
     for (let d = 1; d <= daysInMonth; d++) {
       const iso = window.CalendarModule.formatDateISO(new Date(AppState.calendarYear, AppState.calendarMonth, d));
@@ -379,6 +387,7 @@
    * @returns {HTMLElement}
    */
   const createDayCell = (iso, otherMonth, markTypes, today) => {
+    const marks = Array.isArray(markTypes) ? markTypes : [];
     const btn = el('button', 'cal-day');
     btn.dataset.date = iso;
     btn.setAttribute('aria-label', `Día ${iso}`);
@@ -386,13 +395,13 @@
     btn.textContent = dayNum;
     if (otherMonth) btn.classList.add('cal-day--other');
     if (iso === today) btn.classList.add('cal-day--today');
-    if (markTypes.includes('period')) btn.classList.add('cal-day--period');
-    if (markTypes.includes('predicted')) btn.classList.add('cal-day--predicted');
-    if (markTypes.includes('pms')) btn.classList.add('cal-day--pms');
-    if (markTypes.includes('fertile')) btn.classList.add('cal-day--fertile');
-    if (markTypes.includes('luteal')) btn.classList.add('cal-day--luteal');
-    if (markTypes.includes('ovulation')) btn.classList.add('cal-day--ovulation');
-    if (markTypes.includes('has-data')) {
+    if (marks.includes('period')) btn.classList.add('cal-day--period');
+    if (marks.includes('predicted')) btn.classList.add('cal-day--predicted');
+    if (marks.includes('pms')) btn.classList.add('cal-day--pms');
+    if (marks.includes('fertile')) btn.classList.add('cal-day--fertile');
+    if (marks.includes('luteal')) btn.classList.add('cal-day--luteal');
+    if (marks.includes('ovulation')) btn.classList.add('cal-day--ovulation');
+    if (marks.includes('has-data')) {
       const dot = el('span', 'cal-day__dot');
       btn.appendChild(dot);
     }
@@ -503,6 +512,18 @@
 
     if (entry.periodStart === true) entry.periodStart = true;
     AppState.cycleData.days[iso] = { ...AppState.cycleData.days[iso], ...entry };
+    if (entry.periodEnd === true) {
+      const starts = window.CalendarModule
+        .getPeriodStarts(AppState.cycleData)
+        .filter((date) => date <= iso);
+      const latestStart = starts[starts.length - 1];
+      if (latestStart) {
+        AppState.cycleData.days[latestStart] = {
+          ...AppState.cycleData.days[latestStart],
+          periodEnd: iso
+        };
+      }
+    }
     persistCycle();
     closeDayDrawer();
     renderCalendar();
@@ -992,26 +1013,6 @@
       a.href = URL.createObjectURL(blob);
       a.download = 'menstruapp-ciclo.json';
       a.click();
-    });
-
-    document.getElementById('input-import-cycle')?.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = window.CalendarModule.validateImportedData(JSON.parse(reader.result));
-          if (data) {
-            AppState.cycleData = data;
-            persistCycle();
-            renderCalendar();
-            showToast('Historial importado');
-          }
-        } catch (err) {
-          showToast('JSON inválido', 'error');
-        }
-      };
-      reader.readAsText(file);
     });
 
     document.querySelectorAll('#dashboard-mood-picker .mood-emoji').forEach((btn) => {

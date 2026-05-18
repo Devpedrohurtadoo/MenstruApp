@@ -140,7 +140,7 @@
     const days = cycleData.days || {};
     const durations = [];
     Object.keys(days).forEach((d) => {
-      if (days[d]?.periodStart && days[d]?.periodEnd) {
+      if (days[d]?.periodStart && typeof days[d]?.periodEnd === 'string') {
         const len = daysBetween(d, days[d].periodEnd) + 1;
         if (len > 0 && len <= 15) durations.push(len);
       }
@@ -213,7 +213,7 @@
 
     getPeriodStarts(cycleData).forEach((start) => {
       let end = start;
-      if (days[start]?.periodEnd) end = days[start].periodEnd;
+      if (typeof days[start]?.periodEnd === 'string') end = days[start].periodEnd;
       else {
         const starts = getPeriodStarts(cycleData);
         const idx = starts.indexOf(start);

@@ -152,6 +152,17 @@
   };
 
   /**
+   * @description Escapa texto para usarlo como atributo HTML
+   * @param {string} value - Valor de entrada
+   * @returns {string}
+   */
+  const escapeAttr = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  /**
    * @description Renderiza paneles de ajustes
    * @param {Object} appState - Estado global
    * @param {Object} callbacks - { showModal, showToast, persistCycle, onLogout }
@@ -163,15 +174,20 @@
     const user = appState.currentUser || {};
     const theme = appState.theme || loadTheme();
     const cycleSettings = appState.cycleData?.settings || {};
+    const profileName = escapeAttr(user.name || (user.email === 'beta@menstruapp.com' ? 'Beta' : ''));
+    const profileEmail = escapeAttr(user.email || '');
+    const profileBirthdate = escapeAttr(user.birthdate || '');
+    const profileAvatar = escapeAttr(user.avatar || '');
 
     container.innerHTML = `
       <div class="settings-panel settings-panel--active" data-panel="profile">
         <div class="glass-card">
-          <img class="profile-avatar" id="profile-avatar" src="${user.avatar || ''}" alt="Avatar" ${user.avatar ? '' : 'style="display:none"'}>
+          <img class="profile-avatar" id="profile-avatar" src="${profileAvatar || 'assets/drop-icon.png'}" alt="Avatar">
           <label>Foto de perfil <input type="file" id="profile-photo" accept="image/*" hidden></label>
           <button type="button" class="btn btn--secondary" id="btn-upload-photo" aria-label="Subir foto">Subir foto</button>
-          <label>Nombre <input type="text" id="settings-name" value="${user.name || ''}"></label>
-          <label>Fecha nacimiento <input type="date" id="settings-birth" value="${user.birthdate || ''}"></label>
+          <label>Nombre <input type="text" id="settings-name" value="${profileName}" placeholder="Tu apodo"></label>
+          <label>Email <input type="email" id="settings-email" value="${profileEmail}" readonly></label>
+          <label>Fecha nacimiento <input type="date" id="settings-birth" value="${profileBirthdate}"></label>
           <button type="button" class="btn btn--primary" id="save-profile" aria-label="Guardar perfil">Guardar perfil</button>
         </div>
       </div>
