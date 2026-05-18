@@ -545,6 +545,50 @@ body.camouflage-mode #camouflage-ui {
 
 .chat-msg__meta { font-size: 0.7rem; opacity: 0.7; margin-bottom: 0.25rem; }
 
+.chat-msg__image {
+  display: block;
+  width: min(100%, 240px);
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin: 0.4rem 0 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.chat-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chat-image-preview__thumb {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.chat-image-preview__info {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.chat-image-preview__info strong {
+  display: block;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-avatar-row {
   display: flex;
   align-items: flex-start;

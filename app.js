@@ -10,6 +10,7 @@
     selectedDate: null,
     cycleData: {},
     chatMessages: [],
+    pendingChatImage: null,
     theme: { accent: '#F4A7B9', background: 'gradient', particles: 1 },
     pinEnabled: false,
     camouflageModeActive: false,
@@ -88,6 +89,18 @@
     if (content !== undefined) node.innerHTML = content;
     return node;
   };
+
+  /**
+   * @description Escapa texto para renderizar mensajes sin inyectar HTML
+   * @param {string} value - Texto recibido
+   * @returns {string}
+   */
+  const escapeHTML = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
   /**
    * @description Muestra toast de notificación
@@ -633,11 +646,12 @@
    * @description Añade mensaje al chat
    * @param {string} role - user|ai
    * @param {string} text - Contenido
+   * @param {Object} [extras={}] - Datos opcionales como imagen adjunta
    * @returns {void}
    */
-  const addChatMessage = (role, text) => {
+  const addChatMessage = (role, text, extras = {}) => {
     const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    AppState.chatMessages.push({ role, text, time });
+    AppState.chatMessages.push({ role, text, time, ...extras });
     renderChatMessages();
   };
 
@@ -660,17 +674,169 @@
         dropImg.setAttribute('aria-hidden', 'true');
         avatar.appendChild(dropImg);
         const bubble = el('div', 'chat-msg chat-msg--ai');
-        bubble.innerHTML = `<div class="chat-msg__meta">Luna · ${m.time}</div>${m.text.replace(/\n/g, '<br>')}`;
+        bubble.innerHTML = `<div class="chat-msg__meta">Luna · ${escapeHTML(m.time)}</div>${escapeHTML(m.text).replace(/\n/g, '<br>')}`;
         row.appendChild(avatar);
         row.appendChild(bubble);
         container.appendChild(row);
       } else {
         const msg = el('div', 'chat-msg chat-msg--user');
-        msg.innerHTML = `<div class="chat-msg__meta">Tú · ${m.time}</div>${m.text.replace(/\n/g, '<br>')}`;
+        msg.innerHTML = `<div class="chat-msg__meta">Tú · ${escapeHTML(m.time)}</div>`;
+        if (m.image?.dataUrl) {
+          const img = el('img', 'chat-msg__image');
+          img.src = m.image.dataUrl;
+          img.alt = m.image.name ? `Imagen adjunta: ${m.image.name}` : 'Imagen adjunta';
+          msg.appendChild(img);
+        }
+        const textNode = el('div', '', escapeHTML(m.text).replace(/\n/g, '<br>'));
+        msg.appendChild(textNode);
         container.appendChild(msg);
       }
     });
     container.scrollTop = container.scrollHeight;
+  };
+
+  /**
+   * @description Lee un archivo de imagen como data URL
+   * @param {File} file - Archivo elegido por la usuaria
+   * @returns {Promise<string>} Imagen codificada para previsualización
+   */
+  const readImageAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+  /**
+   * @description Analiza colores y proporciones básicas de una imagen en Canvas local
+   * @param {string} dataUrl - Imagen codificada
+   * @returns {Promise<Object>} Resumen visual seguro
+   */
+  const analyzeChatImage = (dataUrl) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const sample = 96;
+      const canvas = document.createElement('canvas');
+      const ratio = Math.min(sample / image.width, sample / image.height, 1);
+      const w = Math.max(1, Math.round(image.width * ratio));
+      const h = Math.max(1, Math.round(image.height * ratio));
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(image, 0, 0, w, h);
+      const pixels = ctx.getImageData(0, 0, w, h).data;
+      let red = 0;
+      let brown = 0;
+      let light = 0;
+      let dark = 0;
+      let total = 0;
+      let rSum = 0;
+      let gSum = 0;
+      let bSum = 0;
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        if (a < 30) continue;
+        total++;
+        rSum += r;
+        gSum += g;
+        bSum += b;
+        const brightness = (r + g + b) / 3;
+        if (r > 115 && r > g * 1.25 && r > b * 1.25) red++;
+        if (r > 70 && r < 170 && g > 35 && g < 115 && b < 95 && r >= g) brown++;
+        if (brightness > 205) light++;
+        if (brightness < 55) dark++;
+      }
+
+      const safeTotal = Math.max(total, 1);
+      const avgR = Math.round(rSum / safeTotal);
+      const avgG = Math.round(gSum / safeTotal);
+      const avgB = Math.round(bSum / safeTotal);
+      let dominantTone = 'neutro';
+      if (avgR > avgG + 28 && avgR > avgB + 28) dominantTone = 'rojizo/rosado';
+      else if (avgG > avgR + 22 && avgG > avgB + 22) dominantTone = 'verdoso';
+      else if (avgB > avgR + 22 && avgB > avgG + 22) dominantTone = 'azulado';
+      else if ((red + brown) / safeTotal > 0.18) dominantTone = 'rojizo-marrón';
+      else if (light / safeTotal > 0.45) dominantTone = 'claro';
+      else if (dark / safeTotal > 0.45) dominantTone = 'oscuro';
+
+      resolve({
+        width: image.width,
+        height: image.height,
+        dominantTone,
+        averageColor: `rgb(${avgR}, ${avgG}, ${avgB})`,
+        redRatio: red / safeTotal,
+        brownRatio: brown / safeTotal,
+        lightRatio: light / safeTotal,
+        darkRatio: dark / safeTotal
+      });
+    };
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+
+  /**
+   * @description Muestra la previsualización de imagen pendiente en el chat
+   * @returns {void}
+   */
+  const renderPendingChatImage = () => {
+    const preview = document.getElementById('chat-image-preview');
+    if (!preview) return;
+    if (!AppState.pendingChatImage) {
+      preview.classList.add('hidden');
+      preview.innerHTML = '';
+      return;
+    }
+    const image = AppState.pendingChatImage;
+    preview.classList.remove('hidden');
+    preview.innerHTML = `
+      <img class="chat-image-preview__thumb" src="${image.dataUrl}" alt="">
+      <div class="chat-image-preview__info">
+        <strong>${escapeHTML(image.name)}</strong>
+        <span>Luna analizará la imagen en este dispositivo.</span>
+      </div>
+      <button type="button" class="btn btn--icon" id="btn-remove-chat-image" aria-label="Quitar imagen">×</button>
+    `;
+    document.getElementById('btn-remove-chat-image')?.addEventListener('click', () => {
+      AppState.pendingChatImage = null;
+      document.getElementById('input-chat-attach').value = '';
+      renderPendingChatImage();
+    });
+  };
+
+  /**
+   * @description Procesa imagen seleccionada para el chat
+   * @param {File} file - Imagen elegida
+   * @returns {Promise<void>}
+   */
+  const handleChatImageSelected = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('El archivo elegido no es una imagen', 'error');
+      return;
+    }
+    if (file.size > 7 * 1024 * 1024) {
+      showToast('Elige una imagen menor de 7 MB', 'error');
+      return;
+    }
+    try {
+      showToast('Analizando imagen localmente...');
+      const dataUrl = await readImageAsDataUrl(file);
+      const analysis = await analyzeChatImage(dataUrl);
+      AppState.pendingChatImage = {
+        dataUrl,
+        name: file.name || 'imagen',
+        type: file.type,
+        analysis
+      };
+      renderPendingChatImage();
+    } catch (error) {
+      console.error('[Menstruapp] Error al analizar imagen:', error);
+      showToast('No pude leer esa imagen', 'error');
+    }
   };
 
   /**
@@ -680,9 +846,12 @@
   const sendChatMessage = () => {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
-    if (!text) return;
-    addChatMessage('user', text);
+    const attachedImage = AppState.pendingChatImage;
+    if (!text && !attachedImage) return;
+    addChatMessage('user', text || 'Imagen adjunta', attachedImage ? { image: attachedImage } : {});
     input.value = '';
+    AppState.pendingChatImage = null;
+    renderPendingChatImage();
     document.getElementById('chat-suggestions').innerHTML = '';
 
     const typing = el('div', 'typing-indicator');
@@ -693,7 +862,9 @@
     const delay = window.CoachModule.getTypingDelay();
     setTimeout(() => {
       document.getElementById('typing')?.remove();
-      const response = window.CoachModule.processMessage(text, { name: AppState.currentUser?.name });
+      const response = attachedImage
+        ? window.CoachModule.processImageMessage(text, attachedImage.analysis, { name: AppState.currentUser?.name })
+        : window.CoachModule.processMessage(text, { name: AppState.currentUser?.name });
       addChatMessage('ai', response);
     }, delay);
   };
@@ -1003,7 +1174,10 @@
     document.getElementById('btn-export-chat')?.addEventListener('click', exportChatSession);
     document.getElementById('btn-chat-attach')?.addEventListener('click', () => {
       document.getElementById('input-chat-attach').click();
-      showToast('Adjunto solo visual — no se envía a servidor');
+      showToast('Elige una imagen: se analizará solo en tu dispositivo');
+    });
+    document.getElementById('input-chat-attach')?.addEventListener('change', (e) => {
+      handleChatImageSelected(e.target.files?.[0]);
     });
 
     document.getElementById('btn-export-cycle')?.addEventListener('click', () => {

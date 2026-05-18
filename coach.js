@@ -173,6 +173,59 @@
   const normalize = (text) => (text || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
   /**
+   * @description Convierte el análisis visual en una frase legible
+   * @param {Object} analysis - Resultado del análisis local de imagen
+   * @returns {string}
+   */
+  const describeImageAnalysis = (analysis) => {
+    if (!analysis) return 'no he podido leer suficientes detalles de la imagen';
+    const color = analysis.dominantTone || 'tono no identificado';
+    const red = Math.round((analysis.redRatio || 0) * 100);
+    const brown = Math.round((analysis.brownRatio || 0) * 100);
+    const light = Math.round((analysis.lightRatio || 0) * 100);
+    return `imagen de ${analysis.width}×${analysis.height}px, tono dominante ${color}, presencia aproximada de rojos ${red}%, marrones/oscuros ${brown}% y zonas claras ${light}%`;
+  };
+
+  /**
+   * @description Genera una respuesta de Luna basada en imagen analizada localmente
+   * @param {string} input - Texto opcional enviado con la imagen
+   * @param {Object} analysis - Datos visuales calculados con Canvas
+   * @param {Object} [context={}] - Contexto de usuario
+   * @returns {string}
+   */
+  const processImageMessage = (input, analysis, context = {}) => {
+    const name = context.name || 'querida';
+    const text = normalize(input);
+    const description = describeImageAnalysis(analysis);
+    const hasRed = (analysis?.redRatio || 0) > 0.12;
+    const hasBrown = (analysis?.brownRatio || 0) > 0.08;
+    const isFlowQuestion = ['flujo', 'sangre', 'periodo', 'regla', 'manchado', 'spotting', 'secrecion', 'secreción'].some((word) => text.includes(normalize(word)));
+    const isSkinQuestion = ['piel', 'acne', 'acné', 'grano', 'lesion', 'lesión', 'irritacion', 'irritación'].some((word) => text.includes(normalize(word)));
+
+    if (isFlowQuestion || hasRed || hasBrown) {
+      return buildResponse([
+        `${name}, he revisado la imagen de forma local en tu navegador. Mi análisis visual básico detecta ${description}. Si la imagen corresponde a sangrado, flujo, manchado o una prenda/protección menstrual, la presencia de tonos rojizos o marrones puede ser compatible con sangre reciente u oxidada, pero una foto por sí sola no permite diagnosticar infección, embarazo, aborto, endometriosis ni ninguna condición ginecológica.`,
+        'Para interpretarlo mejor necesito que lo cruces con contexto: día del ciclo, cantidad, olor, dolor, fiebre, picor, embarazo posible, anticonceptivos, si apareció tras relaciones sexuales o si es un cambio nuevo respecto a tus ciclos habituales. Sangrado rojo brillante abundante que empapa una compresa por hora, coágulos grandes persistentes, dolor pélvico intenso, mareo, fiebre, mal olor fuerte o embarazo posible son señales para buscar atención médica con rapidez.',
+        'Como paso práctico, registra hoy en el calendario el tipo de flujo, dolor, moco cervical, temperatura y notas. Si se trata de spotting leve marrón antes o después del periodo, suele ser sangre oxidada y puede ser benigno; si se repite varios ciclos o aparece fuera de patrón, conviene revisarlo. Luna puede ayudarte a ordenar la información, pero la imagen no sustituye una exploración ni pruebas.'
+      ]);
+    }
+
+    if (isSkinQuestion) {
+      return buildResponse([
+        `${name}, he analizado la imagen localmente y detecto ${description}. Puedo orientarte sobre patrones generales de piel, pero no puedo confirmar diagnósticos dermatológicos desde una foto. En salud femenina, brotes en barbilla, mandíbula o cuello que empeoran antes de la regla suelen asociarse a variación hormonal, SOP, estrés, cosméticos comedogénicos o resistencia a la insulina.`,
+        'Observa si hay dolor, calor local, pus, extensión rápida, costras, sangrado espontáneo o fiebre. Para acné hormonal leve, suele ayudar una limpieza suave, protector solar no comedogénico, evitar manipular lesiones y registrar fase del ciclo. Si aparece junto a ciclos irregulares, hirsutismo o caída de cabello, merece valoración por posible hiperandrogenismo o SOP.',
+        'Si la lesión cambia rápido, duele mucho, parece infectada, está en zona genital o no mejora en dos semanas, lo adecuado es consulta médica. Puedes enviarme también una descripción: desde cuándo está, si pica o duele, dónde está y si coincide con tu fase lútea o menstrual.'
+      ]);
+    }
+
+    return buildResponse([
+      `${name}, he recibido la imagen y la he procesado de forma local: ${description}. Mi capacidad visual en esta versión es básica y se basa en píxeles, colores y proporciones; no reconoce órganos, diagnósticos ni detalles clínicos complejos como lo haría una profesional con exploración, analítica o ecografía.`,
+      'Puedo ayudarte mucho mejor si acompañas la imagen con una pregunta concreta: “¿este flujo es normal?”, “¿este manchado puede ser periodo?”, “¿este brote parece hormonal?”, “¿debo registrar esto como síntoma?”. También dime fecha de última regla, día aproximado del ciclo, síntomas asociados, dolor, fiebre, olor, picor, medicación y si existe posibilidad de embarazo.',
+      'La imagen no se guarda en localStorage ni se envía a ningún servidor: vive solo en esta sesión de chat. Si quieres seguimiento, registra el dato relevante en Calendario o Bienestar para que Menstruapp pueda correlacionarlo con tu ciclo.'
+    ]);
+  };
+
+  /**
    * @description Detecta intención del mensaje del usuario
    * @param {string} input - Mensaje del usuario
    * @returns {string|null} Clave de intención o null
@@ -223,7 +276,10 @@
     let out = `=== SESIÓN LUNA - MENSTRUAPP ===\nFecha: ${now}\nUsuaria: ${userName}\n---\n`;
     messages.forEach((m) => {
       const who = m.role === 'user' ? 'Tú' : 'Luna';
-      out += `[${m.time}] ${who}: ${m.text}\n`;
+      const imageInfo = m.image?.analysis
+        ? ` [Imagen: ${m.image.name || 'adjunta'} · ${describeImageAnalysis(m.image.analysis)}]`
+        : '';
+      out += `[${m.time}] ${who}: ${m.text}${imageInfo}\n`;
     });
     out += '---\n[FIN DE SESIÓN]';
     return out;
@@ -231,6 +287,8 @@
 
   window.CoachModule = {
     processMessage,
+    processImageMessage,
+    describeImageAnalysis,
     detectIntent,
     getTypingDelay,
     formatSessionExport,
@@ -247,6 +305,9 @@
     console.log('✅ Test 2 passed: generic response');
     console.assert(getTypingDelay() >= 800 && getTypingDelay() <= 1500, '❌ delay');
     console.log('✅ Test 3 passed: typing delay');
+    const img = processImageMessage('flujo', { width: 10, height: 10, redRatio: 0.4, brownRatio: 0.1, lightRatio: 0.2, dominantTone: 'rojizo' });
+    console.assert(img.includes(DISCLAIMER), '❌ image response');
+    console.log('✅ Test 4 passed: image response');
     console.groupEnd();
   };
 })();
