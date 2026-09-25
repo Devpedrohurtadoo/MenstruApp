@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Menstruapp: servidor móvil",
+      "label": "Menstruapp: servidor local",
       "type": "shell",
-      "command": "npx --yes serve menstruapp -l 5500",
+      "command": "npx --yes serve . -l 5500",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {

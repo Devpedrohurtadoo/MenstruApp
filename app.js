@@ -1,5 +1,5 @@
 /**
- * @fileoverview Controlador principal Menstruapp v2.0
+ * @fileoverview Controlador principal Menstruapp v2.1
  */
 (function () {
   'use strict';
@@ -213,44 +213,47 @@
    * @param {Event} e - Submit event
    * @returns {void}
    */
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
     if (!validateAuthForm()) return;
 
     const email = document.getElementById('auth-email').value.trim();
     const pass = document.getElementById('auth-password').value;
     const remember = document.getElementById('auth-remember').checked;
+    const submitBtn = document.getElementById('auth-submit');
 
-    if (email === 'beta@menstruapp.com' && pass === 'beta123') {
-      completeLogin({ name: 'Beta', email, birthdate: '1995-01-01' }, remember);
-      return;
-    }
-
-    if (AppState.authMode === 'register') {
-      const user = {
-        name: document.getElementById('auth-name').value.trim(),
-        email,
-        birthdate: document.getElementById('auth-birthdate').value,
-        password: pass
-      };
-      try {
+    submitBtn.disabled = true;
+    try {
+      if (AppState.authMode === 'register') {
+        const existing = JSON.parse(localStorage.getItem(window.SettingsModule.USER_KEY) || 'null');
+        if (existing && existing.email === email) {
+          showToast('Ya existe una cuenta local con ese email. Inicia sesión.', 'error');
+          return;
+        }
+        const passwordHash = await window.CryptoUtils.hashSecret(pass);
+        const user = {
+          name: document.getElementById('auth-name').value.trim(),
+          email,
+          birthdate: document.getElementById('auth-birthdate').value,
+          passwordHash
+        };
         localStorage.setItem(window.SettingsModule.USER_KEY, JSON.stringify(user));
         showToast('Cuenta creada. ¡Bienvenida!');
         completeLogin(user, remember);
-      } catch (err) {
-        showToast('Error al registrar', 'error');
-      }
-    } else {
-      try {
+      } else {
         const stored = JSON.parse(localStorage.getItem(window.SettingsModule.USER_KEY) || 'null');
-        if (stored && stored.email === email && stored.password === pass) {
+        const valid = !!stored && stored.email === email && await window.CryptoUtils.verifySecret(pass, stored.passwordHash);
+        if (valid) {
           completeLogin(stored, remember);
         } else {
           showToast('Credenciales incorrectas', 'error');
         }
-      } catch (err) {
-        showToast('Error de autenticación', 'error');
       }
+    } catch (err) {
+      console.error('[Menstruapp] Error de autenticación:', err);
+      showToast('Error de autenticación', 'error');
+    } finally {
+      submitBtn.disabled = false;
     }
   };
 
@@ -264,15 +267,12 @@
     AppState.currentUser = user;
     try {
       const existing = JSON.parse(localStorage.getItem(window.SettingsModule.USER_KEY) || 'null');
-      const userToStore = {
-        ...existing,
-        ...user,
-        password: user.password || existing?.password || (user.email === 'beta@menstruapp.com' ? 'beta123' : '')
-      };
+      const userToStore = { ...existing, ...user };
       localStorage.setItem(window.SettingsModule.USER_KEY, JSON.stringify(userToStore));
       AppState.currentUser = userToStore;
       if (remember) {
-        localStorage.setItem(window.SettingsModule.SESSION_KEY, JSON.stringify({ token: 'session_xyz', email: user.email }));
+        const token = window.CryptoUtils.bufToBase64(window.CryptoUtils.randomBytes(32));
+        localStorage.setItem(window.SettingsModule.SESSION_KEY, JSON.stringify({ token, email: user.email }));
       }
     } catch (e) {
       console.error('[Menstruapp] Error al persistir sesión:', e);
@@ -888,22 +888,33 @@
    * @returns {void}
    */
   const initPinScreen = () => {
-    document.getElementById('pin-keypad')?.addEventListener('click', (e) => {
+    applyPinLockUI();
+    document.getElementById('pin-keypad')?.addEventListener('click', async (e) => {
       const key = e.target.closest('.pin-key');
       if (!key) return;
+
+      const lockState = window.SettingsModule.getPinLockState();
+      if (lockState.locked) {
+        applyPinLockUI(lockState);
+        return;
+      }
+
       if (key.id === 'pin-backspace') {
         AppState.pinBuffer = AppState.pinBuffer.slice(0, -1);
       } else if (key.id === 'pin-forgot') {
         showModal('Restablecer PIN', '<p>Introduce tu contraseña de cuenta:</p><input type="password" id="reset-pass" class="form-group" style="width:100%;padding:0.5rem">', [
           { label: 'Cancelar', action: 'close' },
-          { label: 'Restablecer', primary: true, action: () => {
+          { label: 'Restablecer', primary: true, action: async () => {
             const pass = document.getElementById('reset-pass').value;
-            if (pass === AppState.currentUser?.password || pass === 'beta123') {
+            const valid = await window.CryptoUtils.verifySecret(pass, AppState.currentUser?.passwordHash);
+            if (valid) {
               window.SettingsModule.clearPin();
               document.getElementById('pin-screen').classList.add('hidden');
               enterApp();
               showToast('PIN restablecido');
-            } else showToast('Contraseña incorrecta', 'error');
+            } else {
+              showToast('Contraseña incorrecta', 'error');
+            }
           }}
         ]);
         return;
@@ -912,17 +923,48 @@
       }
       updatePinDots();
       if (AppState.pinBuffer.length === 4) {
-        if (window.SettingsModule.verifyPin(AppState.pinBuffer)) {
+        const enteredPin = AppState.pinBuffer;
+        AppState.pinBuffer = '';
+        const ok = await window.SettingsModule.verifyPin(enteredPin);
+        if (ok) {
+          window.SettingsModule.registerPinSuccess();
+          document.getElementById('pin-error').classList.add('hidden');
           document.getElementById('pin-screen').classList.add('hidden');
           enterApp();
         } else {
-          document.getElementById('pin-error').textContent = 'PIN incorrecto';
-          document.getElementById('pin-error').classList.remove('hidden');
-          AppState.pinBuffer = '';
           updatePinDots();
+          const newLockState = window.SettingsModule.registerPinFailure();
+          if (newLockState.locked) {
+            applyPinLockUI(newLockState);
+          } else {
+            const plural = newLockState.attemptsLeft === 1 ? '' : 's';
+            document.getElementById('pin-error').textContent =
+              `PIN incorrecto (${newLockState.attemptsLeft} intento${plural} restante${plural})`;
+            document.getElementById('pin-error').classList.remove('hidden');
+          }
         }
       }
     });
+  };
+
+  /**
+   * @description Refleja en la pantalla de PIN el bloqueo temporal por intentos fallidos
+   * @param {{locked:boolean, remainingMs:number}} [state] - Estado a mostrar (se recalcula si se omite)
+   * @returns {void}
+   */
+  const applyPinLockUI = (state) => {
+    const lockState = state || window.SettingsModule.getPinLockState();
+    const pinError = document.getElementById('pin-error');
+    const keypad = document.getElementById('pin-keypad');
+    if (!pinError || !keypad) return;
+    if (lockState.locked) {
+      const seconds = Math.ceil(lockState.remainingMs / 1000);
+      pinError.textContent = `Demasiados intentos. Espera ${seconds}s antes de volver a intentarlo.`;
+      pinError.classList.remove('hidden');
+      keypad.classList.add('pin-keypad--locked');
+    } else {
+      keypad.classList.remove('pin-keypad--locked');
+    }
   };
 
   /**
@@ -1099,6 +1141,7 @@
         document.getElementById('auth-screen').classList.add('hidden');
         if (AppState.pinEnabled) {
           document.getElementById('pin-screen').classList.remove('hidden');
+          applyPinLockUI();
         } else {
           enterApp();
         }
@@ -1209,10 +1252,12 @@
 
   document.addEventListener('DOMContentLoaded', initApp);
 
-  // === CHECKLIST v2.0 ===
+  // === CHECKLIST v2.1 ===
   // ✅ Login/Registro con validación en tiempo real
-  // ✅ Beta beta@menstruapp.com / beta123
-  // ✅ Recordarme en localStorage
+  // ✅ Sin credenciales de acceso hardcodeadas (backdoor eliminado)
+  // ✅ Contraseña y PIN con hash PBKDF2-SHA256 real (WebCrypto), nunca en texto plano
+  // ✅ Bloqueo por intentos fallidos de PIN con backoff exponencial
+  // ✅ Recordarme en localStorage (token de sesión aleatorio)
   // ✅ Calendario navegable
   // ✅ Drawer con animación y 11 tipos de registro
   // ✅ Predicciones coloreadas + resumen dinámico

@@ -6,6 +6,7 @@
 
   const THEME_KEY = 'menstruapp_theme';
   const PIN_KEY = 'menstruapp_pin_hash';
+  const PIN_ATTEMPTS_KEY = 'menstruapp_pin_attempts';
   const USER_KEY = 'menstruapp_user';
   const SESSION_KEY = 'menstruapp_session';
 
@@ -18,61 +19,54 @@
   };
 
   /**
-   * @description Hash simple XOR + base64 para PIN
-   * @param {string} pin - PIN de 4 dígitos
-   * @returns {string}
-   */
-  const hashPin = (pin) => {
-    const salt = 'menstruapp_v2';
-    let out = '';
-    for (let i = 0; i < pin.length; i++) {
-      out += String.fromCharCode(pin.charCodeAt(i) ^ salt.charCodeAt(i % salt.length));
-    }
-    return btoa(out + salt);
-  };
-
-  /**
-   * @description Verifica PIN contra hash guardado
+   * @description Verifica un PIN contra el hash PBKDF2 guardado (WebCrypto, ver crypto-utils.js).
+   * Sustituye al antiguo esquema XOR+base64, que era reversible y no ofrecía protección real.
    * @param {string} pin - PIN ingresado
-   * @returns {boolean}
+   * @returns {Promise<boolean>}
    */
-  const verifyPin = (pin) => {
+  const verifyPin = async (pin) => {
     try {
-      const stored = localStorage.getItem(PIN_KEY);
-      return stored === hashPin(pin);
+      const raw = localStorage.getItem(PIN_KEY);
+      if (!raw) return false;
+      return await window.CryptoUtils.verifySecret(pin, JSON.parse(raw));
     } catch (e) {
+      console.error('[Menstruapp] Error al verificar PIN:', e);
       return false;
     }
   };
 
   /**
-   * @description Guarda hash de PIN
-   * @param {string} pin - PIN
-   * @returns {boolean}
+   * @description Genera y guarda el hash PBKDF2 de un nuevo PIN, reseteando el bloqueo por intentos
+   * @param {string} pin - PIN de 4 dígitos
+   * @returns {Promise<boolean>}
    */
-  const savePin = (pin) => {
+  const savePin = async (pin) => {
     try {
-      localStorage.setItem(PIN_KEY, hashPin(pin));
+      const stored = await window.CryptoUtils.hashSecret(pin);
+      localStorage.setItem(PIN_KEY, JSON.stringify(stored));
+      registerPinSuccess();
       return true;
     } catch (e) {
+      console.error('[Menstruapp] Error al guardar PIN:', e);
       return false;
     }
   };
 
   /**
-   * @description Elimina PIN
+   * @description Elimina el PIN y su historial de intentos fallidos
    * @returns {void}
    */
   const clearPin = () => {
     try {
       localStorage.removeItem(PIN_KEY);
+      localStorage.removeItem(PIN_ATTEMPTS_KEY);
     } catch (e) {
       console.error('[Menstruapp] Error al borrar PIN:', e);
     }
   };
 
   /**
-   * @description Comprueba si PIN está activo
+   * @description Comprueba si el PIN está activo
    * @returns {boolean}
    */
   const isPinEnabled = () => {
@@ -80,6 +74,46 @@
       return !!localStorage.getItem(PIN_KEY);
     } catch (e) {
       return false;
+    }
+  };
+
+  /**
+   * @description Lee el estado de bloqueo por intentos fallidos de PIN (ver pin-lockout.js)
+   * @returns {{locked:boolean, remainingMs:number, attemptsLeft:number}}
+   */
+  const getPinLockState = () => {
+    try {
+      const raw = localStorage.getItem(PIN_ATTEMPTS_KEY);
+      return window.PinLockout.getLockState(raw ? JSON.parse(raw) : null);
+    } catch (e) {
+      return window.PinLockout.getLockState(null);
+    }
+  };
+
+  /**
+   * @description Registra un intento de PIN fallido y persiste el nuevo estado de bloqueo
+   * @returns {{locked:boolean, remainingMs:number, attemptsLeft:number}}
+   */
+  const registerPinFailure = () => {
+    try {
+      const raw = localStorage.getItem(PIN_ATTEMPTS_KEY);
+      const next = window.PinLockout.registerFailure(raw ? JSON.parse(raw) : null);
+      localStorage.setItem(PIN_ATTEMPTS_KEY, JSON.stringify(next));
+      return window.PinLockout.getLockState(next);
+    } catch (e) {
+      return window.PinLockout.getLockState(null);
+    }
+  };
+
+  /**
+   * @description Resetea el contador de intentos fallidos tras un PIN correcto
+   * @returns {void}
+   */
+  const registerPinSuccess = () => {
+    try {
+      localStorage.setItem(PIN_ATTEMPTS_KEY, JSON.stringify(window.PinLockout.registerSuccess()));
+    } catch (e) {
+      console.error('[Menstruapp] Error al resetear intentos de PIN:', e);
     }
   };
 
@@ -174,7 +208,7 @@
     const user = appState.currentUser || {};
     const theme = appState.theme || loadTheme();
     const cycleSettings = appState.cycleData?.settings || {};
-    const profileName = escapeAttr(user.name || (user.email === 'beta@menstruapp.com' ? 'Beta' : ''));
+    const profileName = escapeAttr(user.name || '');
     const profileEmail = escapeAttr(user.email || '');
     const profileBirthdate = escapeAttr(user.birthdate || '');
     const profileAvatar = escapeAttr(user.avatar || '');
@@ -365,12 +399,17 @@
       if (!e.target.checked) clearPin();
     });
 
-    document.getElementById('confirm-pin')?.addEventListener('blur', () => {
+    document.getElementById('confirm-pin')?.addEventListener('blur', async () => {
       const a = document.getElementById('new-pin').value;
       const b = document.getElementById('confirm-pin').value;
-      if (a && b && a === b && a.length === 4) {
-        savePin(a);
-        callbacks.showToast('PIN activado');
+      if (!a || !b) return;
+      if (a !== b) {
+        callbacks.showToast('Los PIN no coinciden', 'error');
+        return;
+      }
+      if (a.length === 4) {
+        const ok = await savePin(a);
+        callbacks.showToast(ok ? 'PIN activado' : 'No se pudo activar el PIN en este navegador', ok ? 'info' : 'error');
       }
     });
 
@@ -452,11 +491,13 @@
   };
 
   window.SettingsModule = {
-    hashPin,
     verifyPin,
     savePin,
     clearPin,
     isPinEnabled,
+    getPinLockState,
+    registerPinFailure,
+    registerPinSuccess,
     loadTheme,
     saveTheme,
     applyTheme,
@@ -464,15 +505,20 @@
     ACCENT_PRESETS,
     THEME_KEY,
     PIN_KEY,
+    PIN_ATTEMPTS_KEY,
     USER_KEY,
     SESSION_KEY
   };
 
-  window.runTests_settings = () => {
+  window.runTests_settings = async () => {
     console.group('🧪 Tests Settings');
-    const h = hashPin('1234');
-    console.assert(verifyPin('1234') === !!localStorage.getItem(PIN_KEY), '❌ pin');
-    console.log('✅ Test 1 passed: hashPin');
+    await savePin('1234');
+    console.assert(await verifyPin('1234') === true, '❌ PIN correcto debería verificar');
+    console.assert(await verifyPin('9999') === false, '❌ PIN incorrecto no debería verificar');
+    console.log('✅ Test 1 passed: savePin/verifyPin con PBKDF2');
+    clearPin();
+    console.assert(isPinEnabled() === false, '❌ isPinEnabled tras clearPin');
+    console.log('✅ Test 2 passed: clearPin');
     console.groupEnd();
   };
 })();
