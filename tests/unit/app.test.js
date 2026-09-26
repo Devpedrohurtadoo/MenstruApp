@@ -159,4 +159,14 @@ describe('reminder texts', () => {
     expect(renderText(at('2026-02-26', ''), false).body).toBe('Tienes una cita el 2 de marzo.');
     expect(JSON.stringify(renderText(at('2026-03-02', 'Dentista'), true))).not.toContain('Dentista');
   });
+
+  it('bring the tip of the day for the topic of that day', async () => {
+    const { renderText } = await import('../../public/js/pwa/notifications.js');
+    const { raw } = await import('../../public/js/core/i18n.js');
+    const tip = (/** @type {string} */ topic, /** @type {boolean} */ discreet) => renderText({ key: 'k', reminderId: 'daily_tip', type: 'daily_tip', at: 0, date: '2026-03-02', params: { topic } }, discreet);
+    expect(raw('tips.menstrual')).toContain(tip('menstrual', false).body);
+    expect(raw('tips.pregnancy')).toContain(tip('pregnancy', false).body);
+    expect(tip('menstrual', false).title).toBe('Consejo del día 🌙');
+    expect(tip('menstrual', true).body).not.toBe(tip('menstrual', false).body);
+  });
 });

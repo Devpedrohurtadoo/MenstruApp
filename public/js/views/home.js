@@ -1,8 +1,8 @@
 // "Today": the home dashboard, adapted to the usage mode.
 
 import { h } from '../core/dom.js';
-import { t, raw, fmtDate, fmtRelativeDays, getLanguage } from '../core/i18n.js';
-import { addDays, diffDays, dayNumber } from '../core/dates.js';
+import { t, fmtDate, fmtRelativeDays, getLanguage } from '../core/i18n.js';
+import { addDays, diffDays } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
 import { button, card, chip, notice, emptyState, progressBar, badge } from '../ui/components.js';
 import { cycleRing } from '../ui/ring.js';
@@ -12,6 +12,8 @@ import { saveDay, store, setPrefs } from '../app.js';
 import { BLEEDING, DAILY_METHODS } from '../domain/catalog.js';
 import { fertilityLevel } from '../domain/cycle.js';
 import { installCard } from '../pwa/install.js';
+import { tipOfTheDay } from '../content/tips.js';
+import { tipTopic } from '../domain/modes.js';
 
 const QUICK_MOODS = ['happy', 'calm', 'energetic', 'sensitive', 'sad', 'anxious', 'irritable'];
 const QUICK_SYMPTOMS = {
@@ -344,10 +346,8 @@ function upcoming(d) {
 
 /** @param {NonNullable<import('../app.js').AppState['derived']>} d */
 function tipCard(d) {
-  const phase = d.flags.pregnancy ? 'pregnancy' : d.flags.postpartum && !d.flags.predictions ? 'postpartum' : d.flags.menopause ? 'menopause' : d.analysis.current?.phase ?? 'general';
-  const tips = /** @type {string[]} */ (raw(`tips.${phase}`) ?? raw('tips.general') ?? []);
-  if (!tips.length) return null;
-  const tip = tips[dayNumber(d.today) % tips.length];
+  const tip = tipOfTheDay(tipTopic(d.flags, d.analysis.current?.phase), d.today);
+  if (!tip) return null;
   return card({ title: t('home.tipTitle'), icon: 'lightbulb', children: h('p', { class: 'tip', text: tip }) });
 }
 

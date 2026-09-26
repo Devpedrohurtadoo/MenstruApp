@@ -91,6 +91,18 @@ export function modeFlags(settings, extra = {}) {
   };
 }
 
+/**
+ * Which tips suit a day: the life stage, otherwise the phase of the cycle on that day.
+ * @param {{ pregnancy: boolean, postpartum: boolean, predictions: boolean, menopause: boolean }} flags see modeFlags()
+ * @param {string | null | undefined} phase
+ */
+export function tipTopic(flags, phase) {
+  if (flags.pregnancy) return 'pregnancy';
+  if (flags.postpartum && !flags.predictions) return 'postpartum';
+  if (flags.menopause) return 'menopause';
+  return phase ?? 'general';
+}
+
 /** Tabs of the daily log that make sense for a mode. @param {string} mode */
 export function logSections(mode) {
   const base = ['period', 'symptoms', 'mood', 'body', 'notes'];

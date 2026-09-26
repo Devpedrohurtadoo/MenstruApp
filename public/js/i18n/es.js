@@ -1422,6 +1422,7 @@ export default {
       fertile_start: { title: 'Inicio de la ventana fértil', desc: 'El primer día fértil estimado.' },
       ovulation: { title: 'Ovulación', desc: 'El día estimado de ovulación.' },
       log_daily: { title: 'Registro diario', desc: 'Un recordatorio para anotar cómo te sientes.' },
+      daily_tip: { title: 'Consejo del día', desc: 'Una idea breve para cuidarte según tu fase o tu etapa.' },
       bbt: { title: 'Temperatura basal', desc: 'Al despertar, antes de levantarte.' },
       pill: { title: 'Píldora', desc: 'Cada día a la hora de tu toma (respeta los días de descanso).' },
       patch: { title: 'Parche', desc: 'Cuándo ponerlo, cambiarlo y quitarlo.' },
@@ -1471,6 +1472,10 @@ export default {
     log_daily: {
       title: '¿Qué tal hoy?',
       body: 'Dedica unos segundos a registrar cómo te sientes.',
+    },
+    daily_tip: {
+      title: 'Consejo del día 🌙',
+      body: 'Un consejo para cuidarte hoy.',
     },
     bbt: {
       title: 'Temperatura basal',

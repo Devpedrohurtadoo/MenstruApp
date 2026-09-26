@@ -7,11 +7,14 @@ import { button, card, toggle, notice, iconButton, chipGroup } from '../../ui/co
 import { toast } from '../../ui/toast.js';
 import { openModal } from '../../ui/modal.js';
 import { saveReminders } from '../../app.js';
+import { defaultReminders } from '../../domain/reminders.js';
 import { notificationStatus, requestNotificationPermission, testNotification, deliveryInfo } from '../../pwa/notifications.js';
 
 /** @param {import('../shell.js').ViewContext} ctx */
 export async function render(ctx) {
-  const items = /** @type {import('../../domain/reminders.js').Reminder[]} */ (ctx.state.data?.docs.reminders?.items ?? []);
+  const saved = /** @type {import('../../domain/reminders.js').Reminder[]} */ (ctx.state.data?.docs.reminders?.items ?? []);
+  // Reminders of the current mode that this profile has never saved (e.g. added in an update) show up switched off.
+  const items = [...saved, ...defaultReminders(ctx.state.derived?.settings.mode ?? 'track').filter((d) => !saved.some((r) => r.id === d.id))];
   const status = notificationStatus();
   const delivery = await deliveryInfo();
   const update = async (/** @type {string} */ id, /** @type {Record<string, any>} */ patch) => {

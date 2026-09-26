@@ -1421,6 +1421,7 @@ export default {
       fertile_start: { title: 'Fertile window starts', desc: 'Your first estimated fertile day.' },
       ovulation: { title: 'Ovulation', desc: 'Your estimated ovulation day.' },
       log_daily: { title: 'Daily log', desc: 'A reminder to note how you feel.' },
+      daily_tip: { title: 'Tip of the day', desc: 'A short idea to look after yourself in your phase or stage.' },
       bbt: { title: 'Basal temperature', desc: 'When you wake up, before getting out of bed.' },
       pill: { title: 'Pill', desc: 'Every day at your usual time (break days respected).' },
       patch: { title: 'Patch', desc: 'When to apply, change and remove it.' },
@@ -1470,6 +1471,10 @@ export default {
     log_daily: {
       title: 'How was today?',
       body: 'Take a few seconds to log how you feel.',
+    },
+    daily_tip: {
+      title: 'Tip of the day 🌙',
+      body: 'A tip to look after yourself today.',
     },
     bbt: {
       title: 'Basal temperature',

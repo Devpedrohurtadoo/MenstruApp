@@ -119,6 +119,7 @@ export const REMINDER_TYPES = /** @type {const} */ ([
   'fertile_start',
   'ovulation',
   'log_daily',
+  'daily_tip',
   'bbt',
   'pill',
   'patch',

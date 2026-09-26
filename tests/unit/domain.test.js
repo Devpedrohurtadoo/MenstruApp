@@ -5,7 +5,8 @@ import { pregnancyInfo, contractionStats } from '../../public/js/domain/pregnanc
 import { upcomingOccurrences, contraceptionAction, repeatDates } from '../../public/js/domain/reminders.js';
 import { loggingStreak, newAchievements } from '../../public/js/domain/streaks.js';
 import { createLuna, normalize } from '../../public/js/domain/luna.js';
-import { modeFlags } from '../../public/js/domain/modes.js';
+import { modeFlags, tipTopic } from '../../public/js/domain/modes.js';
+import { calendarMarks } from '../../public/js/domain/cycle.js';
 import { addDays, diffDays, localTimestamp, ageFromProfile } from '../../public/js/core/dates.js';
 
 function periodsEvery(first, len, count, periodLength = 5) {
@@ -225,6 +226,29 @@ describe('reminders', () => {
     expect(occ.filter((o) => o.type === 'log_daily')).toHaveLength(31);
     expect(occ.every((o) => o.at > now)).toBe(true);
     expect(occ.some((o) => o.reminderId === 'off')).toBe(false);
+  });
+
+  it('picks each day\'s tip from the life stage or the phase predicted for that day', () => {
+    const days = periodsEvery('2024-01-01', 28, 5);
+    const a = analyze(days, { today: '2024-05-01', settings: {} });
+    const flags = modeFlags({ mode: 'track' });
+    const dates = Array.from({ length: 31 }, (_, i) => addDays('2024-05-01', i));
+    const marks = calendarMarks(a, days, dates, { showFertility: false });
+    const occ = upcomingOccurrences([{ id: 'daily_tip', type: 'daily_tip', enabled: true, time: '10:00' }], {
+      now: localTimestamp('2024-05-01', '08:00'),
+      today: '2024-05-01',
+      prediction: a.prediction,
+      current: a.current,
+      tipTopic: (d) => tipTopic(flags, marks[d]?.phase),
+    });
+    expect(occ).toHaveLength(31);
+    // Periods every 28 days from 1 Jan: 20 May starts one, so it gets a period tip; 10 May is luteal.
+    expect(occ.find((o) => o.date === '2024-05-20')?.params.topic).toBe('menstrual');
+    expect(occ.find((o) => o.date === '2024-05-10')?.params.topic).toBe('luteal');
+    expect(tipTopic(modeFlags({ mode: 'pregnant' }), 'luteal')).toBe('pregnancy');
+    expect(tipTopic(modeFlags({ mode: 'perimenopause' }), null)).toBe('menopause');
+    expect(tipTopic(modeFlags({ mode: 'postpartum' }), null)).toBe('postpartum');
+    expect(tipTopic(flags, null)).toBe('general');
   });
 
   it('pauses pill reminders in the break week only for the combined pill', () => {

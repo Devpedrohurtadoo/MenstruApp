@@ -23,6 +23,7 @@ export function defaultReminders(mode) {
   if (mode === 'conceive') list.push({ id: 'ovulation', type: 'ovulation', enabled: false, time: '09:00' });
   if (mode === 'conceive') list.push({ id: 'bbt', type: 'bbt', enabled: false, time: '07:00' });
   list.push({ id: 'log_daily', type: 'log_daily', enabled: false, time: '21:00' });
+  list.push({ id: 'daily_tip', type: 'daily_tip', enabled: false, time: '10:00' });
   if (mode === 'pregnant') list.push({ id: 'pregnancy_week', type: 'pregnancy_week', enabled: false, time: '10:00' });
   return list;
 }
@@ -75,7 +76,8 @@ export function contraceptionAction(type, startDate, iso, regimen, method) {
  * @param {Reminder[]} reminders
  * @param {{ now: number, today: string, horizonDays?: number, prediction?: Record<string, any> | null,
  *   current?: Record<string, any> | null, pregnancy?: { lmp: string, dueDate: string } | null,
- *   contraception?: { method?: string, startDate?: string | null, pillRegimen?: string } | null, flags?: { fertility: boolean } }} ctx
+ *   contraception?: { method?: string, startDate?: string | null, pillRegimen?: string } | null, flags?: { fertility: boolean },
+ *   tipTopic?: (date: string) => string }} ctx tipTopic: which tips suit a date (its life stage or predicted phase)
  * @returns {Occurrence[]}
  */
 export function upcomingOccurrences(reminders, ctx) {
@@ -93,6 +95,9 @@ export function upcomingOccurrences(reminders, ctx) {
       case 'log_daily':
       case 'bbt':
         for (const d of dates) out.push(occ(r, d));
+        break;
+      case 'daily_tip':
+        for (const d of dates) out.push(occ(r, d, { topic: ctx.tipTopic?.(d) ?? 'general' }));
         break;
       case 'pill':
         for (const d of dates) {

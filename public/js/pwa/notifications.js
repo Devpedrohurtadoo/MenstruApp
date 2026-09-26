@@ -11,6 +11,7 @@ import { isISODate, diffDays } from '../core/dates.js';
 import { get, put, clearStore, putMany } from '../data/idb.js';
 import { generateAesKey, encryptJSON, toB64Url } from '../security/crypto.js';
 import { store } from '../app.js';
+import { tipOfTheDay } from '../content/tips.js';
 import { getRegistration } from './sw-register.js';
 
 /** @typedef {import('../domain/reminders.js').Occurrence} Occurrence */
@@ -71,6 +72,7 @@ export async function opaqueTag(occurrenceKey) {
 export function renderText(o, discreet) {
   if (discreet) return { title: t('notifications.discreetTitle'), body: t('notifications.discreetBody') };
   const raw = o.params ?? {};
+  if (o.type === 'daily_tip') return { title: t('notifications.daily_tip.title'), body: tipOfTheDay(String(raw.topic ?? 'general'), o.date) || t('notifications.daily_tip.body') };
   /** @type {Record<string, string | number>} */
   const params = { count: Number(raw.days ?? raw.week ?? 0) };
   for (const [k, v] of Object.entries(raw)) {
@@ -130,7 +132,7 @@ export async function scheduleLocal(occurrences, discreet) {
 }
 
 /** Reminder types that make sense to deliver any time during their day (periodic sync). */
-const DATE_ONLY = new Set(['period_soon', 'period_late', 'fertile_start', 'ovulation', 'appointment', 'checkup', 'custom', 'injection', 'pregnancy_week', 'backup']);
+const DATE_ONLY = new Set(['period_soon', 'period_late', 'fertile_start', 'ovulation', 'appointment', 'checkup', 'custom', 'injection', 'pregnancy_week', 'backup', 'daily_tip']);
 
 /**
  * @param {string} title

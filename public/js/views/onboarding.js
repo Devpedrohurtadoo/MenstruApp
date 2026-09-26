@@ -415,6 +415,7 @@ export function renderOnboarding(root, opts) {
       const options = [
         mode !== 'pregnant' && ['period_soon', 'bell'],
         ['log_daily', 'notebook-pen'],
+        ['daily_tip', 'lightbulb'],
         s.method.startsWith('pill') && ['pill', 'pill'],
         mode === 'conceive' && ['bbt', 'thermometer'],
         mode === 'pregnant' && ['pregnancy_week', 'baby'],
@@ -464,7 +465,7 @@ export function renderOnboarding(root, opts) {
       if (mode === 'postpartum' && s.birthDate) settings.postpartum = { birthDate: s.birthDate, breastfeeding: s.breastfeeding, periodReturned: s.periodReturned };
       const reminders = Object.entries(s.reminders)
         .filter(([id, on]) => on && (id !== 'pill' || s.method.startsWith('pill')))
-        .map(([id]) => ({ id, type: id, enabled: true, time: id === 'pill' ? s.pillTime : id === 'bbt' ? '07:00' : id === 'log_daily' ? '21:00' : '09:00', ...(id === 'period_soon' ? { daysBefore: 2 } : {}) }));
+        .map(([id]) => ({ id, type: id, enabled: true, time: id === 'pill' ? s.pillTime : id === 'bbt' ? '07:00' : id === 'log_daily' ? '21:00' : id === 'daily_tip' ? '10:00' : '09:00', ...(id === 'period_soon' ? { daysBefore: 2 } : {}) }));
       if (s.importLegacy && legacy) for (const r of legacy.reminders) if (!reminders.some((x) => x.id === r.id)) reminders.push(r);
       const pregnancy = mode === 'pregnant' && s.pregDate ? { active: true, basis: s.pregBasis, date: s.pregDate, startedAt: Date.now(), history: [] } : null;
       const { recoveryCode } = await createProfile({

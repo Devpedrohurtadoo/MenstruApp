@@ -5,6 +5,9 @@ import { store, bus } from '../app.js';
 import { debounce } from '../core/store.js';
 import { serverFeatures } from './api.js';
 import { upcomingOccurrences } from '../domain/reminders.js';
+import { calendarMarks } from '../domain/cycle.js';
+import { tipTopic } from '../domain/modes.js';
+import { addDays, rangeISO } from '../core/dates.js';
 import { scheduleLocal } from './notifications.js';
 
 let started = false;
@@ -13,15 +16,21 @@ export async function refreshReminders() {
   const { data, derived } = store.get();
   if (!data || !derived) return;
   const items = data.docs.reminders?.items ?? [];
+  const horizonDays = 30;
+  // The predicted phase of each day picks its tip (the one the home screen shows that day).
+  const marks = items.some((r) => r.type === 'daily_tip' && r.enabled)
+    ? calendarMarks(derived.analysis, data.days, rangeISO(derived.today, addDays(derived.today, horizonDays)), { showFertility: false, showPredictions: derived.flags.predictions })
+    : {};
   const occurrences = upcomingOccurrences(items, {
     now: Date.now(),
     today: derived.today,
-    horizonDays: 30,
+    horizonDays,
     prediction: derived.flags.predictions ? derived.analysis.prediction : null,
     current: derived.analysis.current,
     pregnancy: derived.pregnancy,
     contraception: derived.settings.contraception ?? null,
     flags: { fertility: derived.flags.fertility },
+    tipTopic: (d) => tipTopic(derived.flags, marks[d]?.phase),
   });
   const discreet = Boolean(derived.settings.security.discreetNotifications);
   await scheduleLocal(occurrences, discreet).catch((err) => console.warn('[reminders]', err));
