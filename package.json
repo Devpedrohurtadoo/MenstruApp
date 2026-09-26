@@ -1,13 +1,45 @@
 {
   "name": "menstruapp",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Menstruapp: PWA de seguimiento menstrual y salud femenina integral.",
+  "description": "Menstruapp: PWA privada y cifrada de salud menstrual (ciclo, fertilidad, embarazo, posparto y menopausia).",
   "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "stamp": "node scripts/stamp-sw.mjs",
+    "assets": "node scripts/generate-assets.mjs && node scripts/stamp-sw.mjs",
+    "icons": "node scripts/extract-icons.mjs",
+    "vapid": "node scripts/vapid.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "build": "node scripts/stamp-sw.mjs && eslint . && vitest run",
+    "verify": "node scripts/stamp-sw.mjs && eslint . && tsc -p tsconfig.json && vitest run && playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource/playfair-display": "^5.3.0",
+    "@playwright/test": "^1.63.0",
+    "eslint": "^10.11.0",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^17.12.0",
+    "happy-dom": "^20.14.5",
+    "lucide-static": "^1.48.0",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2",
     "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.1",
+    "web-push": "^3.6.7"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
   }
 }

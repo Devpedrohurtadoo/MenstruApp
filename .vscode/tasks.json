@@ -2,15 +2,24 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Menstruapp: servidor local",
+      "label": "Menstruapp: servidor local (cabeceras de producción + API)",
       "type": "shell",
-      "command": "npx --yes serve . -l 5500",
+      "command": "npm run dev",
       "isBackground": true,
       "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      }
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Menstruapp: comprobaciones (lint, tipos, tests)",
+      "type": "shell",
+      "command": "npm run build && npx tsc -p tsconfig.json",
+      "problemMatcher": []
+    },
+    {
+      "label": "Menstruapp: tests end-to-end",
+      "type": "shell",
+      "command": "npm run test:e2e",
+      "problemMatcher": []
     }
   ]
 }

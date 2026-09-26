@@ -1,0 +1,7 @@
+node_modules/
+public/js/ui/icon-data.js
+public/assets/
+package-lock.json
+.scratch/
+playwright-report/
+test-results/

@@ -6,3 +6,6 @@ coverage/
 Thumbs.db
 .env
 .env.local
+.scratch/
+test-results/
+playwright-report/

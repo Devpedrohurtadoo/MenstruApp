@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; require-trusted-types-for 'script'; trusted-types menstruapp"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Menstruapp · Resumen compartido</title>
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script src="/js/boot.js"></script>
+    <!-- <modulepreload> -->
+    <link rel="modulepreload" href="/js/core/dates.js" />
+    <link rel="modulepreload" href="/js/core/dom.js" />
+    <link rel="modulepreload" href="/js/core/i18n.js" />
+    <link rel="modulepreload" href="/js/i18n/en.js" />
+    <link rel="modulepreload" href="/js/i18n/es.js" />
+    <link rel="modulepreload" href="/js/security/crypto.js" />
+    <link rel="modulepreload" href="/js/ui/icon-data.js" />
+    <link rel="modulepreload" href="/js/ui/icons.js" />
+    <link rel="modulepreload" href="/js/views/brand.js" />
+    <!-- </modulepreload> -->
+    <script type="module" src="/js/share/view.js"></script>
+  </head>
+  <body>
+    <main id="app" class="app share-page">
+      <div class="splash" role="status" aria-label="Cargando / Loading"><span class="spinner" aria-hidden="true"></span></div>
+    </main>
+    <div id="live-polite" class="sr-only" aria-live="polite"></div>
+  </body>
+</html>

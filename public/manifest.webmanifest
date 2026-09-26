@@ -1,0 +1,49 @@
+{
+  "id": "/",
+  "name": "Menstruapp — Tu ciclo, tus datos",
+  "short_name": "Menstruapp",
+  "description": "Seguimiento del ciclo menstrual y salud femenina: calendario, predicciones, síntomas, recordatorios y educación. Privada y cifrada en tu dispositivo.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "theme_color": "#17111e",
+  "background_color": "#17111e",
+  "categories": ["health", "medical", "lifestyle"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/icons/monochrome-512.png", "sizes": "512x512", "type": "image/png", "purpose": "monochrome" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar hoy",
+      "short_name": "Registrar",
+      "url": "/?source=shortcut#/home?log=today",
+      "icons": [{ "src": "/assets/icons/shortcut-log.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Calendario",
+      "short_name": "Calendario",
+      "url": "/?source=shortcut#/calendar",
+      "icons": [{ "src": "/assets/icons/shortcut-calendar.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Preguntar a Luna",
+      "short_name": "Luna",
+      "url": "/?source=shortcut#/luna",
+      "icons": [{ "src": "/assets/icons/shortcut-luna.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ],
+  "screenshots": [
+    { "src": "/assets/screenshots/home-narrow.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "Hoy: tu ciclo de un vistazo" },
+    { "src": "/assets/screenshots/calendar-narrow.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "Calendario con predicciones" },
+    { "src": "/assets/screenshots/home-wide.png", "sizes": "1600x1000", "type": "image/png", "form_factor": "wide", "label": "Menstruapp en escritorio" }
+  ]
+}

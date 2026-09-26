@@ -1,0 +1,17 @@
+# Netlify configuration for Menstruapp.
+# Static PWA in public/ + optional serverless functions (encrypted sync, push reminders, share links).
+# Security headers live in public/_headers so they also apply to drag-and-drop deploys.
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+  # Stamps the service worker, lints and runs the unit tests: a failing check blocks the deploy.
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Playwright is only needed for local asset generation and e2e tests, never on Netlify.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+[functions]
+  node_bundler = "esbuild"
