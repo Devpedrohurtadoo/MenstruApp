@@ -9,3 +9,6 @@ Thumbs.db
 .scratch/
 test-results/
 playwright-report/
+
+# Local tooling (agent worktrees, editor state)
+.claude/worktrees/
