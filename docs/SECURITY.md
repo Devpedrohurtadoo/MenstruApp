@@ -14,8 +14,8 @@ Este documento describe el modelo de amenazas, el diseño criptográfico y las d
 | Terceros / rastreo | Cero recursos externos: fuentes e iconos autoalojados, sin analíticas ni SDKs. `Referrer-Policy: no-referrer`, `Permissions-Policy` restrictiva. Un test E2E falla si la app hace una petición fuera del origen. |
 | Servidor comprometido (funciones opcionales) | El servidor solo recibe datos cifrados en el dispositivo. Las claves nunca salen del dispositivo (la clave de un enlace compartido va en el fragmento `#` de la URL, que el navegador no envía). |
 | Filtración de la base de datos del servidor | Solo contiene texto cifrado y hashes SHA-256 de tokens de 256 bits: no hay contraseñas ni datos personales que robar. |
-| SSRF mediante suscripciones push | Lista blanca de servicios push (FCM, Mozilla, Apple, WNS), solo HTTPS en el puerto 443, sin credenciales en la URL; se revalida antes de cada envío. |
-| Abuso / DoS del API | Límite de tasa de Netlify (`config.rateLimit`) + limitador por instancia y por endpoint, límites de tamaño de cuerpo, validación estricta de tipos, TTL y limpieza diaria. |
+| SSRF mediante suscripciones push | Lista blanca de servicios push (FCM, Mozilla, Apple, WNS), solo HTTPS en el puerto 443, sin credenciales ni host codificado (`%`, `\`) en la URL; se guarda y se envía la forma canónica (así la validación y la librería de envío leen el mismo host) y se revalida antes de cada envío. |
+| Abuso / DoS del API | Límite de tasa global de Netlify (`config.rateLimit`, 300/min por IP) + limitador adicional por instancia y por endpoint, límites de tamaño de cuerpo, validación estricta de tipos, TTL y limpieza diaria que reparte el tiempo entre almacenes y continúa donde se quedó. |
 | CSRF | El API no usa cookies; además rechaza peticiones con `Origin` de otro sitio o `Sec-Fetch-Site: cross-site`. |
 | Actualizaciones maliciosas o mezcla de versiones | El service worker precarga todos los archivos de una versión con hash de contenido; las actualizaciones solo se aplican cuando la usuaria pulsa «Actualizar». |
 

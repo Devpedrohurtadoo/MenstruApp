@@ -3,9 +3,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 process.env.MENSTRUAPP_STORE = 'memory';
 
 const sent = [];
+/** Number of upcoming sends that fail with a transient 503. */
+const outage = { failures: 0 };
 vi.mock('web-push', () => ({
   default: {
     sendNotification: vi.fn(async (sub, payload) => {
+      if (outage.failures > 0) {
+        outage.failures--;
+        throw Object.assign(new Error('unavailable'), { statusCode: 503 });
+      }
       sent.push({ endpoint: sub.endpoint, payload });
       if (sub.endpoint.includes('gone')) throw Object.assign(new Error('gone'), { statusCode: 410 });
       return { statusCode: 201 };
@@ -16,9 +22,12 @@ vi.mock('web-push', () => ({
 const { default: api } = await import('../../netlify/functions/api.mjs');
 const { dispatch } = await import('../../netlify/functions/push-dispatch.mjs');
 const { cleanup } = await import('../../netlify/functions/cleanup.mjs');
-const { resetMemoryStores } = await import('../../netlify/functions/lib/store.mjs');
+const { resetMemoryStores, openStore, sweep } = await import('../../netlify/functions/lib/store.mjs');
 const { resetRateLimits } = await import('../../netlify/functions/lib/http.mjs');
-const { isAllowedEndpoint } = await import('../../netlify/functions/lib/push.mjs');
+const { isAllowedEndpoint, normalizeEndpoint } = await import('../../netlify/functions/lib/push.mjs');
+
+/** @param {string} text */
+const sha256 = async (text) => Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))).toString('hex');
 
 const TOKEN = 'A'.repeat(43);
 const TOKEN2 = 'B'.repeat(43);
@@ -49,6 +58,7 @@ beforeEach(() => {
   resetMemoryStores();
   resetRateLimits();
   sent.length = 0;
+  outage.failures = 0;
   process.env.VAPID_PUBLIC_KEY = 'BPublicKeyForTests';
   process.env.VAPID_PRIVATE_KEY = 'private';
   process.env.VAPID_SUBJECT = 'mailto:privacy@example.org';
@@ -139,6 +149,75 @@ describe('/api/push', () => {
     expect(isAllowedEndpoint('https://fcm.googleapis.com:8443/x')).toBe(false);
   });
 
+  it('rejects hosts that another URL parser would read differently (parser-differential SSRF)', () => {
+    // WHATWG URL decodes %2E in the host (→ localhost.push.apple.com, allowed), but web-push's
+    // url.parse() would connect to "localhost".
+    expect(isAllowedEndpoint('https://localhost%2Epush%2Eapple%2Ecom/anything')).toBe(false);
+    expect(isAllowedEndpoint('https://svc%2enotify%2ewindows%2ecom/w/?token=x')).toBe(false);
+    expect(isAllowedEndpoint('https://fcm.googleapis.com\\@evil.example/x')).toBe(false);
+    expect(isAllowedEndpoint('https://evil.example\\fcm.googleapis.com/x')).toBe(false);
+    expect(isAllowedEndpoint(' https://fcm.googleapis.com/x')).toBe(false);
+    expect(isAllowedEndpoint(42)).toBe(false);
+    // What is stored and sent is the canonical form, identical for every parser.
+    expect(normalizeEndpoint('HTTPS://FCM.GOOGLEAPIS.COM/fcm/send/abc')).toBe('https://fcm.googleapis.com/fcm/send/abc');
+    // Percent-encoding stays allowed where real services use it (WNS tokens in the query).
+    expect(normalizeEndpoint('https://wns2-par02p.notify.windows.com/w/?token=BQY%2bAA%3d')).toBe('https://wns2-par02p.notify.windows.com/w/?token=BQY%2bAA%3d');
+  });
+
+  it('rejects a schedule item whose payload is not an encrypted object', async () => {
+    await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription } });
+    const at = Date.now() + 60_000;
+    for (const payload of ['null', '[]', '"x"', '{"iv":1}']) {
+      expect((await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [{ at, payload }] } })).status, payload).toBe(400);
+    }
+  });
+
+  it('stores and sends the canonical endpoint', async () => {
+    await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription: { ...subscription, endpoint: 'HTTPS://FCM.GOOGLEAPIS.COM/fcm/send/abc' } } });
+    const now = Date.now();
+    await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [{ at: now + 1000, payload: JSON.stringify(blob) }] } });
+    await dispatch({ now: now + 2000 });
+    expect(sent.map((x) => x.endpoint)).toEqual(['https://fcm.googleapis.com/fcm/send/abc']);
+  });
+
+  it('retries reminders after a transient push-service failure, without duplicates', async () => {
+    await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription } });
+    const now = Date.now();
+    const a = JSON.stringify({ ...blob, ct: 'QQ==' });
+    const b = JSON.stringify({ ...blob, ct: 'Qg==' });
+    await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [{ at: now + 1000, payload: a }, { at: now + 2000, payload: b }] } });
+    outage.failures = 1; // the first send (a) fails, the second (b) goes out
+    expect(await dispatch({ now: now + 3000 })).toMatchObject({ sent: 1, failed: 1 });
+    expect(sent.map((x) => x.payload)).toEqual([b]);
+    // Next run: only the failed one is retried.
+    expect(await dispatch({ now: now + 300_000 })).toMatchObject({ sent: 1, failed: 0 });
+    expect(sent.map((x) => x.payload)).toEqual([b, a]);
+    expect((await dispatch({ now: now + 600_000 })).sent).toBe(0);
+  });
+
+  it('gives up on a failed reminder once it is stale', async () => {
+    await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription } });
+    const now = Date.now();
+    await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [{ at: now + 1000, payload: JSON.stringify(blob) }] } });
+    outage.failures = 1;
+    expect((await dispatch({ now: now + 2000 })).failed).toBe(1);
+    expect((await dispatch({ now: now + 4 * 3_600_000 })).sent).toBe(0);
+    expect((await openStore('push').get(`d/${await sha256('menstruapp:' + TOKEN)}`))?.data.items).toEqual([]);
+  });
+
+  it('reaches every device across runs even when one run cannot visit them all', async () => {
+    const store = openStore('push');
+    for (let i = 0; i < 7; i++) await store.set(`d/${String.fromCharCode(97 + i)}`, { n: i });
+    const seen = new Set();
+    for (let run = 0; run < 4; run++) {
+      let budget = 2; // each run only has time for two devices
+      await sweep(store, 'd/', 'meta/test', () => budget-- > 0, async (key) => void seen.add(key));
+    }
+    expect([...seen].sort()).toEqual(['d/a', 'd/b', 'd/c', 'd/d', 'd/e', 'd/f', 'd/g']);
+    // The cursor lives outside the swept prefix.
+    expect((await store.get('meta/test'))?.data.after).toMatch(/^d\/[a-g]$/);
+  });
+
   it('exposes the VAPID public key only when configured', async () => {
     expect((await call('/api/push/key')).json).toEqual({ publicKey: 'BPublicKeyForTests' });
     delete process.env.VAPID_PUBLIC_KEY;
@@ -207,6 +286,27 @@ describe('/api/share', () => {
     await new Promise((r) => setTimeout(r, 80));
     expect((await call(`/api/share/${id}`)).status).toBe(410);
     expect((await call(`/api/share/${id}`)).status).toBe(404);
+  });
+
+  it('lets many deletions through (bulk "revoke all" must not hit the creation limit)', async () => {
+    const expiresAt = Date.now() + 86_400_000;
+    const ids = Array.from({ length: 14 }, (_, i) => `link-${String(i).padStart(2, '0')}-abcdefghij`);
+    for (const lid of ids.slice(0, 10)) expect((await call('/api/share', { method: 'POST', body: { id: lid, ...blob, expiresAt, deleteToken: TOKEN } })).status).toBe(201);
+    resetRateLimits();
+    for (const lid of ids.slice(10)) expect((await call('/api/share', { method: 'POST', body: { id: lid, ...blob, expiresAt, deleteToken: TOKEN } })).status).toBe(201);
+    for (const lid of ids) expect((await call(`/api/share/${lid}`, { method: 'DELETE', token: TOKEN })).status).toBe(204);
+  });
+
+  it('shares the cleanup time fairly between stores', async () => {
+    const expiresAt = Date.now() + 86_400_000;
+    const shares = openStore('share');
+    for (let i = 0; i < 60; i++) await shares.set(`x/live-${String(i).padStart(3, '0')}`, { ...blob, expiresAt });
+    await call('/api/sync', { method: 'PUT', token: TOKEN, body: { ...blob, baseVersion: 0 } });
+    // A slow store: every clock reading advances one second (25 s budget in total).
+    let t = Date.now();
+    const clock = () => (t += 1000);
+    const counts = await cleanup({ now: Date.now() + 401 * 86_400_000, clock });
+    expect(counts.sync).toBe(1); // not starved by the 60 live links
   });
 
   it('cleans up expired data on schedule', async () => {

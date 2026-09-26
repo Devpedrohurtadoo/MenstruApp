@@ -26,7 +26,7 @@ const isB64 = (v, max) => typeof v === 'string' && v.length > 0 && v.length <= m
 
 /** @param {any} body @param {number} maxCt */
 function encryptedBlob(body, maxCt) {
-  if (!isB64(body.iv, 24) || !isB64(body.ct, maxCt)) throw new HttpError(400, 'invalid-payload');
+  if (!body || typeof body !== 'object' || !isB64(body.iv, 24) || !isB64(body.ct, maxCt)) throw new HttpError(400, 'invalid-payload');
   return { iv: body.iv, ct: body.ct };
 }
 
@@ -189,7 +189,10 @@ export default async function handler(req, context) {
     }
     if (area === 'share') {
       if (process.env.MENSTRUAPP_DISABLE_SHARE === '1') throw new HttpError(404, 'share-disabled');
-      rateLimit(client, req.method === 'GET' ? 'share-read' : 'share-write', req.method === 'GET' ? 60 : 10);
+      // Creating links is limited tightly; revoking must always go through (bulk "revoke all").
+      if (req.method === 'GET') rateLimit(client, 'share-read', 60);
+      else if (req.method === 'DELETE') rateLimit(client, 'share-delete', 120);
+      else rateLimit(client, 'share-write', 10);
       return await share(req, sub);
     }
     throw new HttpError(404, 'not-found');

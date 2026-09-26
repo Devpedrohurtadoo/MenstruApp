@@ -24,16 +24,32 @@ export function vapidConfig() {
   return { publicKey, privateKey, subject };
 }
 
-/** @param {string} endpoint */
-export function isAllowedEndpoint(endpoint) {
+/**
+ * Returns the canonical form of an allowed push endpoint, or null. The canonical (WHATWG)
+ * serialisation is what gets stored and sent: web-push parses URLs with the legacy url.parse(),
+ * which reads a percent-encoded or backslash-separated host differently (e.g.
+ * "https://localhost%2Epush%2Eapple%2Ecom/" would connect to "localhost"), so such
+ * authorities are rejected outright.
+ * @param {unknown} endpoint
+ * @returns {string | null}
+ */
+export function normalizeEndpoint(endpoint) {
+  if (typeof endpoint !== 'string' || endpoint.length > 1024) return null;
+  const authority = /^https:\/\/([^/?#]*)/i.exec(endpoint)?.[1];
+  if (!authority || /[%\\@\s]/.test(authority)) return null;
   let url;
   try {
     url = new URL(endpoint);
   } catch {
-    return false;
+    return null;
   }
-  if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return false;
-  return PUSH_HOSTS.some((re) => re.test(url.hostname));
+  if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return null;
+  return PUSH_HOSTS.some((re) => re.test(url.hostname)) ? url.href : null;
+}
+
+/** @param {unknown} endpoint */
+export function isAllowedEndpoint(endpoint) {
+  return normalizeEndpoint(endpoint) !== null;
 }
 
 /**
@@ -43,10 +59,10 @@ export function isAllowedEndpoint(endpoint) {
  */
 export function validateSubscription(sub) {
   if (!sub || typeof sub !== 'object') throw new HttpError(400, 'invalid-subscription');
-  const endpoint = typeof sub.endpoint === 'string' ? sub.endpoint : '';
+  const endpoint = normalizeEndpoint(sub.endpoint);
   const p256dh = typeof sub.keys?.p256dh === 'string' ? sub.keys.p256dh : '';
   const auth = typeof sub.keys?.auth === 'string' ? sub.keys.auth : '';
-  if (endpoint.length > 1024 || !isAllowedEndpoint(endpoint)) throw new HttpError(400, 'invalid-endpoint');
+  if (!endpoint) throw new HttpError(400, 'invalid-endpoint');
   if (!B64URL.test(p256dh) || p256dh.length < 80 || p256dh.length > 100) throw new HttpError(400, 'invalid-subscription');
   if (!B64URL.test(auth) || auth.length < 16 || auth.length > 32) throw new HttpError(400, 'invalid-subscription');
   return { endpoint, keys: { p256dh, auth } };
@@ -60,9 +76,11 @@ export function validateSubscription(sub) {
  * @returns {Promise<'sent' | 'gone' | 'failed'>}
  */
 export async function sendPush(subscription, payload, vapid) {
-  if (!isAllowedEndpoint(subscription.endpoint)) return 'gone';
+  // Re-validated before every send (stored data may predate a stricter allowlist).
+  const endpoint = normalizeEndpoint(subscription.endpoint);
+  if (!endpoint) return 'gone';
   try {
-    await webpush.sendNotification(subscription, payload, {
+    await webpush.sendNotification({ ...subscription, endpoint }, payload, {
       TTL: 6 * 3600,
       urgency: 'normal',
       timeout: 8000,

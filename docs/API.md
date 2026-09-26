@@ -8,7 +8,7 @@ Convenciones:
 - Cuerpos JSON (`Content-Type: application/json`), con límite de tamaño por ruta (`413 too-large`).
 - Autenticación por capacidad: `Authorization: Bearer <token>` con un token aleatorio de 32 bytes en base64url (43 caracteres). El servidor guarda solo `SHA-256("menstruapp:" + token)`.
 - Todos los datos de usuaria son `{ iv, ct }`: AES-GCM en base64, cifrados en el dispositivo.
-- Errores: `{ "error": "<código>" }` sin detalles internos. Límite de tasa → `429` con `Retry-After`.
+- Errores: `{ "error": "<código>" }` sin detalles internos. Límite de tasa → `429` con `Retry-After`. El límite que se aplica de forma global es el de Netlify (`config.rateLimit`: 300 peticiones/min por IP y dominio); los límites por ruta (sync 30, push 30, lectura de enlaces 60, creación de enlaces 10, revocación 120 por minuto) son por instancia de la función, un freno adicional de mejor esfuerzo.
 - Todas las respuestas: `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, CSP `default-src 'none'`.
 
 ## Salud
@@ -34,7 +34,7 @@ El token se deriva con HKDF del código de sincronización (256 bits); la clave 
 | PUT | `/api/push/schedule` | `{ items: [{ at, payload }] }` (≤ 200; `at` en ms dentro de [ahora − 1 h, ahora + 62 d]; `payload` = JSON de `{ iv, ct }`) | `204` · `404` si el dispositivo no está registrado |
 | DELETE | `/api/push` | — | `204` |
 
-`push-dispatch` envía como máximo los 3 avisos más recientes vencidos por dispositivo (descarta los de más de 3 h), marca el progreso con `sentUntil` y elimina suscripciones que el servicio push declara inexistentes (404/410). Servicios admitidos: FCM, Mozilla autopush, Apple Web Push y WNS (solo HTTPS, puerto 443, sin credenciales).
+`push-dispatch` envía como máximo los 3 avisos más recientes vencidos por dispositivo (descarta los de más de 3 h), marca el progreso con `sentUntil`, reintenta en las siguientes ejecuciones los avisos que fallaron por un error transitorio del servicio push (hasta que caducan a las 3 h, sin repetir los ya enviados) y elimina suscripciones que el servicio push declara inexistentes (404/410). Si hay más dispositivos de los que caben en una ejecución, la siguiente continúa donde se quedó (cursor persistente), así que todos se atienden. Servicios admitidos: FCM, Mozilla autopush, Apple Web Push y WNS (solo HTTPS, puerto 443, sin credenciales, sin `%` ni `\` en el host); se guarda y se usa la forma canónica de la URL, para que la validación y el envío interpreten el mismo host.
 
 ## Enlaces para compartir
 

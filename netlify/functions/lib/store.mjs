@@ -76,6 +76,40 @@ export function openStore(name) {
   return process.env.MENSTRUAPP_STORE === 'memory' ? memoryStore(`menstruapp-${name}`) : blobsStore(`menstruapp-${name}`);
 }
 
+/**
+ * Visits every key under `prefix`, resuming after the last key the previous run reached, so a
+ * store too large for one run's time budget is still covered completely over successive runs
+ * (without a cursor every run would restart at the head and never reach the tail).
+ * The cursor lives in the same store under `cursorKey`, which must be outside `prefix`.
+ * @param {KV} store
+ * @param {string} prefix
+ * @param {string} cursorKey
+ * @param {() => boolean} hasTime
+ * @param {(key: string) => Promise<void>} visit
+ * @returns {Promise<{ visited: number, total: number }>}
+ */
+export async function sweep(store, prefix, cursorKey, hasTime, visit) {
+  /** @type {string[]} */
+  const keys = [];
+  for await (const key of store.list(prefix)) keys.push(key);
+  keys.sort();
+  const saved = String((await store.get(cursorKey))?.data?.after ?? '');
+  const resumeAt = saved ? keys.findIndex((k) => k > saved) : 0;
+  const start = resumeAt < 0 ? 0 : resumeAt;
+  let visited = 0;
+  let last = saved;
+  while (visited < keys.length && hasTime()) {
+    const key = keys[(start + visited) % keys.length];
+    await visit(key);
+    visited++;
+    last = key;
+  }
+  // A complete pass starts again from the head next time; an interrupted one resumes after `last`.
+  const after = visited === keys.length ? '' : last;
+  if (after !== saved) await store.set(cursorKey, { after });
+  return { visited, total: keys.length };
+}
+
 /** Test helper: wipes the in-memory stores. */
 export function resetMemoryStores() {
   memory.clear();
