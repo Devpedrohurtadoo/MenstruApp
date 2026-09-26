@@ -2,22 +2,36 @@
 // Pure functions only (no DOM, no storage) so every rule is unit-tested.
 //
 // Definitions
-//  - Bleeding day: flow light/medium/heavy (spotting alone never starts a period).
-//  - Period: run of bleeding days; gaps of up to 2 unlogged/spotting days are bridged.
+//  - Bleeding day: flow light/medium/heavy (spotting alone never starts a period). Days after
+//    `today` are ignored (they can only come from a clock or time-zone change, or an import).
+//  - Period: run of bleeding days. Gaps of up to 2 unlogged/spotting days are bridged, and gaps of
+//    3 when none of those days was logged as "no flow" and the period stays within 8 days.
+//    A period ends with a day logged as "no flow" or spotting, or when bleeding days stop: a day
+//    with other logs (symptoms, a pill...) but no flow says nothing about bleeding.
 //  - A run that starts less than 15 days after the previous period started is treated as
-//    intermenstrual bleeding (worth mentioning to a professional), not as a new cycle.
+//    intermenstrual bleeding (worth mentioning to a professional), not as a new cycle. A single
+//    isolated light day followed within 15 days by a real period is the intermenstrual one.
+//  - Pregnancies (`excludeRanges`, from the LMP to the end) and other bleeding that is not
+//    menstrual (`nonMenstrual`: lochia after a birth, bleeding after a loss) never form periods;
+//    the period that started a pregnancy (its LMP) still counts.
 //  - Cycle length: days between two consecutive period starts.
-//  - Prediction: recency-weighted mean of the last ≤6 valid cycles (outliers removed), blended
-//    with the user's stated average when there is little history; uncertainty from the spread.
-//  - Ovulation: confirmed by basal temperature ("3 over 6" rule) or estimated from an LH test,
-//    otherwise estimated as next period − luteal phase length (learned or 14 days).
+//  - Prediction: recency-weighted mean of the last ≤6 valid cycles (outliers and likely missed
+//    period logs removed), blended with the user's stated average when there is little history;
+//    the margin reflects the observed spread and how much data there is.
+//  - Ovulation: confirmed by basal temperature ("3 over 6" rule) or predicted by an LH surge
+//    (ignored during the period or outside 8–18 days before the next period), otherwise estimated
+//    as next period − luteal phase length (learned or 14 days). A detected ovulation can push the
+//    expected next period later, never earlier.
 
 import { BLEEDING } from './catalog.js';
-import { addDays, diffDays, isISODate, rangeISO } from '../core/dates.js';
+import { addDays, diffDays, isISODate, maxISO, rangeISO } from '../core/dates.js';
 
 export const DEFAULTS = Object.freeze({ cycleLength: 28, periodLength: 5, lutealLength: 14 });
-export const LIMITS = Object.freeze({ minCycle: 15, maxCycle: 90, bridgeGap: 3, maxPeriod: 15 });
+export const LIMITS = Object.freeze({ minCycle: 15, maxCycle: 90, bridgeGap: 3, longBridgeGap: 4, maxBridgedPeriod: 8, maxPeriod: 15 });
+/** LH surge window of a completed cycle, in days before the next period (luteal phase 7–17 days). */
+const LH_WINDOW = Object.freeze({ earliest: 18, latest: 8 });
 const HISTORY_WINDOW = 6;
+const MAX_MARGIN = 10;
 
 /**
  * @typedef {Record<string, any>} DayEntry
@@ -52,21 +66,73 @@ export function describe(xs) {
 }
 
 /**
+ * @typedef {{ start: string, end: string, days: string[] }} Run
+ */
+
+/**
+ * Bleeding days that are not menstrual: those inside a pregnancy (except the period that started
+ * it, which begins on its LMP) and those in `nonMenstrual` ranges (lochia, bleeding after a loss).
+ * @param {string[]} bleeding sorted bleeding days
+ * @param {{ excludeRanges?: Array<[string, string]>, nonMenstrual?: Array<[string, string]> }} ctx
+ */
+function nonMenstrualDays(bleeding, ctx) {
+  /** @type {Set<string>} */
+  const skip = new Set();
+  for (const [lmp, end] of ctx.excludeRanges ?? []) {
+    /** @type {Set<string>} */
+    const lmpPeriod = new Set();
+    const first = bleeding.find((d) => Math.abs(diffDays(lmp, d)) <= LIMITS.bridgeGap);
+    if (first) {
+      let last = first;
+      for (const d of bleeding) {
+        if (d < first) continue;
+        if (diffDays(last, d) > LIMITS.bridgeGap || diffDays(first, d) >= LIMITS.maxPeriod) break;
+        lmpPeriod.add(d);
+        last = d;
+      }
+    }
+    for (const d of bleeding) if (d >= lmp && d <= end && !lmpPeriod.has(d)) skip.add(d);
+  }
+  for (const [from, to] of ctx.nonMenstrual ?? []) for (const d of bleeding) if (d >= from && d <= to) skip.add(d);
+  return skip;
+}
+
+/**
+ * Whether bleeding on `d` continues `run`: after up to 2 unlogged/spotting days always; after 3
+ * only if none was logged as "no flow" and the period stays within a normal length.
  * @param {Record<string, DayEntry>} days
- * @param {{ today: string, excludeRanges?: Array<[string, string]>, periodLengthHint?: number }} ctx
+ * @param {Run} run
+ * @param {string} d
+ */
+function continuesRun(days, run, d) {
+  const gap = diffDays(run.end, d);
+  if (gap <= LIMITS.bridgeGap) return true;
+  if (gap > LIMITS.longBridgeGap) return false;
+  return rangeISO(addDays(run.end, 1), addDays(d, -1)).every((x) => days[x]?.flow !== 'none') && diffDays(run.start, d) < LIMITS.maxBridgedPeriod;
+}
+
+/** A single light day on its own (often spotting logged as "light"). @param {Record<string, DayEntry>} days @param {Run} run */
+const loneLightDay = (days, run) => run.days.length === 1 && days[run.start]?.flow === 'light';
+
+/** Clearly a period: 3+ days or medium/heavy flow. @param {Record<string, DayEntry>} days @param {Run} run */
+const periodLike = (days, run) => run.days.length >= 3 || run.days.some((d) => days[d]?.flow === 'medium' || days[d]?.flow === 'heavy');
+
+/**
+ * @param {Record<string, DayEntry>} days
+ * @param {{ today: string, excludeRanges?: Array<[string, string]>, nonMenstrual?: Array<[string, string]>, periodLengthHint?: number }} ctx
  */
 export function detectPeriods(days, ctx) {
-  const excluded = ctx.excludeRanges ?? [];
-  const inExcluded = (/** @type {string} */ d) => excluded.some(([a, b]) => d >= a && d <= b);
-  const bleeding = Object.keys(days)
-    .filter((d) => isISODate(d) && BLEEDING.has(days[d]?.flow) && !inExcluded(d))
+  const all = Object.keys(days)
+    .filter((d) => isISODate(d) && d <= ctx.today && BLEEDING.has(days[d]?.flow))
     .sort();
+  const skip = nonMenstrualDays(all, ctx);
+  const bleeding = all.filter((d) => !skip.has(d));
 
-  /** @type {Array<{ start: string, end: string, days: string[] }>} */
+  /** @type {Run[]} */
   const runs = [];
   for (const d of bleeding) {
     const last = runs[runs.length - 1];
-    if (last && diffDays(last.end, d) <= LIMITS.bridgeGap) {
+    if (last && continuesRun(days, last, d)) {
       last.end = d;
       last.days.push(d);
     } else {
@@ -74,18 +140,23 @@ export function detectPeriods(days, ctx) {
     }
   }
 
-  /** @type {Array<{ start: string, end: string, days: string[] }>} */
+  /** @type {Run[]} */
   const merged = [];
   /** @type {Array<{ start: string, end: string }>} */
   const intermenstrual = [];
   for (const run of runs) {
     const prev = merged[merged.length - 1];
-    if (prev && diffDays(prev.start, run.start) < LIMITS.minCycle) {
-      intermenstrual.push({ start: run.start, end: run.end });
-    } else {
+    if (!prev || diffDays(prev.start, run.start) >= LIMITS.minCycle) {
       merged.push(run);
+    } else if (loneLightDay(days, prev) && periodLike(days, run)) {
+      // The lone light day was the bleeding between periods, not the start of this one.
+      intermenstrual.push({ start: prev.start, end: prev.end });
+      merged[merged.length - 1] = run;
+    } else {
+      intermenstrual.push({ start: run.start, end: run.end });
     }
   }
+  intermenstrual.sort((x, y) => (x.start < y.start ? -1 : x.start > y.start ? 1 : 0));
 
   const hint = ctx.periodLengthHint ?? DEFAULTS.periodLength;
   /** @type {Period[]} */
@@ -93,9 +164,11 @@ export function detectPeriods(days, ctx) {
     const length = diffDays(run.start, run.end) + 1;
     const next = merged[i + 1];
     const after = rangeISO(addDays(run.end, 1), addDays(run.end, LIMITS.bridgeGap));
-    const explicitEnd = after.some((d) => days[d] && (days[d].flow === 'none' || days[d].flow === 'spotting' || (!days[d].flow && Object.keys(days[d]).some((k) => k !== 'updatedAt'))));
+    // Only a day logged as "no flow" or spotting ends a period: other logs say nothing about bleeding.
+    const explicitEnd = after.some((d) => d <= ctx.today && (days[d]?.flow === 'none' || days[d]?.flow === 'spotting'));
     const finished = diffDays(run.end, ctx.today) > LIMITS.bridgeGap || Boolean(next);
-    const lengthKnown = length <= LIMITS.maxPeriod && (explicitEnd || (finished && run.days.length >= 2));
+    // Prolonged bleeding (> 15 days) still has a known length: it is exactly what should be flagged.
+    const lengthKnown = explicitEnd || (finished && run.days.length >= 2);
     return {
       start: run.start,
       end: run.end,
@@ -126,21 +199,57 @@ export function detectBbtShift(readings) {
 }
 
 /**
+ * The last positive (or "peak") test of the last LH surge among the given dates.
  * @param {Record<string, DayEntry>} days
- * @param {string} from
+ * @param {string[]} dates sorted
+ */
+function lhSurgeEnd(days, dates) {
+  const positives = dates.filter((d) => days[d].lh === 'positive' || days[d].lh === 'peak');
+  if (!positives.length) return null;
+  let first = positives.length - 1;
+  while (first > 0 && diffDays(positives[first - 1], positives[first]) <= 2) first--;
+  const surge = positives.slice(first);
+  const peaks = surge.filter((d) => days[d].lh === 'peak');
+  const pick = peaks.length ? peaks : surge;
+  return pick[pick.length - 1];
+}
+
+/**
+ * @param {Record<string, DayEntry>} days
+ * @param {string} from first day of the cycle
  * @param {string} to inclusive
+ * @param {{ periodEnd?: string, lhFrom?: string, lhTo?: string }} [opts] LH positives count only after the
+ *   period and inside [lhFrom, lhTo]: a stray positive on day 3 must not move the ovulation.
  * @returns {Ovulation | null}
  */
-export function detectOvulation(days, from, to) {
+export function detectOvulation(days, from, to, opts = {}) {
   const dates = Object.keys(days)
     .filter((d) => d >= from && d <= to)
     .sort();
   const readings = dates.filter((d) => typeof days[d].bbt === 'number' && !days[d].bbtDisturbed).map((d) => ({ date: d, bbt: days[d].bbt }));
   const bbt = detectBbtShift(readings);
   if (bbt) return bbt;
-  const lhDay = dates.find((d) => days[d].lh === 'positive' || days[d].lh === 'peak');
+  const plausible = dates.filter((d) => (!opts.periodEnd || d > opts.periodEnd) && (!opts.lhFrom || d >= opts.lhFrom) && (!opts.lhTo || d <= opts.lhTo));
+  const lhDay = lhSurgeEnd(days, plausible);
   if (lhDay) return { day: addDays(lhDay, 1), method: 'lh' };
   return null;
+}
+
+/** @param {number} x @param {number} min @param {number} max */
+const clamp = (x, min, max) => Math.min(max, Math.max(min, x));
+
+/**
+ * Drops cycles that are about 2× or 3× the others: almost always a period that was not logged.
+ * @param {number[]} lengths
+ */
+export function withoutMissedPeriods(lengths) {
+  if (lengths.length < 3) return lengths;
+  return lengths.filter((x, i) => {
+    const others = lengths.filter((_, j) => j !== i);
+    const m = median(others);
+    if (Math.max(...others) - Math.min(...others) > 7) return true;
+    return ![2, 3].some((k) => Math.abs(x - k * m) <= Math.max(3, 0.1 * k * m));
+  });
 }
 
 /**
@@ -148,9 +257,10 @@ export function detectOvulation(days, from, to) {
  * @param {number | null | undefined} prior user-stated average
  */
 export function predictLength(lengths, prior) {
-  const sample = lengths.slice(-HISTORY_WINDOW);
+  const sample = withoutMissedPeriods(lengths.slice(-HISTORY_WINDOW));
   if (!sample.length) {
-    return { length: prior ?? DEFAULTS.cycleLength, margin: prior ? 3 : 4, basis: /** @type {'settings' | 'default'} */ (prior ? 'settings' : 'default'), n: 0 };
+    // Without any cycle the stated (or default) average is only a rough guide.
+    return { length: prior ?? DEFAULTS.cycleLength, margin: prior ? 5 : 7, basis: /** @type {'settings' | 'default'} */ (prior ? 'settings' : 'default'), n: 0 };
   }
   let used = sample;
   if (sample.length >= 4) {
@@ -163,24 +273,30 @@ export function predictLength(lengths, prior) {
     const wsum = weights.reduce((a, b) => a + b, 0);
     const mean = used.reduce((acc, x, i) => acc + x * weights[i], 0) / wsum;
     const sd = Math.sqrt(used.reduce((acc, x, i) => acc + weights[i] * (x - mean) ** 2, 0) / wsum);
-    return { length: Math.round(mean), margin: Math.min(7, Math.max(1, Math.round(sd))), basis: /** @type {const} */ ('history'), n: used.length };
+    const margin = clamp(Math.round(sd) + (used.length === 3 ? 1 : 0), 1, MAX_MARGIN);
+    return { length: Math.round(mean), margin, basis: /** @type {const} */ ('history'), n: used.length };
   }
+  // One or two cycles: blend with the prior; the margin covers what has been seen so far.
   const p = prior ?? DEFAULTS.cycleLength;
   const k = 2;
   const mean = (used.reduce((a, b) => a + b, 0) + p * k) / (used.length + k);
-  return { length: Math.round(mean), margin: 3, basis: /** @type {const} */ ('mixed'), n: used.length };
+  const spread = Math.max(...[...used, p].map((x) => Math.abs(x - mean)));
+  const margin = clamp(Math.ceil(spread) + (used.length === 1 ? 3 : 2), 3, MAX_MARGIN);
+  return { length: Math.round(mean), margin, basis: /** @type {const} */ ('mixed'), n: used.length };
 }
 
 /**
  * Full analysis of a profile's cycle data.
  * @param {Record<string, DayEntry>} days
- * @param {{ today: string, settings?: Record<string, any>, excludeRanges?: Array<[string, string]> }} ctx
+ * @param {{ today: string, settings?: Record<string, any>, excludeRanges?: Array<[string, string]>, nonMenstrual?: Array<[string, string]> }} ctx
+ *   excludeRanges: pregnancies from their LMP to their end; nonMenstrual: other bleeding that is not a period
+ *   (lochia after a birth, bleeding after a loss). See pregnancyExclusions() in pregnancy.js.
  */
 export function analyze(days, ctx) {
   const settings = ctx.settings ?? {};
   const today = ctx.today;
   const periodHint = settings.periodLength ?? DEFAULTS.periodLength;
-  const { periods, intermenstrual } = detectPeriods(days, { today, excludeRanges: ctx.excludeRanges, periodLengthHint: periodHint });
+  const { periods, intermenstrual } = detectPeriods(days, { today, excludeRanges: ctx.excludeRanges, nonMenstrual: ctx.nonMenstrual, periodLengthHint: periodHint });
   const excluded = ctx.excludeRanges ?? [];
 
   /** @type {Cycle[]} */
@@ -193,21 +309,26 @@ export function analyze(days, ctx) {
     let excl = null;
     if (length !== null && length > LIMITS.maxCycle) excl = 'gap';
     if (overlapsPregnancy) excl = 'pregnancy';
-    const ovulation = detectOvulation(days, p.start, end ?? today);
-    const luteal = ovulation && next ? diffDays(ovulation.day, next.start) : null;
-    return {
-      start: p.start,
-      end,
-      length,
-      periodLength: p.length,
-      ovulation,
-      lutealLength: luteal !== null && luteal >= 8 && luteal <= 18 ? luteal : null,
-      excluded: excl,
-      ongoing: !next,
-    };
+    return { start: p.start, end, length, periodLength: p.length, ovulation: null, lutealLength: null, excluded: excl, ongoing: !next };
   });
 
   const validLengths = cycles.filter((c) => c.length !== null && !c.excluded).map((c) => /** @type {number} */ (c.length));
+  const lengthPrediction = predictLength(validLengths, settings.cycleLength);
+
+  // Ovulation of each cycle. LH positives only count after the period and 8–18 days before the next
+  // period (for the ongoing cycle, not earlier than that before the expected one).
+  cycles.forEach((c, i) => {
+    const p = periods[i];
+    const periodEnd = p.lengthKnown ? p.end : p.estimatedEnd;
+    const next = periods[i + 1];
+    const window = next
+      ? { lhFrom: addDays(next.start, -LH_WINDOW.earliest), lhTo: addDays(next.start, -LH_WINDOW.latest) }
+      : { lhFrom: maxISO(addDays(p.start, 5), addDays(p.start, lengthPrediction.length - LH_WINDOW.earliest - lengthPrediction.margin)) };
+    c.ovulation = detectOvulation(days, p.start, c.end ?? today, { periodEnd, ...window });
+    const luteal = c.ovulation && next ? diffDays(c.ovulation.day, next.start) : null;
+    c.lutealLength = luteal !== null && luteal >= 8 && luteal <= 18 ? luteal : null;
+  });
+
   const periodLengths = periods.filter((p) => p.lengthKnown).map((p) => /** @type {number} */ (p.length));
   const lutealLengths = cycles.map((c) => c.lutealLength).filter((x) => x !== null);
 
@@ -215,11 +336,14 @@ export function analyze(days, ctx) {
   const periodStats = describe(periodLengths.slice(-12));
   const lutealLength =
     lutealLengths.length >= 2 ? Math.round(median(/** @type {number[]} */ (lutealLengths.slice(-6)))) : (settings.lutealLength ?? DEFAULTS.lutealLength);
-  const predictedPeriodLength = periodLengths.length ? Math.round(median(periodLengths.slice(-6))) : periodHint;
-  const lengthPrediction = predictLength(validLengths, settings.cycleLength);
+  // Prolonged bleeding episodes are reported, but do not make the predicted periods longer.
+  const typicalLengths = periodLengths.filter((l) => l <= LIMITS.maxPeriod);
+  const predictedPeriodLength = typicalLengths.length ? Math.round(median(typicalLengths.slice(-6))) : periodHint;
 
   const last = periods[periods.length - 1] ?? null;
   const lastCycle = cycles[cycles.length - 1] ?? null;
+  // No cycle predictions during a pregnancy (the last period is the one that started it).
+  const pregnant = settings.mode === 'pregnant';
 
   /** @type {null | Record<string, any>} */
   let current = null;
@@ -228,15 +352,17 @@ export function analyze(days, ctx) {
 
   if (last && last.start <= today) {
     const cycleDay = diffDays(last.start, today) + 1;
-    const expected = addDays(last.start, lengthPrediction.length);
+    const confirmed = lastCycle?.ovulation ?? null;
+    let expected = addDays(last.start, lengthPrediction.length);
+    // A detected ovulation this cycle means the period comes about one luteal phase later.
+    if (confirmed && addDays(confirmed.day, lutealLength) > expected) expected = addDays(confirmed.day, lutealLength);
     const staleAfter = Math.max(lengthPrediction.length * 2, 60);
     const stale = cycleDay > staleAfter;
     const lateDays = Math.max(0, diffDays(expected, today));
-    const late = !stale && lateDays > 0;
+    const late = !stale && !pregnant && lateDays > 0;
     const nextStart = late ? today : expected;
     const inPeriod = today <= (last.lengthKnown ? last.end : last.estimatedEnd);
 
-    const confirmed = lastCycle?.ovulation ?? null;
     const estimatedOv = addDays(expected, -lutealLength);
     const ovulationDay = confirmed ? confirmed.day : estimatedOv;
     const ovulation = /** @type {Ovulation} */ (confirmed ?? { day: estimatedOv, method: 'estimate' });
@@ -249,10 +375,10 @@ export function analyze(days, ctx) {
       late,
       lateDays: late ? lateDays : 0,
       ovulation,
-      phase: stale ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
+      phase: stale || pregnant ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
     };
 
-    if (!stale && lateDays <= 7) {
+    if (!stale && !pregnant && lateDays <= 7) {
       const fertileStart = addDays(ovulationDay, -5);
       const fertileEnd = addDays(ovulationDay, 1);
       prediction = {
@@ -295,10 +421,20 @@ export function analyze(days, ctx) {
  */
 function confidenceLevel(p, mode) {
   if (mode === 'perimenopause' || mode === 'postpartum') return 'low';
+  // With no complete cycle or just one, any date is a rough guess.
+  if (p.n <= 1) return 'low';
   if (p.basis === 'history' && p.n >= 4 && p.margin <= 2) return 'high';
-  if (p.basis === 'history' && p.margin <= 4) return 'medium';
-  if (p.basis === 'mixed' || p.basis === 'settings') return 'medium';
+  if (p.margin <= 4) return 'medium';
   return 'low';
+}
+
+/**
+ * How sure an ovulation mark is: confirmed by temperature, predicted by an LH test or estimated.
+ * @param {Ovulation['method']} method
+ * @returns {'confirmed' | 'lh' | 'estimated'}
+ */
+export function ovulationMark(method) {
+  return method === 'bbt' ? 'confirmed' : method === 'lh' ? 'lh' : 'estimated';
 }
 
 /**
@@ -338,7 +474,7 @@ export function calendarMarks(a, days, dates, opts = {}) {
   const showFertility = opts.showFertility ?? true;
   const showPredictions = opts.showPredictions ?? true;
   /** @type {Record<string, { period: null | 'logged' | 'estimated' | 'predicted', spotting: boolean, fertility: null | 'high' | 'medium' | 'low',
-   *  ovulation: null | 'confirmed' | 'estimated', pms: boolean, phase: string | null, hasData: boolean, intermenstrual: boolean }>} */
+   *  ovulation: null | 'confirmed' | 'lh' | 'estimated', pms: boolean, phase: string | null, hasData: boolean, intermenstrual: boolean }>} */
   const marks = {};
   const pred = showPredictions ? a.prediction : null;
   for (const d of dates) {
@@ -379,10 +515,10 @@ export function calendarMarks(a, days, dates, opts = {}) {
       const m = marks[d];
       m.phase = ovDay ? phaseOn(d, { start: c.start, periodEnd, ovulationDay: ovDay, nextStart }) : 'menstrual';
       if (!m.period && d > period.end && d <= periodEnd) m.period = d > a.today ? 'predicted' : 'estimated';
-      if (c.ovulation && d === c.ovulation.day) m.ovulation = 'confirmed';
+      if (c.ovulation && d === c.ovulation.day) m.ovulation = ovulationMark(c.ovulation.method);
       if (c.ongoing && pred) {
         if (showFertility && !m.period) m.fertility = fertilityLevel(diffDays(pred.ovulationDay, d));
-        if (showFertility && d === pred.ovulationDay && !m.ovulation) m.ovulation = pred.ovulationMethod === 'estimate' ? 'estimated' : 'confirmed';
+        if (showFertility && d === pred.ovulationDay && !m.ovulation) m.ovulation = ovulationMark(pred.ovulationMethod);
         if (d >= pred.pmsStart && !m.period) m.pms = true;
       }
     }

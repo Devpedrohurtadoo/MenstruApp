@@ -512,7 +512,8 @@ export default {
         low: 'low fertility',
       },
       ovulation: {
-        confirmed: 'confirmed ovulation',
+        confirmed: 'ovulation confirmed by temperature',
+        lh: 'ovulation predicted by an LH test',
         estimated: 'estimated ovulation',
       },
     },
@@ -883,7 +884,9 @@ export default {
       fertileWindow: 'Your estimated fertile window runs from {from} to {to}.',
       notContraception: "Remember: it's an estimate and doesn't work as contraception.",
       ovulationEstimated: 'Your estimated ovulation is on {date}. You can confirm it by logging basal temperature or LH tests.',
-      ovulationConfirmed: 'According to your temperature or LH data, you ovulated around {date}.',
+      ovulationConfirmed: 'According to your basal temperature or LH logs, ovulation this cycle is around {date}.',
+      ovulationBbt: 'Your basal temperature confirms that you ovulated around {date}.',
+      ovulationLh: "Your positive LH test places ovulation around {date}. The test predicts ovulation but doesn't confirm it; a later rise in basal temperature does.",
       cycleDay: 'Today is day {day} of your cycle ({phase}).',
       phaseInfo: {
         menstrual: "You're menstruating: your body is shedding the uterine lining. Tiredness and cramps are common; warmth and gentle movement help.",

@@ -513,7 +513,8 @@ export default {
         low: 'fertilidad baja',
       },
       ovulation: {
-        confirmed: 'ovulación confirmada',
+        confirmed: 'ovulación confirmada por la temperatura',
+        lh: 'ovulación prevista por un test de LH',
         estimated: 'ovulación estimada',
       },
     },
@@ -884,7 +885,9 @@ export default {
       fertileWindow: 'Tu ventana fértil estimada va del {from} al {to}.',
       notContraception: 'Recuerda: es una estimación y no sirve como método anticonceptivo.',
       ovulationEstimated: 'Tu ovulación estimada es el {date}. Puedes confirmarla registrando temperatura basal o tests de LH.',
-      ovulationConfirmed: 'Según tus datos de temperatura o LH, tu ovulación fue hacia el {date}.',
+      ovulationConfirmed: 'Según tus registros de temperatura basal o de LH, tu ovulación de este ciclo se sitúa hacia el {date}.',
+      ovulationBbt: 'Tu temperatura basal confirma que ovulaste hacia el {date}.',
+      ovulationLh: 'Tu test de LH positivo sitúa la ovulación hacia el {date}. El test la predice, pero no la confirma: la subida posterior de la temperatura basal sí.',
       cycleDay: 'Hoy es el día {day} de tu ciclo ({phase}).',
       phaseInfo: {
         menstrual: 'Estás en la menstruación: el cuerpo elimina el endometrio. El cansancio y los cólicos son frecuentes; el calor y el movimiento suave ayudan.',

@@ -3,6 +3,35 @@
 import { addDays, diffDays } from '../core/dates.js';
 
 export const PREGNANCY_DAYS = 280;
+/** Bleeding after a pregnancy ends that is not a period: lochia lasts up to ~6 weeks after a birth,
+ *  and bleeding after a pregnancy loss up to ~2 weeks. */
+export const BLEEDING_AFTER = Object.freeze({ birth: 42, other: 14 });
+
+/**
+ * Date ranges for analyze(): pregnancies (from the LMP to their end) and the bleeding right after
+ * them, so that neither lochia nor pregnancy bleeding is taken as a period.
+ * @param {{ history?: Array<{ from: string, to: string }>, endedOn?: string, outcome?: string } | null | undefined} preg pregnancy document
+ * @param {{ lmp: string } | null | undefined} active pregnancyInfo() of the active pregnancy, if any
+ * @param {{ postpartum?: { birthDate?: string } | null } | null | undefined} settings
+ * @param {string} today
+ * @returns {{ excludeRanges: Array<[string, string]>, nonMenstrual: Array<[string, string]> }}
+ */
+export function pregnancyExclusions(preg, active, settings, today) {
+  /** @type {Array<[string, string]>} */
+  const excludeRanges = [];
+  /** @type {Array<[string, string]>} */
+  const nonMenstrual = [];
+  for (const r of preg?.history ?? []) {
+    excludeRanges.push([r.from, r.to]);
+    // Only the last pregnancy records its outcome; older ones get the shorter (safe) window.
+    const birth = preg?.outcome === 'birth' && preg.endedOn === r.to;
+    nonMenstrual.push([r.to, addDays(r.to, birth ? BLEEDING_AFTER.birth : BLEEDING_AFTER.other)]);
+  }
+  if (active && active.lmp <= today) excludeRanges.push([active.lmp, today]);
+  const birthDate = settings?.postpartum?.birthDate;
+  if (birthDate) nonMenstrual.push([birthDate, addDays(birthDate, BLEEDING_AFTER.birth)]);
+  return { excludeRanges, nonMenstrual };
+}
 
 /**
  * @param {{ basis: 'lmp' | 'due' | 'conception', date: string }} preg

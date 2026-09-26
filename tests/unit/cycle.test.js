@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { analyze, detectPeriods, predictLength, detectBbtShift, calendarMarks, phaseOn, fertilityLevel } from '../../public/js/domain/cycle.js';
+import { analyze, detectPeriods, predictLength, detectBbtShift, calendarMarks, phaseOn, fertilityLevel, withoutMissedPeriods } from '../../public/js/domain/cycle.js';
+import { pregnancyExclusions } from '../../public/js/domain/pregnancy.js';
 import { addDays, rangeISO } from '../../public/js/core/dates.js';
 
 /** Builds day entries with periods starting on the given dates. */
@@ -49,12 +50,161 @@ describe('period detection', () => {
     const { periods } = detectPeriods(withPeriods(['2024-01-30'], 2), { today: '2024-02-01' });
     expect(periods[0].lengthKnown).toBe(false);
   });
+
+  it('does not end a period because another log (symptoms, pill) has no flow', () => {
+    for (const other of [{ symptoms: { cramps: 2 } }, { contraceptionTaken: true }]) {
+      const days = { '2024-03-01': { flow: 'medium' }, '2024-03-02': other };
+      const a = analyze(days, { today: '2024-03-02', settings: {} });
+      expect(a.periods[0]).toMatchObject({ lengthKnown: false, estimatedEnd: '2024-03-05' });
+      expect(a.current?.inPeriod).toBe(true);
+    }
+    // Once bleeding has stopped for a few days the length is known anyway.
+    const days = { ...withPeriods(['2024-03-01'], 2), '2024-03-03': { symptoms: { cramps: 1 } }, '2024-03-04': { moods: ['calm'] } };
+    expect(detectPeriods(days, { today: '2024-03-10' }).periods[0]).toMatchObject({ lengthKnown: true, length: 2 });
+  });
+
+  it('ignores bleeding logged after today', () => {
+    const days = regular('2024-01-01', 28, 4);
+    const withFuture = { ...days, '2024-04-10': { flow: 'medium' } };
+    const a = analyze(withFuture, { today: '2024-04-09', settings: {} });
+    expect(a.periods.at(-1)?.start).toBe('2024-03-25');
+    expect(a.current).toEqual(analyze(days, { today: '2024-04-09', settings: {} }).current);
+    expect(a.prediction?.nextPeriodStart).toBe('2024-04-22');
+  });
+
+  it('bridges up to 3 unlogged days inside a period, but not days logged without flow', () => {
+    const days = { '2024-01-01': { flow: 'medium' }, '2024-01-02': { flow: 'medium' }, '2024-01-06': { flow: 'light' }, '2024-01-07': { flow: 'light' } };
+    const bridged = detectPeriods(days, { today: '2024-02-01' });
+    expect(bridged.periods).toHaveLength(1);
+    expect(bridged.periods[0]).toMatchObject({ start: '2024-01-01', end: '2024-01-07', length: 7 });
+    expect(bridged.intermenstrual).toEqual([]);
+    const stopped = detectPeriods({ ...days, '2024-01-04': { flow: 'none' } }, { today: '2024-02-01' });
+    expect(stopped.periods[0].end).toBe('2024-01-02');
+    expect(stopped.intermenstrual).toEqual([{ start: '2024-01-06', end: '2024-01-07' }]);
+  });
+
+  it('does not let a lone light day turn the next real period into intermenstrual bleeding', () => {
+    const days = { ...withPeriods(['2024-01-01', '2024-02-18']), '2024-02-08': { flow: 'light' } };
+    const a = analyze(days, { today: '2024-03-01', settings: {} });
+    expect(a.periods.map((p) => p.start)).toEqual(['2024-01-01', '2024-02-18']);
+    expect(a.intermenstrual).toEqual([{ start: '2024-02-08', end: '2024-02-08' }]);
+    expect(a.cycles[0].length).toBe(48);
+  });
+
+  it('knows the length of bleeding longer than 15 days (so it can be flagged)', () => {
+    const days = { ...withPeriods(['2024-01-01'], 20), ...withPeriods(['2024-02-01', '2024-03-01'], 5) };
+    const a = analyze(days, { today: '2024-03-20', settings: {} });
+    expect(a.periods[0]).toMatchObject({ lengthKnown: true, length: 20 });
+    expect(a.stats.period?.max).toBe(20);
+    // …without making the predicted periods 20 days long.
+    expect(a.prediction?.periodLength).toBe(5);
+  });
+});
+
+describe('pregnancies and the bleeding after them', () => {
+  it('keeps the period that started a pregnancy (its LMP) and the cycle before it', () => {
+    const days = regular('2024-01-01', 28, 3);
+    const a = analyze(days, { today: '2024-05-01', settings: { mode: 'pregnant' }, excludeRanges: [['2024-02-26', '2024-05-01']] });
+    expect(a.periods.map((p) => p.start)).toEqual(['2024-01-01', '2024-01-29', '2024-02-26']);
+    expect(a.cycles[1]).toMatchObject({ length: 28, excluded: null });
+    expect(a.cycles[2].excluded).toBe('pregnancy');
+    expect(a.stats.validCycleCount).toBe(2);
+    // Bleeding during the pregnancy is not a period.
+    const bled = analyze({ ...days, '2024-04-02': { flow: 'light' }, '2024-04-03': { flow: 'light' } }, { today: '2024-05-01', settings: { mode: 'pregnant' }, excludeRanges: [['2024-02-26', '2024-05-01']] });
+    expect(bled.periods).toHaveLength(3);
+  });
+
+  it('predicts nothing during a pregnancy', () => {
+    const a = analyze(regular('2024-01-01', 28, 3), { today: '2024-05-01', settings: { mode: 'pregnant' }, excludeRanges: [['2024-02-26', '2024-05-01']] });
+    expect(a.prediction).toBeNull();
+    expect(a.current).toMatchObject({ late: false, phase: null });
+  });
+
+  it('does not take lochia after a birth for a period', () => {
+    const preg = { history: [{ from: '2024-02-26', to: '2024-12-01' }], endedOn: '2024-12-01', outcome: 'birth' };
+    const ranges = pregnancyExclusions(preg, null, { postpartum: { birthDate: '2024-12-01' } }, '2025-01-20');
+    expect(ranges.excludeRanges).toEqual([['2024-02-26', '2024-12-01']]);
+    expect(ranges.nonMenstrual).toContainEqual(['2024-12-01', '2025-01-12']);
+    const lochia = Object.fromEntries(rangeISO('2024-12-01', '2024-12-28').map((d) => [d, { flow: d < '2024-12-10' ? 'heavy' : 'light' }]));
+    const days = { ...regular('2024-01-01', 28, 3), ...lochia };
+    const without = analyze(days, { today: '2025-01-20', settings: {}, excludeRanges: ranges.excludeRanges });
+    expect(without.periods.map((p) => p.start)).toContain('2024-12-02');
+    const a = analyze(days, { today: '2025-01-20', settings: {}, ...ranges });
+    expect(a.periods.map((p) => p.start)).toEqual(['2024-01-01', '2024-01-29', '2024-02-26']);
+  });
+
+  it('builds the ranges of an active pregnancy and of past ones', () => {
+    const past = { history: [{ from: '2023-01-10', to: '2023-03-01' }], endedOn: '2023-03-01', outcome: 'loss' };
+    expect(pregnancyExclusions(past, { lmp: '2024-02-01' }, {}, '2024-04-01')).toEqual({
+      excludeRanges: [['2023-01-10', '2023-03-01'], ['2024-02-01', '2024-04-01']],
+      nonMenstrual: [['2023-03-01', '2023-03-15']],
+    });
+    // An impossible LMP in the future is ignored.
+    expect(pregnancyExclusions(null, { lmp: '2024-05-01' }, null, '2024-04-01')).toEqual({ excludeRanges: [], nonMenstrual: [] });
+  });
+});
+
+describe('ovulation from LH tests', () => {
+  it('ignores a stray positive during the period or far from the next period', () => {
+    const days = { ...regular('2024-01-01', 28, 3), '2024-01-03': { flow: 'medium', lh: 'positive' } };
+    expect(analyze(days, { today: '2024-03-01', settings: {} }).cycles[0].ovulation).toBeNull();
+    // Ongoing cycle: a positive on cycle day 3 must not move the ovulation to day 4.
+    const ongoing = regular('2024-01-01', 28, 5);
+    ongoing['2024-04-24'] = { flow: 'medium', lh: 'positive' };
+    const a = analyze(ongoing, { today: '2024-05-01', settings: {} });
+    expect(a.prediction).toMatchObject({ ovulationDay: '2024-05-06', ovulationMethod: 'estimate' });
+  });
+
+  it('uses the last positive of the surge', () => {
+    const days = { ...regular('2024-01-01', 28, 2), '2024-01-12': { lh: 'positive' }, '2024-01-13': { lh: 'positive' }, '2024-01-14': { lh: 'positive' } };
+    expect(analyze(days, { today: '2024-02-05', settings: {} }).cycles[0].ovulation).toEqual({ day: '2024-01-15', method: 'lh' });
+    const peak = { ...days, '2024-01-13': { lh: 'peak' } };
+    expect(analyze(peak, { today: '2024-02-05', settings: {} }).cycles[0].ovulation).toEqual({ day: '2024-01-14', method: 'lh' });
+  });
+
+  it('marks an LH-predicted ovulation as such, not as confirmed', () => {
+    const days = { ...regular('2024-01-01', 28, 5), '2024-05-05': { lh: 'positive' } };
+    const a = analyze(days, { today: '2024-05-05', settings: {} });
+    expect(a.prediction).toMatchObject({ ovulationDay: '2024-05-06', ovulationMethod: 'lh' });
+    expect(calendarMarks(a, days, ['2024-05-06'])['2024-05-06'].ovulation).toBe('lh');
+  });
+});
+
+describe('a detected ovulation moves the next period', () => {
+  it('pushes the expected period to one luteal phase after a late ovulation', () => {
+    const days = regular('2024-01-01', 28, 5);
+    rangeISO('2024-04-28', '2024-05-10').forEach((d) => (days[d] = { ...(days[d] ?? {}), bbt: 36.3 }));
+    ['2024-05-11', '2024-05-12', '2024-05-13'].forEach((d) => (days[d] = { bbt: 36.75 }));
+    const a = analyze(days, { today: '2024-05-15', settings: {} });
+    expect(a.current?.ovulation).toMatchObject({ day: '2024-05-10', method: 'bbt' });
+    expect(a.prediction?.nextPeriodStart).toBe('2024-05-24');
+    expect(a.current?.late).toBe(false);
+    // Without the temperatures the usual 28 days apply.
+    expect(analyze(regular('2024-01-01', 28, 5), { today: '2024-05-15', settings: {} }).prediction?.nextPeriodStart).toBe('2024-05-20');
+  });
 });
 
 describe('cycle length prediction', () => {
-  it('falls back to the stated or default average without history', () => {
-    expect(predictLength([], null)).toMatchObject({ length: 28, basis: 'default', margin: 4 });
-    expect(predictLength([], 32)).toMatchObject({ length: 32, basis: 'settings', margin: 3 });
+  it('falls back to the stated or default average without history, with a wide margin', () => {
+    expect(predictLength([], null)).toMatchObject({ length: 28, basis: 'default', margin: 7 });
+    expect(predictLength([], 32)).toMatchObject({ length: 32, basis: 'settings', margin: 5 });
+  });
+
+  it('reflects the observed spread when there are only one or two cycles', () => {
+    const two = predictLength([45, 22], null);
+    expect(two.basis).toBe('mixed');
+    expect(two.margin).toBeGreaterThanOrEqual(7);
+    expect(predictLength([28, 29], 28).margin).toBeLessThanOrEqual(4);
+    expect(predictLength([34], 28).margin).toBeGreaterThan(3);
+  });
+
+  it('ignores a cycle that is about twice the others (a period that was not logged)', () => {
+    expect(withoutMissedPeriods([28, 56, 28])).toEqual([28, 28]);
+    expect(withoutMissedPeriods([30, 29, 87])).toEqual([30, 29]);
+    // Irregular cycles: nothing can be told apart, keep them all.
+    expect(withoutMissedPeriods([24, 56, 35])).toEqual([24, 56, 35]);
+    expect(predictLength([28, 56, 28], null)).toMatchObject({ length: 28 });
+    expect(predictLength([28, 56, 28], null).margin).toBeLessThanOrEqual(3);
   });
 
   it('blends little history with the prior', () => {
@@ -133,6 +283,19 @@ describe('full analysis', () => {
     const days = { ...regular('2024-01-01', 28, 2), '2024-01-13': { lh: 'positive' } };
     const a = analyze(days, { today: '2024-02-05', settings: {} });
     expect(a.cycles[0].ovulation).toEqual({ day: '2024-01-14', method: 'lh' });
+  });
+
+  it('is not over-confident with little or messy data', () => {
+    // Only the stated average (28 by default in onboarding): low confidence, wide margin.
+    const none = analyze(withPeriods(['2024-03-01']), { today: '2024-03-10', settings: { cycleLength: 28 } });
+    expect(none.prediction).toMatchObject({ confidence: 'low', margin: 5, cycleLength: 28 });
+    // Two very different cycles (45 and 22 days).
+    const two = analyze(withPeriods(['2024-01-01', '2024-02-15', '2024-03-08']), { today: '2024-03-20', settings: {} });
+    expect(two.prediction?.confidence).toBe('low');
+    expect(two.prediction?.margin).toBeGreaterThanOrEqual(7);
+    // 28, 56 (a period not logged), 28.
+    const missed = analyze(withPeriods(['2024-01-01', '2024-01-29', '2024-03-25', '2024-04-22']), { today: '2024-05-01', settings: {} });
+    expect(missed.prediction).toMatchObject({ cycleLength: 28, nextPeriodStart: '2024-05-20' });
   });
 
   it('reports low confidence in perimenopause mode', () => {

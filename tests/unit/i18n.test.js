@@ -157,7 +157,7 @@ describe('i18n coverage of the source code', () => {
     each('home.fertility', ['high', 'medium', 'low', 'none']);
     each('luna.ctx.fertile', ['high', 'medium', 'low', 'none']);
     each('calendar.a11y.fertility', ['high', 'medium', 'low']);
-    each('calendar.a11y.ovulation', ['confirmed', 'estimated']);
+    each('calendar.a11y.ovulation', ['confirmed', 'lh', 'estimated']);
     each('calendar.excluded', ['gap', 'pregnancy']);
     each('report.ovMethod', ['bbt', 'lh', 'estimate']);
     each('analysis.regularity', ['veryRegular', 'regular', 'variable']);
