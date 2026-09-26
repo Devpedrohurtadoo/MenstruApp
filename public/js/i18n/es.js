@@ -269,6 +269,10 @@ export default {
     periodIn: { one: 'Regla en 1 día', other: 'Regla en {count} días' },
     late: { one: '1 día de retraso', other: '{count} días de retraso' },
     nextPeriod: 'Próxima regla: {date} (± {margin} d)',
+    nextBleed: 'Próximo sangrado por privación: {date} (± {margin} d)',
+    bleedIn: { one: 'Sangrado en 1 día', other: 'Sangrado en {count} días' },
+    bleedToday: 'Tu sangrado por privación podría llegar hoy',
+    hormonalNoPredictions: 'Con tu método los sangrados suelen ser irregulares o desaparecer, así que no predecimos fechas. Registra cualquier sangrado y consulta si te preocupa.',
     ovulationIn: { one: 'Ovulación estimada mañana', other: 'Ovulación estimada en {count} días' },
     fertility: {
       high: 'Fertilidad alta hoy',
@@ -300,6 +304,7 @@ export default {
       ovulation: 'Ovulación estimada',
       pms: 'Posibles síntomas premenstruales',
       period: 'Regla prevista',
+      withdrawalBleed: 'Sangrado por privación previsto',
     },
     tipTitle: 'Consejo del día',
     streak: { one: '1 día seguido registrando', other: '{count} días seguidos registrando' },
@@ -369,6 +374,10 @@ export default {
     lateTest: {
       title: { one: '1 día de retraso', other: '{count} días de retraso' },
       text: 'Registraste relaciones sin protección en este ciclo. Un test de embarazo de orina es fiable desde el día de la falta; si da negativo y la regla sigue sin llegar, repítelo en 3–5 días.',
+    },
+    lateWithdrawal: {
+      title: { one: 'Tu sangrado por privación lleva 1 día de retraso', other: 'Tu sangrado por privación lleva {count} días de retraso' },
+      text: 'Con los anticonceptivos hormonales es frecuente que el sangrado del descanso sea escaso o no llegue. Si has usado tu método correctamente (sin olvidos ni retrasos, ni vómitos o diarrea si tomas la píldora), un embarazo es muy poco probable: sigue con tu método como indica el prospecto. Si no es así, o si no te ha venido en dos descansos seguidos, haz un test de embarazo.',
     },
     amenorrhea: {
       title: { one: '1 día sin regla', other: '{count} días sin regla' },
@@ -870,12 +879,17 @@ export default {
       pregnantNoPeriod: 'Estás en modo embarazo, así que no calculo la regla. ¿Quieres saber de cuántas semanas estás?',
       late: { one: 'Tu regla lleva 1 día de retraso según tus registros.', other: 'Tu regla lleva {count} días de retraso según tus registros.' },
       nextPeriod: 'Según tus registros, tu próxima regla llegaría hacia el {date} (probablemente entre el {from} y el {to}).',
+      nextBleed: 'Según tus registros, tu próximo sangrado por privación llegaría hacia el {date} (probablemente entre el {from} y el {to}). Con la anticoncepción hormonal no hay una regla natural ni ovulación.',
+      predictionsHiddenPostpartum: 'Tras el parto no calculo la próxima regla hasta que vuelva. Cuando te venga, márcalo en Ajustes → Modo de uso y empezaré a predecirla. Recuerda que puedes quedarte embarazada antes de la primera regla.',
+      predictionsHiddenHormonal: 'Con tu método (minipíldora, píldora continua, inyección, implante o DIU hormonal) los sangrados suelen ser irregulares o desaparecer, así que no predigo fechas. Si un sangrado te preocupa, consúltalo.',
       confidence: {
         high: 'Tus ciclos son regulares, así que la predicción es bastante fiable.',
         medium: 'La predicción es razonable, pero puede variar unos días.',
         low: 'Tómalo como una estimación aproximada: necesito más ciclos registrados para afinar.',
       },
       fertilityHidden: 'Has elegido no mostrar la fertilidad. Puedes activarla en Ajustes → Modo de uso.',
+      fertilityHiddenMode: 'En este modo no calculo los días fértiles.',
+      fertilityHiddenHormonal: 'Con tu método hormonal no hay una ovulación natural que predecir, así que no muestro días fértiles. Tu protección depende de usar el método correctamente.',
       fertile: {
         high: 'Hoy estás en tus días de fertilidad más alta según la estimación.',
         medium: 'Hoy estás en tu ventana fértil (fertilidad media).',

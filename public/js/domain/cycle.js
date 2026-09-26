@@ -22,8 +22,13 @@
 //    (ignored during the period or outside 8–18 days before the next period), otherwise estimated
 //    as next period − luteal phase length (learned or 14 days). A detected ovulation can push the
 //    expected next period later, never earlier.
+//  - Hormonal contraception (see hormonalContraception() in modes.js): no ovulation, phases or
+//    fertile window. With a pill/patch/ring break the next withdrawal bleed is still predicted;
+//    with the other hormonal methods bleeding is unscheduled, so nothing is predicted and a long
+//    time without bleeding is neither "late" nor "stale".
 
 import { BLEEDING } from './catalog.js';
+import { hormonalContraception } from './modes.js';
 import { addDays, diffDays, isISODate, maxISO, rangeISO } from '../core/dates.js';
 
 export const DEFAULTS = Object.freeze({ cycleLength: 28, periodLength: 5, lutealLength: 14 });
@@ -314,9 +319,11 @@ export function analyze(days, ctx) {
 
   const validLengths = cycles.filter((c) => c.length !== null && !c.excluded).map((c) => /** @type {number} */ (c.length));
   const lengthPrediction = predictLength(validLengths, settings.cycleLength);
+  const hormonal = hormonalContraception(settings);
 
   // Ovulation of each cycle. LH positives only count after the period and 8–18 days before the next
-  // period (for the ongoing cycle, not earlier than that before the expected one).
+  // period (for the ongoing cycle, not earlier than that before the expected one). A hormonal method
+  // stops ovulation, so the current cycle has none.
   cycles.forEach((c, i) => {
     const p = periods[i];
     const periodEnd = p.lengthKnown ? p.end : p.estimatedEnd;
@@ -324,7 +331,7 @@ export function analyze(days, ctx) {
     const window = next
       ? { lhFrom: addDays(next.start, -LH_WINDOW.earliest), lhTo: addDays(next.start, -LH_WINDOW.latest) }
       : { lhFrom: maxISO(addDays(p.start, 5), addDays(p.start, lengthPrediction.length - LH_WINDOW.earliest - lengthPrediction.margin)) };
-    c.ovulation = detectOvulation(days, p.start, c.end ?? today, { periodEnd, ...window });
+    c.ovulation = hormonal && c.ongoing ? null : detectOvulation(days, p.start, c.end ?? today, { periodEnd, ...window });
     const luteal = c.ovulation && next ? diffDays(c.ovulation.day, next.start) : null;
     c.lutealLength = luteal !== null && luteal >= 8 && luteal <= 18 ? luteal : null;
   });
@@ -353,13 +360,15 @@ export function analyze(days, ctx) {
   if (last && last.start <= today) {
     const cycleDay = diffDays(last.start, today) + 1;
     const confirmed = lastCycle?.ovulation ?? null;
+    // Hormonal methods without a break: bleeding is unscheduled, there is nothing to predict.
+    const unscheduled = Boolean(hormonal && !hormonal.scheduledBleeds);
     let expected = addDays(last.start, lengthPrediction.length);
     // A detected ovulation this cycle means the period comes about one luteal phase later.
     if (confirmed && addDays(confirmed.day, lutealLength) > expected) expected = addDays(confirmed.day, lutealLength);
     const staleAfter = Math.max(lengthPrediction.length * 2, 60);
-    const stale = cycleDay > staleAfter;
+    const stale = !unscheduled && cycleDay > staleAfter;
     const lateDays = Math.max(0, diffDays(expected, today));
-    const late = !stale && !pregnant && lateDays > 0;
+    const late = !stale && !pregnant && !unscheduled && lateDays > 0;
     const nextStart = late ? today : expected;
     const inPeriod = today <= (last.lengthKnown ? last.end : last.estimatedEnd);
 
@@ -375,10 +384,10 @@ export function analyze(days, ctx) {
       late,
       lateDays: late ? lateDays : 0,
       ovulation,
-      phase: stale || pregnant ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
+      phase: stale || pregnant || hormonal ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
     };
 
-    if (!stale && !pregnant && lateDays <= 7) {
+    if (!stale && !pregnant && !unscheduled && lateDays <= 7) {
       const fertileStart = addDays(ovulationDay, -5);
       const fertileEnd = addDays(ovulationDay, 1);
       prediction = {
@@ -390,11 +399,15 @@ export function analyze(days, ctx) {
         basis: lengthPrediction.basis,
         sampleSize: lengthPrediction.n,
         confidence: confidenceLevel(lengthPrediction, settings.mode),
+        /** 'withdrawal' with a combined hormonal method (pill, patch or ring with a break). */
+        bleedKind: hormonal ? 'withdrawal' : 'period',
+        // The ovulation fields stay (as estimates) for compatibility; with a hormonal method
+        // modeFlags().fertility is false so they are never shown.
         ovulationDay,
         ovulationMethod: ovulation.method,
         fertileStart,
         fertileEnd,
-        pmsStart: addDays(nextStart, -5),
+        pmsStart: hormonal ? null : addDays(nextStart, -5),
         daysUntilPeriod: diffDays(today, nextStart),
         daysUntilOvulation: diffDays(today, ovulationDay),
         upcoming: Array.from({ length: 6 }, (_, i) => addDays(nextStart, lengthPrediction.length * i)),
@@ -410,6 +423,8 @@ export function analyze(days, ctx) {
     stats: { cycle: cycleStats, period: periodStats, lutealLength, validCycleCount: validLengths.length },
     current,
     prediction,
+    /** Hormonal contraception in use (null for a natural cycle). */
+    hormonal,
     hasData: periods.length > 0,
   };
 }
@@ -477,6 +492,8 @@ export function calendarMarks(a, days, dates, opts = {}) {
    *  ovulation: null | 'confirmed' | 'lh' | 'estimated', pms: boolean, phase: string | null, hasData: boolean, intermenstrual: boolean }>} */
   const marks = {};
   const pred = showPredictions ? a.prediction : null;
+  // With hormonal contraception there are no natural phases, ovulation, fertile days or PMS.
+  const natural = !a.hormonal;
   for (const d of dates) {
     const entry = days[d];
     marks[d] = {
@@ -502,10 +519,10 @@ export function calendarMarks(a, days, dates, opts = {}) {
     let ovDay;
     if (c.end) {
       nextStart = addDays(c.end, 1);
-      ovDay = c.ovulation?.day ?? addDays(nextStart, -a.stats.lutealLength);
+      ovDay = natural ? (c.ovulation?.day ?? addDays(nextStart, -a.stats.lutealLength)) : null;
     } else if (pred) {
       nextStart = pred.nextPeriodStart;
-      ovDay = pred.ovulationDay;
+      ovDay = natural ? pred.ovulationDay : null;
     } else {
       nextStart = addDays(periodEnd, 1);
       ovDay = null;
@@ -513,10 +530,10 @@ export function calendarMarks(a, days, dates, opts = {}) {
     for (const d of dates) {
       if (d < c.start || d >= nextStart) continue;
       const m = marks[d];
-      m.phase = ovDay ? phaseOn(d, { start: c.start, periodEnd, ovulationDay: ovDay, nextStart }) : 'menstrual';
+      m.phase = ovDay ? phaseOn(d, { start: c.start, periodEnd, ovulationDay: ovDay, nextStart }) : d <= periodEnd ? 'menstrual' : null;
       if (!m.period && d > period.end && d <= periodEnd) m.period = d > a.today ? 'predicted' : 'estimated';
-      if (c.ovulation && d === c.ovulation.day) m.ovulation = ovulationMark(c.ovulation.method);
-      if (c.ongoing && pred) {
+      if (natural && c.ovulation && d === c.ovulation.day) m.ovulation = ovulationMark(c.ovulation.method);
+      if (c.ongoing && pred && natural) {
         if (showFertility && !m.period) m.fertility = fertilityLevel(diffDays(pred.ovulationDay, d));
         if (showFertility && d === pred.ovulationDay && !m.ovulation) m.ovulation = ovulationMark(pred.ovulationMethod);
         if (d >= pred.pmsStart && !m.period) m.pms = true;
@@ -534,13 +551,13 @@ export function calendarMarks(a, days, dates, opts = {}) {
         if (d < start || d >= nextStart || d < a.today) continue;
         const m = marks[d];
         if (m.period === 'logged') continue;
-        m.phase = phaseOn(d, { start, periodEnd, ovulationDay: ovDay, nextStart });
+        m.phase = natural ? phaseOn(d, { start, periodEnd, ovulationDay: ovDay, nextStart }) : d <= periodEnd ? 'menstrual' : null;
         if (d <= periodEnd) m.period = 'predicted';
-        if (showFertility && !m.period) {
+        if (natural && showFertility && !m.period) {
           m.fertility = fertilityLevel(diffDays(ovDay, d));
           if (d === ovDay) m.ovulation = 'estimated';
         }
-        if (d >= addDays(nextStart, -5) && !m.period) m.pms = true;
+        if (natural && d >= addDays(nextStart, -5) && !m.period) m.pms = true;
       }
     });
   }

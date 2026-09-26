@@ -63,27 +63,36 @@ export function computeNotices(a, days, ctx) {
   if (cur?.stale) out.push({ id: 'stale', level: 'info' });
 
   const tracking = mode === 'track' || mode === 'conceive' || mode === 'avoid';
+  // Hormonal contraception: there is no natural cycle, so a late or absent bleed, amenorrhoea or
+  // irregular bleeding do not mean what they mean in a natural cycle (see cycle.js).
+  const hormonal = a.hormonal ?? null;
+  // A natural cycle, as opposed to bleeding driven by a hormonal method.
+  const natural = tracking && !hormonal;
   if (tracking && cur && !cur.stale && cur.late && cur.lateDays >= 5) {
-    const unprotected = Object.keys(days).some((d) => d >= cur.start && days[d]?.sex === 'unprotected');
-    out.push({ id: unprotected ? 'lateTest' : 'late', level: 'info', params: { count: cur.lateDays }, article: 'test-embarazo' });
+    if (hormonal) {
+      out.push({ id: 'lateWithdrawal', level: 'info', params: { count: cur.lateDays }, article: 'metodos-anticonceptivos' });
+    } else {
+      const unprotected = Object.keys(days).some((d) => d >= cur.start && days[d]?.sex === 'unprotected');
+      out.push({ id: unprotected ? 'lateTest' : 'late', level: 'info', params: { count: cur.lateDays }, article: 'test-embarazo' });
+    }
   }
 
   // No bleeding for 90+ days while the user keeps logging other things.
-  if (tracking && last && diffDays(last.start, today) >= 90) {
+  if (natural && last && diffDays(last.start, today) >= 90) {
     const logging = Object.keys(days).filter((d) => d > addDays(today, -30)).length >= 5;
     if (logging) out.push({ id: 'amenorrhea', level: 'consult', params: { count: diffDays(last.start, today) }, article: 'ciclos-irregulares' });
   }
 
   const recentCycles = a.cycles.filter((c) => c.length !== null && !c.excluded).slice(-6);
   const lengths = recentCycles.map((c) => /** @type {number} */ (c.length));
-  if (tracking && !young && lengths.length >= 3) {
+  if (natural && !young && lengths.length >= 3) {
     const variation = Math.max(...lengths) - Math.min(...lengths);
     const limit = ctx.age !== null && ctx.age >= 26 && ctx.age <= 41 ? 7 : 9;
     if (variation > limit) out.push({ id: 'irregular', level: 'info', params: { count: variation }, article: 'ciclos-irregulares' });
   }
   const [minNormal, maxNormal] = young ? [21, 45] : [24, 38];
-  if (tracking && lengths.filter((l) => l < minNormal).length >= 2) out.push({ id: 'shortCycles', level: 'consult', params: { min: minNormal }, article: 'ciclos-irregulares' });
-  if (tracking && lengths.filter((l) => l > maxNormal).length >= 2) out.push({ id: 'longCycles', level: 'consult', params: { max: maxNormal }, article: 'ciclos-irregulares' });
+  if (natural && lengths.filter((l) => l < minNormal).length >= 2) out.push({ id: 'shortCycles', level: 'consult', params: { min: minNormal }, article: 'ciclos-irregulares' });
+  if (natural && lengths.filter((l) => l > maxNormal).length >= 2) out.push({ id: 'longCycles', level: 'consult', params: { max: maxNormal }, article: 'ciclos-irregulares' });
 
   const knownPeriods = periods.filter((p) => p.lengthKnown).slice(-3);
   if (mode !== 'postpartum' && knownPeriods.some((p) => /** @type {number} */ (p.length) > 8)) {
@@ -97,7 +106,9 @@ export function computeNotices(a, days, ctx) {
     if (heavyDays >= 3 || bigClots) out.push({ id: 'heavyFlow', level: 'info', article: 'sangrado-abundante' });
   }
 
-  if (a.intermenstrual.some((r) => r.start >= addDays(today, -90)) && mode !== 'postpartum') {
+  // Without a scheduled bleed (implant, hormonal IUD, injection, minipill...) all bleeding is
+  // "unscheduled": "between periods" does not apply.
+  if (a.intermenstrual.some((r) => r.start >= addDays(today, -90)) && mode !== 'postpartum' && !(hormonal && !hormonal.scheduledBleeds)) {
     out.push({ id: 'intermenstrual', level: 'consult', article: 'ciclos-irregulares' });
   }
 

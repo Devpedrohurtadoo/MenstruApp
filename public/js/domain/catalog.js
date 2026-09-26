@@ -120,6 +120,9 @@ export const CONTRACEPTION = /** @type {const} */ ([
 /** Methods whose daily intake the user can tick off. */
 export const DAILY_METHODS = new Set(['pill_combined', 'pill_progestin']);
 
+/** Hormonal methods: with them there is no natural cycle to predict (the copper IUD is not hormonal). */
+export const HORMONAL_METHODS = new Set(['pill_combined', 'pill_progestin', 'patch', 'ring', 'injection', 'iud_hormonal', 'implant']);
+
 export const PREGNANCY_OUTCOMES = /** @type {const} */ (['birth', 'loss', 'other']);
 
 // Units -------------------------------------------------------------------------------------
