@@ -39,7 +39,6 @@ export default {
 
   nav: {
     label: 'Navegación principal',
-    skip: 'Saltar al contenido',
     home: 'Hoy',
     calendar: 'Calendario',
     log: 'Registrar',

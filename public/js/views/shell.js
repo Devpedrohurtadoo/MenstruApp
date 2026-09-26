@@ -41,16 +41,7 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
   const banners = h('div', { class: 'banners', 'aria-live': 'polite' });
   const header = h('header', { class: 'topbar' }, back, title, actions);
   const tabbar = h('nav', { class: 'tabbar', 'aria-label': t('nav.label') });
-  const skip = h('a', {
-    class: 'skip-link',
-    href: '#main',
-    text: t('nav.skip'),
-    onClick: (/** @type {Event} */ e) => {
-      e.preventDefault();
-      main.focus();
-    },
-  });
-  replace(appRoot, skip, header, banners, main, tabbar);
+  replace(appRoot, header, banners, main, tabbar);
 
   /** @type {null | { cleanup?: () => void }} */
   let activeModule = null;
@@ -92,7 +83,6 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
     // Texts created once with the shell follow a language change.
     back.setAttribute('aria-label', t('common.back'));
     back.title = t('common.back');
-    skip.textContent = t('nav.skip');
     tabbar.setAttribute('aria-label', t('nav.label'));
     const topLevel = TABS.some((tab) => tab.name === route.name) && route.segments.length === 0;
     back.hidden = topLevel;

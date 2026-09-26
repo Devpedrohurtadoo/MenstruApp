@@ -308,22 +308,6 @@ label:has(input[type='file']:focus-visible),
   border: 0 !important;
 }
 
-.skip-link {
-  position: fixed;
-  top: calc(var(--safe-t) + 8px);
-  left: 8px;
-  z-index: 100;
-  padding: 10px 14px;
-  border-radius: var(--r-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  transform: translateY(-160%);
-  transition: transform var(--dur) var(--ease);
-}
-.skip-link:focus {
-  transform: none;
-}
-
 .muted {
   color: var(--muted);
 }
