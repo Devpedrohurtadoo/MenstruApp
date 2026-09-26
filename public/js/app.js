@@ -21,8 +21,8 @@ import {
   WrongSecretError,
 } from './security/vault.js';
 import { wipe } from './security/crypto.js';
-import { lockStatus, registerFailure, initialLockout } from './security/lockout.js';
-import { registerBiometric, unlockWithBiometric } from './security/webauthn.js';
+import { lockStatus, registerFailure, initialLockout, normalizeLockout } from './security/lockout.js';
+import { registerBiometric, unlockWithBiometric, forgetCredential } from './security/webauthn.js';
 import { analyze } from './domain/cycle.js';
 import { computeNotices } from './domain/insights.js';
 import { modeFlags } from './domain/modes.js';
@@ -63,6 +63,33 @@ export const store = createStore(
 let repo = null;
 /** @type {Set<string>} */
 const events = new Set();
+
+// Bumped on every unlock and lock. Async work (saves, sync) remembers the epoch it started in:
+// once it changes, that work must not touch memory, nor write into another profile.
+let epoch = 0;
+
+export class SessionChangedError extends Error {
+  constructor() {
+    super('The session was locked or switched');
+    this.name = 'SessionChangedError';
+  }
+}
+
+/** A handle for async work tied to the session that is open now. */
+export function sessionGuard() {
+  const started = epoch;
+  const profileId = store.get().session?.profileId ?? null;
+  return {
+    profileId,
+    /** Still the same session (not locked or switched meanwhile). */
+    get valid() {
+      return started === epoch && Boolean(repo);
+    },
+    check() {
+      if (started !== epoch || !repo) throw new SessionChangedError();
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------------------------
 // Boot
@@ -216,6 +243,7 @@ function validDoc(name, value) {
  */
 async function openSession(profileId, newRepo, vault) {
   const data = await newRepo.loadAll();
+  epoch++;
   repo = newRepo;
   store.set({ session: { profileId, vaultInfo: describeVault(vault) }, data, derived: computeDerived(data), version: store.get().version + 1 });
   startAutoLock();
@@ -224,7 +252,60 @@ async function openSession(profileId, newRepo, vault) {
 
 /** @param {string} profileId */
 async function getLockout(profileId) {
-  return (await get(db(), 'meta', `lockout:${profileId}`)) ?? initialLockout();
+  const stored = (await get(db(), 'meta', `lockout:${profileId}`)) ?? initialLockout();
+  const state = normalizeLockout(stored);
+  // A lock recorded with a wrong (future) clock is shortened for good, not just displayed so.
+  if (state !== stored) await put(db(), 'meta', state, `lockout:${profileId}`);
+  return state;
+}
+
+// Unlock and re-authentication attempts run one at a time: parallel guesses would otherwise all
+// be checked before the first failure was recorded.
+/** @type {Promise<unknown>} */
+let attemptQueue = Promise.resolve();
+/**
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+function serialized(fn) {
+  const run = attemptQueue.then(fn, fn);
+  attemptQueue = run.catch(() => undefined);
+  return run;
+}
+
+/**
+ * Opens the vault's master secret. PIN/passphrase attempts are throttled and counted as a
+ * failure *before* the slow key derivation (cleared on success), so closing the app mid-check
+ * cannot skip the count. The recovery code (160 bits) and biometrics cannot be guessed and are
+ * not throttled, so they stay usable while the PIN is locked out.
+ * @param {string} profileId
+ * @param {import('./security/vault.js').Vault} vault
+ * @param {{ type: 'pin' | 'passphrase' | 'recovery' | 'device' | 'webauthn', secret?: string }} attempt
+ */
+async function openVault(profileId, vault, attempt) {
+  if (attempt.type === 'webauthn') {
+    const lock = describeVault(vault).biometric;
+    if (!lock) throw new WrongSecretError();
+    const prfOutput = await unlockWithBiometric(/** @type {any} */ (lock));
+    return unlockVault(vault, { type: 'webauthn', prfOutput });
+  }
+  if (attempt.type !== 'pin' && attempt.type !== 'passphrase') return unlockVault(vault, attempt);
+  const key = `lockout:${profileId}`;
+  const before = await getLockout(profileId);
+  const status = lockStatus(before);
+  if (status.locked) throw Object.assign(new Error('throttled'), { throttled: true, remainingMs: status.remainingMs });
+  const pending = registerFailure(before);
+  await put(db(), 'meta', pending, key);
+  try {
+    const master = await unlockVault(vault, attempt);
+    await put(db(), 'meta', initialLockout(), key);
+    return master;
+  } catch (err) {
+    if (err instanceof WrongSecretError) throw Object.assign(err, { status: lockStatus(pending) });
+    await put(db(), 'meta', before, key); // not a wrong secret (e.g. storage error): uncount it
+    throw err;
+  }
 }
 
 /** @param {string} profileId */
@@ -233,63 +314,92 @@ export async function lockoutStatus(profileId) {
 }
 
 /**
- * Unlocks a profile. Throws WrongSecretError (after recording the failed attempt) or a
- * `{ locked: true, remainingMs }` object when throttled.
+ * Unlocks a profile. Throws WrongSecretError (after recording the failed attempt, with
+ * `status`) or an error with `{ throttled: true, remainingMs }` while locked out.
  * @param {string} profileId
- * @param {{ type: 'pin' | 'passphrase' | 'recovery' | 'device' | 'webauthn', secret?: string }} attempt
+ * @param {{ type: 'pin' | 'passphrase' | 'device' | 'webauthn', secret?: string }} attempt
  */
-export async function unlock(profileId, attempt) {
-  const vault = await getVault(profileId);
-  if (!vault) throw new Error('Unknown profile');
-  const status = lockStatus(await getLockout(profileId));
-  if (status.locked && attempt.type !== 'device') throw Object.assign(new Error('throttled'), { throttled: true, remainingMs: status.remainingMs });
-  /** @type {Uint8Array<ArrayBuffer>} */
-  let master;
-  try {
-    if (attempt.type === 'webauthn') {
-      const lock = describeVault(vault).biometric;
-      if (!lock) throw new WrongSecretError();
-      const prfOutput = await unlockWithBiometric(/** @type {any} */ (lock));
-      master = await unlockVault(vault, { type: 'webauthn', prfOutput });
-    } else {
-      master = await unlockVault(vault, attempt);
-    }
-  } catch (err) {
-    if (err instanceof WrongSecretError && attempt.type !== 'device' && attempt.type !== 'webauthn') {
-      const next = registerFailure(await getLockout(profileId));
-      await put(db(), 'meta', next, `lockout:${profileId}`);
-      throw Object.assign(err, { status: lockStatus(next) });
-    }
-    throw err;
-  }
-  await put(db(), 'meta', initialLockout(), `lockout:${profileId}`);
-  const keys = await deriveProfileKeys(master);
-  wipe(master);
-  store.set({ prefs: savePrefs({ lastProfileId: profileId }) });
-  await openSession(profileId, new ProfileRepo(db(), profileId, keys), vault);
+export function unlock(profileId, attempt) {
+  return serialized(async () => {
+    const vault = await getVault(profileId);
+    if (!vault) throw new Error('Unknown profile');
+    const master = await openVault(profileId, vault, attempt);
+    const keys = await deriveProfileKeys(master);
+    wipe(master);
+    store.set({ prefs: savePrefs({ lastProfileId: profileId }) });
+    await openSession(profileId, new ProfileRepo(db(), profileId, keys), vault);
+  });
+}
+
+/**
+ * Checks a recovery code WITHOUT opening the profile. The profile only opens once a new lock
+ * has been saved and the used code replaced, so an abandoned recovery (app closed, auto-lock)
+ * changes nothing and the old code keeps working until the process is completed.
+ * @param {string} profileId
+ * @param {string} code
+ */
+export function beginRecovery(profileId, code) {
+  return serialized(async () => {
+    const vault = await getVault(profileId);
+    if (!vault) throw new Error('Unknown profile');
+    const master = await unlockVault(vault, { type: 'recovery', secret: code });
+    let finished = false;
+    return {
+      /**
+       * Saves the new lock and a fresh recovery code (returned, to be shown once).
+       * @param {{ method: 'pin' | 'passphrase' | 'none', secret?: string }} next
+       */
+      async saveNewLock(next) {
+        const current = /** @type {import('./security/vault.js').Vault} */ (await getVault(profileId));
+        let { vault: updated, recoveryCode } = await setPrimaryLock(current, master, next);
+        if (next.method !== 'none') ({ vault: updated, recoveryCode } = await regenerateRecovery(updated, master));
+        await put(db(), 'vaults', updated);
+        await put(db(), 'meta', initialLockout(), `lockout:${profileId}`);
+        return { recoveryCode };
+      },
+      /** Opens the profile (after saveNewLock). */
+      async open() {
+        if (finished) return;
+        finished = true;
+        const keys = await deriveProfileKeys(master);
+        wipe(master);
+        const vaultNow = /** @type {import('./security/vault.js').Vault} */ (await getVault(profileId));
+        store.set({ prefs: savePrefs({ lastProfileId: profileId }) });
+        await openSession(profileId, new ProfileRepo(db(), profileId, keys), vaultNow);
+      },
+      cancel() {
+        if (!finished) wipe(master);
+        finished = true;
+      },
+    };
+  });
 }
 
 /**
  * Re-verifies the current user before a sensitive change and returns the master secret.
+ * Throttled and counted exactly like unlocking (it is another way to test a PIN).
  * @param {{ type: 'pin' | 'passphrase' | 'recovery' | 'device' | 'webauthn', secret?: string }} attempt
  */
 async function reauth(attempt) {
   const session = requireSession();
-  const vault = await getVault(session.profileId);
-  if (attempt.type === 'webauthn') {
-    const lock = describeVault(vault).biometric;
-    const prfOutput = await unlockWithBiometric(/** @type {any} */ (lock));
-    return { vault, master: await unlockVault(vault, { type: 'webauthn', prfOutput }) };
-  }
-  return { vault, master: await unlockVault(vault, attempt) };
+  return serialized(async () => {
+    const vault = await getVault(session.profileId);
+    return { vault, master: await openVault(session.profileId, vault, attempt) };
+  });
 }
 
 /** @param {'manual' | 'auto' | 'hidden' | 'switch' | 'camouflage' | 'guest'} [reason] */
 export function lock(reason = 'manual') {
   if (!store.get().session) return;
+  epoch++;
   repo = null;
   stopAutoLock();
   store.set({ session: null, data: null, derived: null });
+  // Nothing about the last screen stays visible in the tab title or the address bar.
+  if (typeof document !== 'undefined') {
+    document.title = 'Menstruapp';
+    history.replaceState(null, '', location.pathname);
+  }
   bus.emit('locked', { reason });
 }
 
@@ -316,6 +426,7 @@ function requireRepo() {
  * @param {Record<string, any>} entry
  */
 export async function saveDay(iso, entry) {
+  const guard = sessionGuard();
   const r = requireRepo();
   if (iso > todayISO()) throw new RangeError('future');
   const cleaned = Object.fromEntries(
@@ -324,6 +435,8 @@ export async function saveDay(iso, entry) {
   const checked = validate(dayEntrySchema, cleaned);
   if (!checked.ok) throw new ValidationError(checked.errors);
   const updatedAt = await r.saveDay(iso, checked.value);
+  // Locked or switched while writing: the record is saved, but its data must not reappear in memory.
+  if (!guard.valid) return { achievements: [] };
   const data = /** @type {Data} */ (store.get().data);
   const days = { ...data.days };
   if (Object.keys(checked.value).length) days[iso] = { ...checked.value, updatedAt };
@@ -340,9 +453,11 @@ export async function saveDay(iso, entry) {
  * @param {any} value null deletes the document
  */
 export async function saveDoc(name, value) {
+  const guard = sessionGuard();
   const r = requireRepo();
   const cleaned = value === null ? null : validDoc(name, value);
   const updatedAt = await r.saveDoc(name, cleaned);
+  if (!guard.valid) return;
   const data = /** @type {Data} */ (store.get().data);
   const docs = { ...data.docs };
   if (cleaned === null) delete docs[name];
@@ -414,6 +529,7 @@ async function checkAchievements() {
  * @param {'merge' | 'replace'} strategy
  */
 export async function importData(payload, strategy) {
+  const guard = sessionGuard();
   const r = requireRepo();
   const data = /** @type {Data} */ (store.get().data);
   const now = Date.now();
@@ -438,6 +554,7 @@ export async function importData(payload, strategy) {
   }
   await r.saveMany(records);
   const fresh = await r.loadAll();
+  if (!guard.valid) return { imported };
   store.set({ data: fresh });
   refresh();
   bus.emit('data-changed', { kind: 'import' });
@@ -461,19 +578,33 @@ export function localRecords() {
       out.push(value ? { kind, key, value, updatedAt } : { kind, key, deleted: true, updatedAt });
     } else if (kind === 'doc' && portable.has(/** @type {any} */ (key))) {
       const value = data.docs[key];
-      out.push(value ? { kind, key, value, updatedAt } : { kind, key, deleted: true, updatedAt });
+      out.push(value ? { kind, key, value: key === 'settings' ? withoutDeviceSettings(value) : value, updatedAt } : { kind, key, deleted: true, updatedAt });
     }
   }
   return out;
 }
 
 /**
+ * Security settings (auto-lock, lock on hide, discreet notifications…) belong to each device:
+ * they never travel through sync, so a linked device cannot weaken this one.
+ * @param {Record<string, any>} settings
+ */
+function withoutDeviceSettings(settings) {
+  const rest = { ...settings };
+  delete rest.security;
+  return rest;
+}
+
+/**
  * Applies records received from another device (already decrypted), after validation.
  * @param {Array<import('./data/repo.js').PlainRecord>} records
+ * @param {ReturnType<typeof sessionGuard>} [guard] the session the records were fetched for
  */
-export async function applyRemoteRecords(records) {
+export async function applyRemoteRecords(records, guard = sessionGuard()) {
+  guard.check(); // never write one profile's records into another
   const r = requireRepo();
   const portable = new Set(PORTABLE_DOCS);
+  const localSecurity = store.get().data?.docs.settings?.security;
   /** @type {Array<import('./data/repo.js').PlainRecord>} */
   const valid = [];
   for (const rec of records) {
@@ -488,13 +619,18 @@ export async function applyRemoteRecords(records) {
       if (rec.deleted) valid.push({ kind: 'doc', key: rec.key, deleted: true, updatedAt: rec.updatedAt });
       else {
         const checked = validate(DOC_SCHEMAS[/** @type {keyof typeof DOC_SCHEMAS} */ (rec.key)], rec.value);
-        if (checked.ok) valid.push({ kind: 'doc', key: rec.key, value: checked.value, updatedAt: rec.updatedAt });
+        if (!checked.ok) continue;
+        let value = checked.value;
+        if (rec.key === 'settings') value = localSecurity ? { ...withoutDeviceSettings(value), security: localSecurity } : withoutDeviceSettings(value);
+        valid.push({ kind: 'doc', key: rec.key, value, updatedAt: rec.updatedAt });
       }
     }
   }
   if (!valid.length) return 0;
   await r.saveMany(valid);
-  store.set({ data: await r.loadAll() });
+  const fresh = await r.loadAll();
+  if (!guard.valid) return valid.length;
+  store.set({ data: fresh });
   refresh();
   bus.emit('data-changed', { kind: 'sync' });
   return valid.length;
@@ -546,8 +682,8 @@ export async function enableBiometric(current) {
   const session = requireSession();
   const { vault, master } = await reauth(current);
   try {
-    const label = `Menstruapp · ${store.get().data?.docs.profile?.name ?? ''}`.trim();
-    const cred = await registerBiometric({ label: label.slice(0, 60) });
+    // A neutral name: passkeys are listed in the phone's/cloud password manager.
+    const cred = await registerBiometric({ label: 'Menstruapp' });
     const next = await addWebAuthnLock(vault, master, cred);
     wipe(cred.prfOutput);
     await put(db(), 'vaults', next);
@@ -560,7 +696,9 @@ export async function enableBiometric(current) {
 export async function disableBiometric() {
   const session = requireSession();
   const vault = await getVault(session.profileId);
+  const credentialId = describeVault(vault).biometric?.credentialId;
   const next = removeLock(vault, 'webauthn');
+  if (credentialId) forgetCredential(credentialId);
   await put(db(), 'vaults', next);
   store.set({ session: { ...session, vaultInfo: describeVault(next) } });
 }
@@ -577,7 +715,10 @@ export async function verifyCurrentUser(current) {
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let idleTimer;
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let hiddenTimer;
 let hiddenAt = 0;
+/** Short trips outside the app (camera, file picker, share sheet) do not lock it. */
 const HIDE_GRACE_MS = 30_000;
 
 function autoLockConfig() {
@@ -597,8 +738,12 @@ const onActivity = () => resetIdle();
 const onVisibility = () => {
   const cfg = autoLockConfig();
   if (!cfg) return;
+  clearTimeout(hiddenTimer);
   if (document.hidden) {
     hiddenAt = Date.now();
+    // Lock while still in the background once the grace period is over (background timers
+    // can be delayed, so the check when coming back stays too).
+    if (cfg.lockOnHide) hiddenTimer = setTimeout(() => lock('hidden'), HIDE_GRACE_MS);
   } else if (cfg.lockOnHide && hiddenAt && Date.now() - hiddenAt > HIDE_GRACE_MS) {
     lock('hidden');
   } else {
@@ -616,6 +761,7 @@ function startAutoLock() {
 
 function stopAutoLock() {
   clearTimeout(idleTimer);
+  clearTimeout(hiddenTimer);
   hiddenAt = 0;
   for (const evt of ['pointerdown', 'keydown', 'touchstart']) document.removeEventListener(evt, onActivity);
   document.removeEventListener('visibilitychange', onVisibility);
@@ -631,6 +777,8 @@ bus.on('data-changed', (/** @type {{ kind: string, name?: string }} */ p) => {
 /** Deletes the active profile and its vault (other profiles are untouched). */
 export async function deleteCurrentProfile() {
   const session = requireSession();
+  const credentialId = session.vaultInfo.biometric?.credentialId;
+  if (credentialId) forgetCredential(credentialId);
   await requireRepo().wipe();
   await del(db(), 'vaults', session.profileId);
   await del(db(), 'meta', `lockout:${session.profileId}`);

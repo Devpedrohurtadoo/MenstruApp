@@ -1,6 +1,7 @@
 // Pure logic for throttling repeated wrong PIN/passphrase attempts with exponential backoff.
-// It protects against guessing through the UI; offline brute force against a copied device is
-// mitigated instead by PBKDF2 and by recommending 6+ digit PINs or passphrases.
+// It only slows down guessing through the app's own screens. Someone with a copy of the
+// browser storage can guess offline at the speed of PBKDF2 (a 4-digit PIN falls in minutes, a
+// 6-digit one in hours on a laptop): only a passphrase resists that (see docs/SECURITY.md).
 
 export const MAX_ATTEMPTS = 5;
 export const BASE_LOCK_MS = 30_000;
@@ -16,9 +17,21 @@ export const initialLockout = () => ({ count: 0, lockUntil: 0, strikes: 0 });
  * @param {number} [now]
  */
 export function lockStatus(state, now = Date.now()) {
-  const s = state ?? initialLockout();
+  const s = normalizeLockout(state, now);
   if (s.lockUntil > now) return { locked: true, remainingMs: s.lockUntil - now, attemptsLeft: 0 };
   return { locked: false, remainingMs: 0, attemptsLeft: Math.max(0, MAX_ATTEMPTS - s.count) };
+}
+
+/**
+ * A wait can never be longer than MAX_LOCK_MS from now: a lock recorded while the clock was
+ * wrong (set years ahead, then corrected) must not lock the owner out for years.
+ * @param {LockoutState | null | undefined} state
+ * @param {number} [now]
+ * @returns {LockoutState}
+ */
+export function normalizeLockout(state, now = Date.now()) {
+  const s = state ?? initialLockout();
+  return s.lockUntil - now > MAX_LOCK_MS ? { ...s, lockUntil: now + MAX_LOCK_MS } : s;
 }
 
 /**
@@ -27,7 +40,7 @@ export function lockStatus(state, now = Date.now()) {
  * @returns {LockoutState}
  */
 export function registerFailure(state, now = Date.now()) {
-  const s = state ?? initialLockout();
+  const s = normalizeLockout(state, now);
   const count = s.count + 1;
   if (count >= MAX_ATTEMPTS) {
     const strikes = s.strikes + 1;

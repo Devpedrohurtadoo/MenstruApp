@@ -20,6 +20,9 @@ const VIEWS = {
   pregnancy: () => import('./pregnancy.js'),
 };
 
+/** Section (tab) that each secondary view belongs to, for the document title. */
+const SECTION_OF = /** @type {Record<string, string>} */ ({ luna: 'learn', report: 'analysis', pregnancy: 'home' });
+
 const TABS = [
   { name: 'home', icon: 'home' },
   { name: 'calendar', icon: 'calendar' },
@@ -151,7 +154,9 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
     if (canAnimate) /** @type {any} */ (document).startViewTransition(swap);
     else swap();
     activeModule = mod;
-    document.title = `${viewTitle} · Menstruapp`;
+    // The tab/window title names the section only: never a name ("Hola, Lucía") or a
+    // situation ("Herramientas de embarazo") that others could read in a tab list.
+    document.title = `${t(`nav.${SECTION_OF[route.name] ?? route.name}`)} · Menstruapp`;
     if (routeChanged) {
       window.scrollTo(0, 0);
       if (lastRouteName) {

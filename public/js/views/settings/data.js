@@ -7,6 +7,10 @@ import { openModal, confirmDialog, askSecret } from '../../ui/modal.js';
 import { importData, deleteEverything, storageStatus, recordEvent, setPrefs } from '../../app.js';
 import { backupBlob, encryptedBackupBlob, csvBlob, readBackup, BackupError } from '../../data/backup.js';
 import { importCSV, importAppleHealth } from '../../data/importers.js';
+import { confirmIdentity, deleteServerData } from '../security-flows.js';
+
+/** Exports put all the data in a file: someone holding the unlocked phone must not get them. */
+const mayExport = () => confirmIdentity(t('settings.data.exportReauth'));
 
 /** @param {import('../shell.js').ViewContext} ctx */
 export async function render(ctx) {
@@ -45,6 +49,7 @@ export async function render(ctx) {
             title: t('settings.data.encryptedBackup'),
             subtitle: t('settings.data.encryptedBackupDesc'),
             onClick: async () => {
+              if (!(await mayExport())) return;
               const password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword'), hint: t('settings.data.backupPasswordHint'), minLength: 8, autocomplete: 'new-password', account: t('settings.data.backupAccount') });
               if (!password) return;
               const blob = await encryptedBackupBlob(data, password);
@@ -60,7 +65,7 @@ export async function render(ctx) {
             subtitle: t('settings.data.jsonDesc'),
             onClick: async () => {
               const ok = await confirmDialog({ title: t('settings.data.json'), message: t('settings.data.plainWarning'), confirmLabel: t('common.download') });
-              if (!ok) return;
+              if (!ok || !(await mayExport())) return;
               downloadBlob(backupBlob(data), exportName('json'));
               setPrefs({ backupNudgeAt: Date.now() });
               await recordEvent('backupDone');
@@ -72,7 +77,7 @@ export async function render(ctx) {
             subtitle: t('settings.data.csvDesc'),
             onClick: async () => {
               const ok = await confirmDialog({ title: t('settings.data.csv'), message: t('settings.data.plainWarning'), confirmLabel: t('common.download') });
-              if (ok) downloadBlob(csvBlob(data.days), exportName('csv'));
+              if (ok && (await mayExport())) downloadBlob(csvBlob(data.days), exportName('csv'));
             },
           }),
         ),
@@ -124,9 +129,9 @@ export async function render(ctx) {
             if (!first) return;
             const word = await askSecret({ title: t('settings.data.deleteAll'), label: t('settings.data.typeDelete', { word: t('settings.data.deleteWord') }), confirmLabel: t('common.delete'), plain: true });
             if (!word || word.trim().toUpperCase() !== t('settings.data.deleteWord').toUpperCase()) return toast(t('settings.data.deleteCancelled'));
+            // Server data first: the keys needed to delete it are wiped with the device data.
+            if (!(await deleteServerData('device'))) return toast(t('settings.data.deleteCancelled'));
             try {
-              const remote = await import('../../pwa/services.js');
-              await remote.deleteRemoteData().catch(() => undefined);
               await deleteEverything();
             } finally {
               location.replace(location.pathname);

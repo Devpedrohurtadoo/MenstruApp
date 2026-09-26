@@ -6,6 +6,9 @@ import { icon } from '../ui/icons.js';
 import { card, listItem, emptyState, button } from '../ui/components.js';
 import { normalize } from '../domain/luna.js';
 
+/** The last search (in memory only). */
+let searchQuery = '';
+
 /** @typedef {{ id: string, category: string, title: string, summary: string, keywords: string[], body: Array<{ h?: string, p?: string, ul?: string[] }>, consult?: string[], related?: string[], modes?: string[] }} Article */
 /** @typedef {{ categories: Array<{ id: string, title: string, icon: string, desc: string }>, articles: Article[], glossary: Array<{ term: string, def: string }>,
  *  faq: Array<{ q: string, a: string[] }>, consult: { urgent: string[], soon: string[], routine: string[] }, help: Array<{ id: string, title: string, steps: string[] }> }} Library */
@@ -40,7 +43,7 @@ export async function render(ctx) {
   const [sub, id] = ctx.route.segments;
   if (sub === 'article' && id) return articleView(lib, id, ctx);
   if (sub === 'category' && id) return categoryView(lib, id);
-  if (sub === 'search') return searchView(lib, ctx.route.params.get('q') ?? '', ctx);
+  if (sub === 'search') return searchView(lib, searchQuery, ctx);
   if (sub === 'glossary') return glossaryView(lib);
   if (sub === 'faq') return faqView(lib);
   if (sub === 'consult') return consultView(lib);
@@ -59,7 +62,10 @@ function searchBox(ctx, value = '') {
       onSubmit: (/** @type {SubmitEvent} */ e) => {
         e.preventDefault();
         const q = input.value.trim();
-        if (q) ctx.navigate(`learn/search?q=${encodeURIComponent(q)}`);
+        if (!q) return;
+        // Kept in memory, not in the URL: searches must not end up in the browser history.
+        searchQuery = q;
+        ctx.navigate('learn/search');
       },
     },
     h('label', { class: 'sr-only', for: 'learn-search', text: t('learn.searchPlaceholder') }),
@@ -132,7 +138,7 @@ function articleView(lib, id, ctx) {
     a.consult?.length
       ? h('aside', { class: 'consult-box' }, h('h3', null, icon('stethoscope', { size: 18 }), ` ${t('learn.whenToConsult')}`), h('ul', null, a.consult.map((c) => h('li', { text: c }))))
       : null,
-    button({ label: t('learn.askLunaAbout'), icon: 'luna', variant: 'soft', full: true, onClick: () => ctx.navigate(`luna?about=${encodeURIComponent(a.id)}`) }),
+    button({ label: t('learn.askLunaAbout'), icon: 'luna', variant: 'soft', full: true, onClick: () => import('./luna.js').then((m) => m.askLuna(t('luna.askAbout', { title: a.title }), ctx.navigate)) }),
     related.length ? card({ title: t('learn.related'), children: h('div', { class: 'list' }, related.map((r) => listItem({ title: /** @type {Article} */ (r).title, href: `#/learn/article/${/** @type {Article} */ (r).id}` }))) }) : null,
     h('p', { class: 'disclaimer', text: t('learn.articleDisclaimer') }),
   );
@@ -176,7 +182,7 @@ function searchView(lib, query, ctx) {
     r.articles.length ? h('div', { class: 'list' }, r.articles.slice(0, 20).map((a) => listItem({ title: a.title, subtitle: a.summary, href: `#/learn/article/${a.id}` }))) : null,
     r.glossary.length ? card({ title: t('learn.glossary'), children: h('dl', { class: 'glossary' }, r.glossary.slice(0, 10).map((g) => [h('dt', { text: g.term }), h('dd', { text: g.def })])) }) : null,
     r.faq.length ? card({ title: t('learn.faq'), children: r.faq.slice(0, 10).map(faqItem) }) : null,
-    !total ? emptyState({ title: t('learn.noResults'), text: t('learn.noResultsText'), action: button({ label: t('learn.askLuna'), icon: 'luna', variant: 'soft', onClick: () => ctx.navigate(`luna?q=${encodeURIComponent(query)}`) }) }) : null,
+    !total ? emptyState({ title: t('learn.noResults'), text: t('learn.noResultsText'), action: button({ label: t('learn.askLuna'), icon: 'luna', variant: 'soft', onClick: () => import('./luna.js').then((m) => m.askLuna(query, ctx.navigate)) }) }) : null,
   );
 }
 

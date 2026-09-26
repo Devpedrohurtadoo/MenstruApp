@@ -5,7 +5,7 @@ import { toast } from '../../ui/toast.js';
 import { confirmDialog } from '../../ui/modal.js';
 import { updateProfile, lock, bus, deleteCurrentProfile } from '../../app.js';
 import { prepareAvatar } from '../../ui/theme.js';
-import { askCurrentSecret } from '../security-flows.js';
+import { confirmIdentity, deleteServerData } from '../security-flows.js';
 
 const AVATARS = ['🌙', '🌸', '🌷', '🌺', '🌼', '🦋', '🌿', '✨', '💜', '🌊', '🍓', '🐱'];
 
@@ -89,18 +89,12 @@ export function render(ctx) {
             onClick: async () => {
               const ok = await confirmDialog({ title: t('settings.profile.delete'), message: t('settings.profile.deleteConfirm'), confirmLabel: t('common.delete'), danger: true });
               if (!ok) return;
-              const attempt = await askCurrentSecret({ reason: t('settings.profile.deleteReauth') });
-              if (!attempt) return;
-              try {
-                const { verifyCurrentUser } = await import('../../app.js');
-                await verifyCurrentUser(attempt);
-                bus.emit('before-delete-profile');
-                const remaining = await deleteCurrentProfile();
-                toast(t('settings.profile.deleted'));
-                if (!remaining) bus.emit('add-profile');
-              } catch {
-                toast(t('lock.wrongGeneric'), { type: 'error' });
-              }
+              if (!(await confirmIdentity(t('settings.profile.deleteReauth')))) return;
+              // First the profile's server data (the keys to delete it disappear with the profile).
+              if (!(await deleteServerData('profile'))) return;
+              const remaining = await deleteCurrentProfile();
+              toast(t('settings.profile.deleted'));
+              if (!remaining) bus.emit('add-profile');
             },
           }),
         ),

@@ -94,6 +94,20 @@ async function evaluate(credentialId, salt) {
 }
 
 /**
+ * Tells the password manager that a passkey is no longer used (WebAuthn Signal API, where
+ * available), so it can remove it. There is no API to delete a passkey directly.
+ * @param {string} credentialId base64url
+ */
+export function forgetCredential(credentialId) {
+  try {
+    const PKC = /** @type {any} */ (globalThis.PublicKeyCredential);
+    PKC?.signalUnknownCredential?.({ rpId: location.hostname, credentialId })?.catch?.(() => undefined);
+  } catch {
+    /* not supported */
+  }
+}
+
+/**
  * Asks the authenticator for the PRF secret of an existing credential.
  * @param {{ credentialId: string, prfSalt: string }} lock
  */

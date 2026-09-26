@@ -50,6 +50,9 @@ export function render(ctx) {
 
 /** @param {boolean} share */
 async function exportPdf(share) {
+  // The report holds months of health data: confirm it is the owner who takes it out.
+  const { confirmIdentity } = await import('./security-flows.js');
+  if (!(await confirmIdentity(t('settings.data.exportReauth')))) return;
   const { data, derived } = store.get();
   if (!data || !derived) return;
   const blob = buildReport(data, derived, opts);

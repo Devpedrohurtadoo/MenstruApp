@@ -8,7 +8,7 @@ import { randomBytes, toB64Url, encryptJSON, fromB64Url } from '../security/cryp
 import { store } from '../app.js';
 import { api } from './api.js';
 import { getRegistration } from './sw-register.js';
-import { notificationKey, renderText, requestNotificationPermission } from './notifications.js';
+import { notificationKey, renderText, requestNotificationPermission, opaqueTag } from './notifications.js';
 import { toast } from '../ui/toast.js';
 
 /** @returns {Promise<{ token: string } | null>} */
@@ -73,14 +73,24 @@ export async function syncPushSchedule(occurrences, discreet) {
   const key = await notificationKey();
   const items = [];
   for (const o of occurrences.slice(0, 200)) {
-    const payload = await encryptJSON(key, { ...renderText(o, discreet), tag: o.key });
+    const payload = await encryptJSON(key, { ...renderText(o, discreet), tag: await opaqueTag(o.key) });
     items.push({ at: o.at, payload: JSON.stringify(payload) });
   }
   await api('/api/push/schedule', { method: 'PUT', token: c.token, body: { items } });
 }
 
+/** Deletes this device's push registration and schedule from the server. Throws on failure. */
 export async function deletePushData() {
   const c = await client();
   if (!c) return;
-  await api('/api/push', { method: 'DELETE', token: c.token }).catch(() => undefined);
+  await api('/api/push', { method: 'DELETE', token: c.token });
+  const db = store.get().db;
+  if (db) await del(db, 'meta', 'pushClient');
+}
+
+/** Empties the scheduled reminders on the server, keeping the device registered. Throws on failure. */
+export async function clearPushSchedule() {
+  const c = await client();
+  if (!c) return;
+  await api('/api/push/schedule', { method: 'PUT', token: c.token, body: { items: [] } });
 }

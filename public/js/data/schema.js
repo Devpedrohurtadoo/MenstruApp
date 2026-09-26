@@ -171,6 +171,8 @@ export const gamificationSchema = v.object({
 export const syncStateSchema = v.object({
   enabled: v.boolean(),
   secret: v.string({ pattern: /^[0-9A-Z]{52}$/, optional: true }),
+  /** Sync code whose server copy still has to be deleted (sync was turned off while offline). */
+  pendingDelete: v.string({ pattern: /^[0-9A-Z]{52}$/, optional: true }),
   lastSyncAt: v.number({ integer: true, min: 0, optional: true }),
   remoteVersion: v.number({ integer: true, min: 0, optional: true }),
 });

@@ -10,7 +10,7 @@ import { t, fmtDateTime } from '../core/i18n.js';
 import * as C from '../security/crypto.js';
 import { validate, v } from '../core/validate.js';
 import { api, ApiError } from './api.js';
-import { store, saveDoc, localRecords, applyRemoteRecords } from '../app.js';
+import { store, saveDoc, localRecords, applyRemoteRecords, sessionGuard } from '../app.js';
 import { openModal, confirmDialog } from '../ui/modal.js';
 import { button, notice } from '../ui/components.js';
 import { toast } from '../ui/toast.js';
@@ -66,18 +66,23 @@ async function upload(code, records, baseVersion) {
 }
 
 /**
- * Last-writer-wins merge per record.
+ * Last-writer-wins merge per record. A remote timestamp in the future (a device with a wrong
+ * clock, or a tampered snapshot) counts as "now": otherwise it would win every later merge and
+ * silently revert newer edits.
  * @param {any[]} local
  * @param {any[]} remote
+ * @param {number} [now]
  */
-export function mergeRecords(local, remote) {
+export function mergeRecords(local, remote, now = Date.now()) {
   /** @type {Map<string, any>} */
   const byKey = new Map();
   for (const r of local) byKey.set(`${r.kind}:${r.key}`, { rec: r, from: 'local' });
   const toApplyLocally = [];
   let remoteMissingSomething = false;
   const remoteKeys = new Set();
-  for (const r of remote) {
+  for (const original of remote) {
+    const r = original.updatedAt > now ? { ...original, updatedAt: now } : original;
+    if (r !== original) remoteMissingSomething = true; // re-upload with the corrected clock
     const k = `${r.kind}:${r.key}`;
     remoteKeys.add(k);
     const mine = byKey.get(k);
@@ -92,18 +97,39 @@ export function mergeRecords(local, remote) {
   return { merged: Array.from(byKey.values()).map((x) => x.rec), toApplyLocally, remoteNeedsUpdate: remoteMissingSomething };
 }
 
-let running = false;
+/** @type {Promise<boolean> | null} */
+let running = null;
+/** Bumped when sync is turned off or reconfigured: a sync in flight must then stop. */
+let generation = 0;
 
-/** @param {{ silent?: boolean }} [opts] */
-export async function syncNow(opts = {}) {
+/**
+ * Synchronises the open profile. A sync belongs to the session and configuration it started
+ * with: if the profile is locked/switched or sync is turned off meanwhile, it stops before
+ * touching anything (it never writes one profile's data into another).
+ * @param {{ silent?: boolean }} [opts]
+ */
+export function syncNow(opts = {}) {
+  if (running) return running;
+  running = runSync(opts).finally(() => {
+    running = null;
+  });
+  return running;
+}
+
+/** @param {{ silent?: boolean }} opts */
+async function runSync(opts) {
   const state = store.get().data?.docs.sync;
-  if (!state?.enabled || !state.secret || running || !navigator.onLine) return false;
-  running = true;
+  if (!state?.enabled || !state.secret || !navigator.onLine) return false;
+  const guard = sessionGuard();
+  const gen = generation;
+  const current = () => guard.valid && gen === generation;
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
       const remote = await fetchRemote(state.secret);
+      if (!current()) return false;
       const { merged, toApplyLocally, remoteNeedsUpdate } = mergeRecords(localRecords(), remote?.records ?? []);
-      if (toApplyLocally.length) await applyRemoteRecords(toApplyLocally);
+      if (toApplyLocally.length) await applyRemoteRecords(toApplyLocally, guard);
+      if (!current()) return false;
       let version = remote?.version ?? 0;
       if (remoteNeedsUpdate || !remote) {
         try {
@@ -113,25 +139,78 @@ export async function syncNow(opts = {}) {
           throw err;
         }
       }
-      await saveDoc('sync', { ...state, lastSyncAt: Date.now(), remoteVersion: version });
+      // Re-read the configuration: never re-enable sync or bring back an old code.
+      const latest = store.get().data?.docs.sync;
+      if (!current() || !latest?.enabled || latest.secret !== state.secret) return false;
+      await saveDoc('sync', { ...latest, lastSyncAt: Date.now(), remoteVersion: version });
       if (!opts.silent) toast(t('sync.done'), { type: 'success' });
       return true;
     }
     return false;
   } catch (err) {
+    if (!current()) return false;
     console.error('[sync]', err);
     if (!opts.silent) toast(t('sync.error'), { type: 'error' });
     return false;
-  } finally {
-    running = false;
   }
 }
 
-export async function deleteRemoteSync() {
+/**
+ * Deletes a sync snapshot from the server. Throws when the server cannot be reached.
+ * @param {string} secret
+ */
+async function deleteSnapshot(secret) {
+  const { token } = await deriveSyncKeys(secret);
+  try {
+    await api('/api/sync', { method: 'DELETE', token });
+  } catch (err) {
+    if (!(err instanceof ApiError && err.status === 404)) throw err;
+  }
+}
+
+/**
+ * Turns sync off on this device and deletes the server copy. A sync in flight is awaited first
+ * (it would otherwise re-create the copy). Offline, the deletion is retried later.
+ * @returns {Promise<boolean>} whether the server copy is already deleted
+ */
+export async function disableSync() {
+  generation++;
+  await running;
   const state = store.get().data?.docs.sync;
-  if (!state?.secret) return;
-  const { token } = await deriveSyncKeys(state.secret);
-  await api('/api/sync', { method: 'DELETE', token }).catch(() => undefined);
+  const secret = state?.secret ?? state?.pendingDelete;
+  if (!secret) {
+    await saveDoc('sync', { enabled: false });
+    return true;
+  }
+  try {
+    await deleteSnapshot(secret);
+    await saveDoc('sync', { enabled: false });
+    return true;
+  } catch {
+    await saveDoc('sync', { enabled: false, pendingDelete: secret });
+    return false;
+  }
+}
+
+/** Retries deleting a server copy left behind by turning sync off offline. */
+export async function retryPendingDeletion() {
+  const state = store.get().data?.docs.sync;
+  if (!state?.pendingDelete || !navigator.onLine) return;
+  try {
+    await deleteSnapshot(state.pendingDelete);
+    const latest = store.get().data?.docs.sync;
+    if (latest?.pendingDelete === state.pendingDelete) await saveDoc('sync', { enabled: Boolean(latest.enabled), ...(latest.secret ? { secret: latest.secret } : {}) });
+  } catch {
+    /* next time */
+  }
+}
+
+/** Deletes this profile's server copy (used by "delete profile" / "delete everything"). Throws on failure. */
+export async function deleteRemoteSync() {
+  generation++;
+  await running;
+  const state = store.get().data?.docs.sync;
+  for (const secret of new Set([state?.secret, state?.pendingDelete].filter(Boolean))) await deleteSnapshot(/** @type {string} */ (secret));
 }
 
 /** Settings dialog for enabling, linking and disabling sync. */
@@ -149,16 +228,8 @@ export function openSyncSettings() {
           variant: 'soft',
           full: true,
           onClick: async () => {
-            const { askCurrentSecret } = await import('../views/security-flows.js');
-            const attempt = await askCurrentSecret({ reason: t('sync.reauth') });
-            if (!attempt) return;
-            try {
-              const { verifyCurrentUser } = await import('../app.js');
-              await verifyCurrentUser(attempt);
-              showCode(/** @type {string} */ (state.secret));
-            } catch {
-              toast(t('lock.wrongGeneric'), { type: 'error' });
-            }
+            const { confirmIdentity } = await import('../views/security-flows.js');
+            if (await confirmIdentity(t('sync.reauth'))) showCode(/** @type {string} */ (state.secret));
           },
         }),
         button({
@@ -168,9 +239,8 @@ export function openSyncSettings() {
           onClick: async () => {
             const ok = await confirmDialog({ title: t('sync.disable'), message: t('sync.disableText'), confirmLabel: t('sync.disableConfirm'), danger: true });
             if (!ok) return;
-            await deleteRemoteSync();
-            await saveDoc('sync', { enabled: false });
-            toast(t('sync.disabled'));
+            const deleted = await disableSync();
+            toast(t(deleted ? 'sync.disabled' : 'sync.disabledOffline'), { duration: deleted ? undefined : 8000 });
             draw();
           },
         }),
@@ -190,6 +260,9 @@ export function openSyncSettings() {
         full: true,
         onClick: async () => {
           if (!consent.checked) return toast(t('sync.needConsent'), { type: 'error' });
+          // Someone holding the unlocked phone must not be able to copy the data to their devices.
+          const { confirmIdentity } = await import('../views/security-flows.js');
+          if (!(await confirmIdentity(t('sync.reauthEnable')))) return;
           const secret = newSyncCode();
           await saveDoc('sync', { enabled: true, secret });
           const ok = await syncNow({ silent: true });
@@ -211,6 +284,8 @@ export function openSyncSettings() {
         full: true,
         onClick: async () => {
           if (!consent.checked) return toast(t('sync.needConsent'), { type: 'error' });
+          const { confirmIdentity } = await import('../views/security-flows.js');
+          if (!(await confirmIdentity(t('sync.reauthEnable')))) return;
           try {
             const { code } = await deriveSyncKeys(codeInput.value);
             const remote = await fetchRemote(code);

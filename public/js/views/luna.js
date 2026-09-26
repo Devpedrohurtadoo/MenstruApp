@@ -1,10 +1,11 @@
 // Chat with Luna. Everything runs on the device; conversations are not stored or sent anywhere.
 
-import { h, replace, downloadBlob, announce, prefersReducedMotion } from '../core/dom.js';
+import { h, replace, downloadBlob, prefersReducedMotion } from '../core/dom.js';
 import { t, getLanguage, fmtDate, fmtTime, fmtDateTime } from '../core/i18n.js';
 import { diffDays, todayISO } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
-import { button, iconButton, chip } from '../ui/components.js';
+import { button, iconButton } from '../ui/components.js';
+import { toast } from '../ui/toast.js';
 import { createLuna } from '../domain/luna.js';
 import { store, bus } from '../app.js';
 import { loadLibrary } from './learn.js';
@@ -93,58 +94,95 @@ function welcome() {
   return /** @type {Message} */ ({ from: 'luna', text: [name ? t('luna.welcomeName', { name }) : t('luna.welcome'), t('luna.welcome2')], at: Date.now() });
 }
 
+/** A question to ask as soon as the chat is on screen (from "Ask Luna" buttons elsewhere). */
+let pending = '';
+/**
+ * The chat on screen. Views can re-render at any time, so answers are added to whatever chat
+ * is mounted when they arrive, never to a render that has been replaced meanwhile.
+ * @type {null | { list: HTMLElement, typing: HTMLElement, lib: import('./learn.js').Library }}
+ */
+let mounted = null;
+
+/**
+ * Opens Luna and asks a question. The question is kept in memory, never in the URL (it would
+ * end up in the browser history).
+ * @param {string} question
+ * @param {(path: string) => void} navigate
+ */
+export function askLuna(question, navigate) {
+  pending = question.trim().slice(0, 500);
+  navigate('luna');
+}
+
+/** @param {Message} m @param {import('./learn.js').Library} lib */
+function messageNode(m, lib) {
+  return h(
+    'div',
+    { class: ['msg', `msg--${m.from}`, m.urgent ? 'msg--urgent' : ''] },
+    m.from === 'luna' ? h('span', { class: 'msg__avatar', 'aria-hidden': 'true' }, icon('luna', { size: 16 })) : null,
+    h(
+      'div',
+      { class: 'msg__bubble' },
+      h('span', { class: 'sr-only', text: m.from === 'luna' ? t('luna.lunaSays') : t('luna.youSaid') }),
+      m.text.map((p) => h('p', { text: p })),
+      m.article ? linkToArticle(lib, m.article) : null,
+      m.related?.length ? h('div', { class: 'chips' }, m.related.map((label) => actionChip(label))) : null,
+      h('span', { class: 'msg__time', text: fmtTime(m.at) }),
+    ),
+  );
+}
+
+/** Suggested questions are actions (they ask), not toggles. @param {string} label */
+function actionChip(label) {
+  return h('button', { type: 'button', class: 'chip', text: label, onClick: () => ask(label) });
+}
+
+/** Adds a message; only the new node is inserted, so the live log announces just that one. @param {Message} m */
+function addMessage(m) {
+  messages.push(m);
+  const view = mounted;
+  if (!view || !view.list.isConnected) return; // the next render draws it
+  view.list.insertBefore(messageNode(m, view.lib), view.typing);
+  requestAnimationFrame(() => /** @type {HTMLElement | null} */ (view.typing.previousElementSibling)?.scrollIntoView({ block: 'end', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
+}
+
+/** @param {boolean} on */
+function setTyping(on) {
+  if (mounted) mounted.typing.hidden = !on;
+}
+
+/** @param {string} text */
+async function ask(text) {
+  const q = text.trim().slice(0, 500);
+  if (!q) return;
+  addMessage({ from: 'user', text: [q], at: Date.now() });
+  setTyping(true);
+  const luna = await engine();
+  const reply = luna.reply(q, { contextual: contextual(), name: store.get().derived?.profile.name ?? '' });
+  await new Promise((r) => setTimeout(r, prefersReducedMotion() ? 150 : 450 + Math.random() * 400));
+  setTyping(false);
+  const related = [...(reply.related ?? []), ...(reply.followUps ?? [])]
+    .map((id) => luna.intent(id)?.topic ?? '')
+    .filter((label, i, all) => label && all.indexOf(label) === i)
+    .slice(0, 3);
+  addMessage({ from: 'luna', text: reply.paragraphs, at: Date.now(), urgent: reply.urgent, article: reply.article, related });
+}
+
 /** @param {import('./shell.js').ViewContext} ctx */
 export async function render(ctx) {
   if (!messages.length) messages.push(welcome());
   const lib = await loadLibrary();
-  const list = h('div', { class: 'chat__list', role: 'log', 'aria-live': 'polite', 'aria-label': t('luna.conversation') });
+  // role="log" is a polite live region: each added message is read once, on its own.
+  const list = h('div', { class: 'chat__list', role: 'log', 'aria-label': t('luna.conversation') });
   const typing = h('div', { class: 'chat__typing', hidden: true, 'aria-hidden': 'true' }, h('span'), h('span'), h('span'));
+  list.append(...messages.map((m) => messageNode(m, lib)), typing);
+  mounted = { list, typing, lib };
+  requestAnimationFrame(() => /** @type {HTMLElement | null} */ (typing.previousElementSibling)?.scrollIntoView({ block: 'end' }));
   const input = h('textarea', { class: 'input chat__input', id: 'luna-input', rows: 1, maxLength: 500, placeholder: t('luna.placeholder'), enterKeyHint: 'send' });
-
-  const drawMessages = () => {
-    replace(
-      list,
-      messages.map((m) =>
-        h(
-          'div',
-          { class: ['msg', `msg--${m.from}`, m.urgent ? 'msg--urgent' : ''] },
-          m.from === 'luna' ? h('span', { class: 'msg__avatar', 'aria-hidden': 'true' }, icon('luna', { size: 16 })) : null,
-          h(
-            'div',
-            { class: 'msg__bubble' },
-            h('span', { class: 'sr-only', text: m.from === 'luna' ? t('luna.lunaSays') : t('luna.youSaid') }),
-            m.text.map((p) => h('p', { text: p })),
-            m.article ? linkToArticle(lib, m.article) : null,
-            m.related?.length
-              ? h('div', { class: 'chips' }, m.related.map((label) => chip({ label, selected: false, onClick: () => ask(label) })))
-              : null,
-            h('span', { class: 'msg__time', text: fmtTime(m.at) }),
-          ),
-        ),
-      ),
-    );
-    list.append(typing);
-    requestAnimationFrame(() => list.lastElementChild?.scrollIntoView({ block: 'end', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
-  };
-
-  const ask = async (/** @type {string} */ text) => {
-    const q = text.trim().slice(0, 500);
-    if (!q) return;
-    messages.push({ from: 'user', text: [q], at: Date.now() });
+  const send = () => {
+    const text = input.value;
     input.value = '';
-    drawMessages();
-    typing.hidden = false;
-    const luna = await engine();
-    const reply = luna.reply(q, { contextual: contextual(), name: store.get().derived?.profile.name ?? '' });
-    await new Promise((r) => setTimeout(r, prefersReducedMotion() ? 150 : 450 + Math.random() * 400));
-    typing.hidden = true;
-    const related = [...(reply.related ?? []), ...(reply.followUps ?? [])]
-      .map((id) => luna.intent(id)?.topic ?? '')
-      .filter((label, i, all) => label && all.indexOf(label) === i)
-      .slice(0, 3);
-    messages.push({ from: 'luna', text: reply.paragraphs, at: Date.now(), urgent: reply.urgent, article: reply.article, related });
-    drawMessages();
-    announce(reply.paragraphs[0] ?? '', reply.urgent ? 'assertive' : 'polite');
+    ask(text);
   };
 
   const suggestions = /** @type {string[]} */ (suggestionsFor(ctx.state.derived?.flags.mode ?? 'track'));
@@ -154,7 +192,7 @@ export async function render(ctx) {
       class: 'chat__form',
       onSubmit: (/** @type {SubmitEvent} */ e) => {
         e.preventDefault();
-        ask(input.value);
+        send();
       },
     },
     h('label', { class: 'sr-only', for: 'luna-input', text: t('luna.placeholder') }),
@@ -165,17 +203,14 @@ export async function render(ctx) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      ask(input.value);
+      send();
     }
   });
 
-  drawMessages();
-  const about = ctx.route.params.get('about');
-  const q = ctx.route.params.get('q');
-  if (about || q) {
-    const article = about ? lib.articles.find((a) => a.id === about) : null;
-    ctx.navigate('luna', { replace: true });
-    setTimeout(() => ask(article ? t('luna.askAbout', { title: article.title }) : /** @type {string} */ (q)), 0);
+  if (pending) {
+    const question = pending;
+    pending = '';
+    setTimeout(() => ask(question), 0);
   }
 
   return h(
@@ -183,7 +218,7 @@ export async function render(ctx) {
     { class: 'view chat' },
     h('p', { class: 'chat__privacy' }, icon('lock', { size: 14 }), h('span', { text: t('luna.privacy') })),
     list,
-    h('div', { class: 'chat__suggestions chips' }, suggestions.map((s) => chip({ label: s, selected: false, onClick: () => ask(s) }))),
+    h('div', { class: 'chat__suggestions chips' }, suggestions.map((label) => actionChip(label))),
     form,
     h(
       'div',
@@ -204,8 +239,19 @@ export async function render(ctx) {
         variant: 'ghost',
         size: 'sm',
         onClick: () => {
+          const previous = messages;
+          const redraw = () => mounted?.list.isConnected && replace(mounted.list, messages.map((m) => messageNode(m, lib)), mounted.typing);
           messages = [welcome()];
-          drawMessages();
+          redraw();
+          toast(t('luna.cleared'), {
+            action: {
+              label: t('common.undo'),
+              onClick: () => {
+                messages = previous;
+                redraw();
+              },
+            },
+          });
         },
       }),
     ),
@@ -237,4 +283,6 @@ export function cleanup() {
 
 bus.on('locked', () => {
   messages = [];
+  mounted = null;
+  pending = '';
 });

@@ -66,6 +66,7 @@ export function renderCalculator(root, onExit) {
   /** @type {string | null} */
   let op = null;
   let fresh = true;
+  let checking = false;
   const screen = h('output', { class: 'calc__display', 'aria-live': 'polite', text: display });
   let pressTimer = 0;
   screen.addEventListener('pointerdown', () => {
@@ -103,6 +104,8 @@ export function renderCalculator(root, onExit) {
       fresh = true;
     } else if (k === '=') {
       if (op === null && /^\d{4,8}$/.test(display) && profileId) {
+        if (checking) return; // one PIN check at a time
+        checking = true;
         const candidate = display;
         try {
           await unlock(profileId, { type: 'pin', secret: candidate });
@@ -110,6 +113,8 @@ export function renderCalculator(root, onExit) {
           return;
         } catch {
           /* wrong or throttled: keep behaving like a calculator */
+        } finally {
+          checking = false;
         }
       }
       if (op !== null && acc !== null) {

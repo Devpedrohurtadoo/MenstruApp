@@ -6,7 +6,7 @@ import { icon } from '../ui/icons.js';
 import { avatar, button } from '../ui/components.js';
 import { confirmDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
-import { store, unlock, getVault, lockoutStatus, wipeLockedProfile } from '../app.js';
+import { store, unlock, beginRecovery, getVault, lockoutStatus, wipeLockedProfile } from '../app.js';
 import { describeVault } from '../security/vault.js';
 import { brandMark } from './brand.js';
 
@@ -47,12 +47,17 @@ export async function renderLock(root, opts) {
     busy = true;
     render();
     try {
+      if (attempt.type === 'recovery') {
+        // The profile opens only after a new lock is saved and the used code replaced.
+        const recovery = await beginRecovery(profileId, attempt.secret);
+        clearInterval(countdown);
+        const { chooseNewLock } = await import('./security-flows.js');
+        if (await chooseNewLock(null, { forced: true, apply: (next) => recovery.saveNewLock(next) })) await recovery.open();
+        else recovery.cancel();
+        return;
+      }
       await unlock(profileId, attempt);
       clearInterval(countdown);
-      if (attempt.type === 'recovery') {
-        const { chooseNewLock } = await import('./security-flows.js');
-        await chooseNewLock(attempt, { forced: true });
-      }
     } catch (/** @type {any} */ err) {
       busy = false;
       pin = '';
@@ -185,7 +190,8 @@ export async function renderLock(root, opts) {
           },
           h('label', { class: 'field__label', for: 'recovery-input', text: t('lock.recoveryCode') }),
           input,
-          button({ label: busy ? t('lock.checking') : t('lock.unlock'), variant: 'primary', type: 'submit', full: true, busy, disabled: status.locked }),
+          // The recovery code cannot be guessed, so it stays usable while the PIN is locked out.
+          button({ label: busy ? t('lock.checking') : t('lock.unlock'), variant: 'primary', type: 'submit', full: true, busy }),
         ),
         errorEl,
         h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.backToPin'), onClick: () => { recoveryMode = false; errorMessage = ''; render(); } }), h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile })),

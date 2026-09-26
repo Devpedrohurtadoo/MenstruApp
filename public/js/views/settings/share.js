@@ -19,7 +19,15 @@ export function render(ctx) {
       children: [
         h('p', { text: t('share.intro') }),
         h('ul', { class: 'bullets' }, ['how1', 'how2', 'how3'].map((k) => h('li', { text: t(`share.${k}`) }))),
-        button({ label: t('share.create'), icon: 'link', variant: 'primary', onClick: () => createDialog(rerender) }),
+        button({
+          label: t('share.create'),
+          icon: 'link',
+          variant: 'primary',
+          onClick: async () => {
+            const { confirmIdentity } = await import('../security-flows.js');
+            if (await confirmIdentity(t('share.reauth'))) createDialog(rerender);
+          },
+        }),
       ],
     }),
     card({
@@ -41,8 +49,13 @@ export function render(ctx) {
                   onClick: async () => {
                     const ok = await confirmDialog({ title: t('share.revoke'), message: t('share.revokeText'), confirmLabel: t('share.revoke'), danger: true });
                     if (!ok) return;
-                    await revokeShare(s.id);
-                    toast(t('share.revoked'));
+                    try {
+                      await revokeShare(s.id);
+                      toast(t('share.revoked'));
+                    } catch {
+                      // Only forgotten once the server confirmed it: it can be revoked again later.
+                      toast(t('share.revokeFailed'), { type: 'error', duration: 8000 });
+                    }
                     rerender();
                   },
                 }),

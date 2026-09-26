@@ -39,11 +39,36 @@ test('recovery code unlocks and forces a new PIN', async ({ page }) => {
   // A fresh recovery code is issued because the old one was used.
   const rc = page.getByRole('dialog');
   await expect(rc.locator('.recovery-code')).toBeVisible();
+  const fresh = (await rc.locator('.recovery-code code').innerText()).trim();
+  expect(fresh).not.toBe(recovery);
   await rc.locator('input[type=checkbox]').check();
   await rc.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.locator('.tabbar')).toBeVisible();
+  // The used code is retired; the new PIN works.
   await page.reload();
+  await page.getByRole('button', { name: 'He olvidado mi PIN' }).click();
+  await page.fill('#recovery-input', /** @type {string} */ (recovery));
+  await page.getByRole('button', { name: 'Desbloquear' }).click();
+  await expect(page.locator('.lock__error')).toContainText('El código de recuperación no es correcto');
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
   await typePin(page, '9153');
   await expect(page.locator('.tabbar')).toBeVisible();
+});
+
+test('taking data out of the app (exports) asks for the PIN again', async ({ page }) => {
+  await onboard(page, { lastPeriodDaysAgo: 9 });
+  await page.goto('/#/settings/data');
+  await page.getByRole('button', { name: /Hoja de cálculo \(CSV\)/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Descargar' }).click();
+  const ask = page.getByRole('dialog');
+  await ask.locator('#reauth-secret').fill('1111');
+  await ask.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.getByText('No coincide. Inténtalo de nuevo.')).toBeVisible();
+  await page.getByRole('button', { name: /Hoja de cálculo \(CSV\)/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Descargar' }).click();
+  await page.getByRole('dialog').locator('#reauth-secret').fill('4827');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Continuar' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/\.csv$/);
 });
 
 test('logging a period, symptoms and notes; calendar and insights update', async ({ page }) => {

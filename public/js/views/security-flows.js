@@ -3,13 +3,13 @@
 
 import { h, downloadBlob, replace } from '../core/dom.js';
 import { t } from '../core/i18n.js';
-import { openModal } from '../ui/modal.js';
+import { openModal, choiceDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
 import { segmented, button } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { secretProblem } from '../security/vault.js';
 import { groupCode } from '../security/crypto.js';
-import { changeLock, store } from '../app.js';
+import { changeLock, store, verifyCurrentUser } from '../app.js';
 
 /**
  * Asks the user to confirm who they are before a sensitive change.
@@ -65,12 +65,62 @@ export function askCurrentSecret(opts) {
 }
 
 /**
- * Collects a new PIN or passphrase (entered twice) and applies it.
- * @param {{ type: any, secret?: string }} currentAttempt proof of the current identity
- * @param {{ forced?: boolean, allowNone?: boolean }} [opts]
+ * Asks for the PIN/passphrase (or biometrics) before a sensitive action and verifies it
+ * (throttled like the lock screen). Profiles without a lock pass straight through.
+ * @param {string} reason
+ * @returns {Promise<boolean>}
+ */
+export async function confirmIdentity(reason) {
+  const attempt = await askCurrentSecret({ reason });
+  if (!attempt) return false;
+  try {
+    await verifyCurrentUser(attempt);
+    return true;
+  } catch (/** @type {any} */ err) {
+    if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') return false;
+    toast(err?.throttled ? t('lock.waitSeconds', { count: Math.ceil(err.remainingMs / 1000) }) : t('lock.wrongGeneric'), { type: 'error' });
+    return false;
+  }
+}
+
+/**
+ * Deletes the open profile's data from the optional server before a local deletion. If the
+ * server cannot be reached, asks whether to retry, continue anyway or cancel.
+ * @param {'device' | 'profile'} scope see deleteRemoteData()
+ * @returns {Promise<boolean>} true to go on with the local deletion
+ */
+export async function deleteServerData(scope) {
+  const { deleteRemoteData } = await import('../pwa/services.js');
+  for (;;) {
+    const failed = await deleteRemoteData({ scope });
+    if (!failed.length) return true;
+    const choice = await choiceDialog({
+      title: t('serverCleanup.title'),
+      message: t('serverCleanup.text', { parts: failed.map((part) => t(`serverCleanup.parts.${part}`)).join(', ') }),
+      choices: [
+        { value: 'retry', label: t('common.retry'), variant: 'primary' },
+        { value: 'continue', label: t('serverCleanup.continue'), variant: 'danger' },
+        { value: 'cancel', label: t('common.cancel'), variant: 'ghost' },
+      ],
+    });
+    if (choice === 'continue') return true;
+    if (choice !== 'retry') return false;
+  }
+}
+
+/**
+ * Collects a new PIN or passphrase (entered twice) and applies it. Resolves once everything is
+ * done, including acknowledging a newly issued recovery code.
+ * @param {{ type: any, secret?: string } | null} currentAttempt proof of the current identity
+ * @param {{ forced?: boolean, allowNone?: boolean, apply?: (next: { method: 'pin' | 'passphrase' | 'none', secret?: string }) => Promise<{ recoveryCode?: string | null }> }} [opts]
+ *   `apply` replaces the default change of the open profile's lock (used by the recovery flow,
+ *   before the profile is opened).
  * @returns {Promise<boolean>}
  */
 export function chooseNewLock(currentAttempt, opts = {}) {
+  /** @type {(value: boolean) => void} */
+  let finish = () => {};
+  const finished = new Promise((resolve) => (finish = resolve));
   const info = store.get().session?.vaultInfo;
   /** @type {'pin' | 'passphrase' | 'none'} */
   let method = info?.primary === 'passphrase' ? 'passphrase' : 'pin';
@@ -113,11 +163,13 @@ export function chooseNewLock(currentAttempt, opts = {}) {
           submit.disabled = true;
           submit.textContent = t('common.saving');
           try {
-            const { recoveryCode } = await changeLock(currentAttempt, { method, secret: method === 'none' ? undefined : first.value });
+            const next = { method, secret: method === 'none' ? undefined : first.value };
+            const { recoveryCode } = opts.apply ? await opts.apply(next) : await changeLock(/** @type {any} */ (currentAttempt), next);
             done = true;
             modal.close();
             toast(t('lock.changed'), { type: 'success' });
             if (recoveryCode) await showRecoveryCode(recoveryCode, { required: true });
+            finish(true);
           } catch (err) {
             console.error(err);
             showError(t('lock.errors.changeFailed'));
@@ -164,7 +216,11 @@ export function chooseNewLock(currentAttempt, opts = {}) {
     dismissible: !opts.forced,
     initialFocus: '#new-secret',
   });
-  return modal.closed.then(() => done);
+  // Closed without saving → false; saved → true once the new recovery code (if any) was seen.
+  modal.closed.then(() => {
+    if (!done) finish(false);
+  });
+  return finished;
 }
 
 /**

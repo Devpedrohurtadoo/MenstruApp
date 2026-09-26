@@ -3,7 +3,7 @@
 // #fragment (never sent to any server). Links expire and can be revoked at any time.
 
 import * as C from '../security/crypto.js';
-import { api } from './api.js';
+import { api, ApiError } from './api.js';
 import { store, saveDoc } from '../app.js';
 import { addDays } from '../core/dates.js';
 import { frequencies } from '../domain/insights.js';
@@ -12,7 +12,8 @@ import { getLanguage } from '../core/i18n.js';
 /** @typedef {'predictions' | 'cycles' | 'symptoms' | 'notes'} ShareScope */
 
 /**
- * Builds the limited, read-only snapshot for the chosen scopes.
+ * Builds the limited, read-only snapshot for the chosen scopes. It contains exactly what the
+ * shared page shows for those scopes and nothing else (no mode, moods or other fields).
  * @param {ShareScope[]} scope
  * @param {{ includeName: boolean }} opts
  */
@@ -21,28 +22,24 @@ export function buildShareSnapshot(scope, opts) {
   if (!data || !derived) throw new Error('locked');
   const a = derived.analysis;
   /** @type {Record<string, any>} */
-  const snap = { v: 1, createdAt: Date.now(), lang: getLanguage(), mode: derived.settings.mode };
+  const snap = { v: 1, createdAt: Date.now(), lang: getLanguage() };
   if (opts.includeName && derived.profile.name) snap.name = derived.profile.name;
   if (scope.includes('predictions') && a.prediction) {
     snap.predictions = {
       nextPeriodStart: a.prediction.nextPeriodStart,
       margin: a.prediction.margin,
-      periodLength: a.prediction.periodLength,
       phaseToday: a.current?.phase ?? null,
-      cycleDay: a.current?.cycleDay ?? null,
       fertile: derived.flags.fertility ? { start: a.prediction.fertileStart, end: a.prediction.fertileEnd } : null,
       asOf: derived.today,
     };
   }
   if (scope.includes('cycles')) {
     snap.cycles = a.cycles.slice(-12).map((c) => ({ start: c.start, length: c.length, periodLength: c.periodLength }));
-    snap.stats = { cycle: a.stats.cycle, period: a.stats.period };
+    if (a.stats.cycle) snap.stats = { cycle: { mean: a.stats.cycle.mean } };
   }
   if (scope.includes('symptoms')) {
     const f = frequencies(data.days, addDays(derived.today, -90), derived.today);
-    snap.symptoms = f.symptoms.slice(0, 12);
-    snap.moods = f.moods.slice(0, 8);
-    snap.loggedDays = f.loggedDays;
+    snap.symptoms = f.symptoms.slice(0, 12).map((x) => ({ id: x.id, count: x.count }));
   }
   if (scope.includes('notes')) {
     snap.notes = Object.keys(data.days)
@@ -78,15 +75,52 @@ export function shareUrl(item) {
   return `${location.origin}/share.html#${item.id}.${item.key}`;
 }
 
-/** @param {string} id */
-export async function revokeShare(id) {
-  const items = store.get().data?.docs.shares?.items ?? [];
-  const item = items.find((/** @type {{ id: string }} */ s) => s.id === id);
-  if (item) await api(`/api/share/${encodeURIComponent(id)}`, { method: 'DELETE', token: item.deleteToken }).catch(() => undefined);
-  await saveDoc('shares', { items: items.filter((/** @type {{ id: string }} */ s) => s.id !== id) });
+/**
+ * Deletes a link on the server. Resolves when it is gone (also if it had already expired);
+ * throws otherwise — the local copy of its delete token must then be kept to retry.
+ * @param {{ id: string, deleteToken: string }} item
+ */
+async function deleteOnServer(item) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await api(`/api/share/${encodeURIComponent(item.id)}`, { method: 'DELETE', token: item.deleteToken });
+      return;
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 410)) return;
+      if (err instanceof ApiError && err.status === 429 && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
+/**
+ * Revokes one link. The link is only forgotten locally once the server confirmed it is gone.
+ * @param {string} id
+ */
+export async function revokeShare(id) {
+  const item = (store.get().data?.docs.shares?.items ?? []).find((/** @type {{ id: string }} */ s) => s.id === id);
+  if (item) await deleteOnServer(item);
+  const latest = store.get().data?.docs.shares?.items ?? [];
+  await saveDoc('shares', { items: latest.filter((/** @type {{ id: string }} */ s) => s.id !== id) });
+}
+
+/** Revokes every link; the ones that could not be deleted stay listed. Throws if any failed. */
 export async function revokeAllShares() {
   const items = store.get().data?.docs.shares?.items ?? [];
-  for (const item of items) await api(`/api/share/${encodeURIComponent(item.id)}`, { method: 'DELETE', token: item.deleteToken }).catch(() => undefined);
+  /** @type {string[]} */
+  const done = [];
+  for (const item of items) {
+    try {
+      await deleteOnServer(item);
+      done.push(item.id);
+    } catch {
+      /* keep it to retry */
+    }
+  }
+  const latest = store.get().data?.docs.shares?.items ?? [];
+  await saveDoc('shares', { items: latest.filter((/** @type {{ id: string }} */ s) => !done.includes(s.id)) });
+  if (done.length < items.length) throw new Error('share-revoke-failed');
 }

@@ -158,7 +158,7 @@ export async function importAppleHealth(file, onProgress) {
       const day = (days[start] = days[start] ?? {});
       if (type === 'HKCategoryTypeIdentifierMenstrualFlow') {
         const key = val.replace(/^HKCategoryValue(MenstrualFlow|VaginalBleeding)/, '');
-        if (HK_FLOW[key]) {
+        if (Object.hasOwn(HK_FLOW, key)) {
           day.flow = HK_FLOW[key];
           records++;
         }
@@ -179,7 +179,7 @@ export async function importAppleHealth(file, onProgress) {
         records++;
       } else if (type === 'HKCategoryTypeIdentifierCervicalMucusQuality') {
         const key = val.replace(/^HKCategoryValueCervicalMucusQuality/, '');
-        if (HK_MUCUS[key]) {
+        if (Object.hasOwn(HK_MUCUS, key)) {
           day.mucus = HK_MUCUS[key];
           records++;
         }

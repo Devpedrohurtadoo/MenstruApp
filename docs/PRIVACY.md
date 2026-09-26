@@ -12,13 +12,16 @@ Menstruapp sigue el principio de **privacidad por diseño y por defecto** (art. 
 | Lista de perfiles (apodo, emoji) | IndexedDB | No (se muestra en la pantalla de bloqueo; se puede ocultar en pantalla) | Mientras exista el perfil |
 | Preferencias visuales (idioma, tema, color, fondo, tamaño de texto) | `localStorage` | No (no contienen datos de salud) | Hasta «Borrar todo» |
 | Imagen de fondo elegida | IndexedDB | No (preferencia visual previa al desbloqueo) | Hasta que se quite |
-| Textos de los próximos recordatorios | IndexedDB | Sí, con una clave del dispositivo no extraíble | Se regeneran continuamente |
+| Textos de los próximos recordatorios | IndexedDB | Sí, con una clave del dispositivo no extraíble (tienen que poder mostrarse con la app bloqueada) | Se regeneran continuamente |
+| Hora de los próximos recordatorios y lista de los ya mostrados | IndexedDB | No; identificadores opacos que no dicen de qué trata cada aviso | Se regeneran continuamente |
 | Conversaciones con Luna | Solo en memoria | — | Se borran al bloquear |
 | **Servidor (opcional)** sincronización | Netlify Blobs | Sí, clave derivada del código de sincronización que solo tiene la usuaria | Se borra al desactivarla, con «Borrar todo» o tras 400 días sin uso |
 | **Servidor (opcional)** recordatorios push | Netlify Blobs | Texto cifrado en el dispositivo; se guardan la suscripción push y la hora de cada aviso | Se borra al desactivarlo; limpieza tras 90 días sin actividad |
 | **Servidor (opcional)** enlaces compartidos | Netlify Blobs | Sí, la clave solo está en el enlace | Máximo 30 días; revocables |
 
 **No existen**: cuentas, correos, contraseñas en servidor, analíticas, publicidad, huellas del navegador, geolocalización, contactos, ni peticiones a terceros.
+
+**Historial del navegador**: como en cualquier web, el navegador recuerda las secciones visitadas (por ejemplo, el artículo que se ha leído). La app nunca pone en la dirección búsquedas, preguntas a Luna ni datos, y el título de la pestaña solo nombra la sección. Quien necesite discreción total puede instalar la app y borrar el historial del navegador.
 
 ## Bases legales (RGPD)
 

@@ -9,7 +9,7 @@
 import { t, fmtDate } from '../core/i18n.js';
 import { isISODate } from '../core/dates.js';
 import { get, put, clearStore, putMany } from '../data/idb.js';
-import { generateAesKey, encryptJSON } from '../security/crypto.js';
+import { generateAesKey, encryptJSON, toB64Url } from '../security/crypto.js';
 import { store } from '../app.js';
 import { getRegistration } from './sw-register.js';
 
@@ -39,6 +39,28 @@ export async function notificationKey() {
     await put(db, 'meta', key, 'notifKey');
   }
   return /** @type {CryptoKey} */ (key);
+}
+
+/** Device key (HMAC, non-extractable) for opaque reminder tags. */
+async function tagKey() {
+  const db = store.get().db;
+  if (!db) throw new Error('db');
+  let key = await get(db, 'meta', 'notifTagKey');
+  if (!key) {
+    key = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    await put(db, 'meta', key, 'notifTagKey');
+  }
+  return /** @type {CryptoKey} */ (key);
+}
+
+/**
+ * Stable but opaque id of a reminder occurrence: what is stored in clear (row ids, the list of
+ * reminders already shown) never names the reminder ("pregnancy_week:2026-09-29" → "r3fQ…").
+ * @param {string} occurrenceKey
+ */
+export async function opaqueTag(occurrenceKey) {
+  const sig = await crypto.subtle.sign('HMAC', await tagKey(), new TextEncoder().encode(occurrenceKey));
+  return `r${toB64Url(new Uint8Array(sig).subarray(0, 16))}`;
 }
 
 /**
@@ -79,9 +101,14 @@ export async function scheduleLocal(occurrences, discreet) {
   timers = [];
   const key = await notificationKey();
   const rows = [];
+  /** @type {Map<string, string>} */
+  const tags = new Map();
   for (const o of occurrences.slice(0, 300)) {
     const text = renderText(o, discreet);
-    rows.push({ id: o.key, at: o.at, date: o.date, dateOnly: DATE_ONLY.has(o.type), payload: await encryptJSON(key, { ...text, tag: o.key }) });
+    const tag = await opaqueTag(o.key);
+    tags.set(o.key, tag);
+    // In clear only what the service worker needs to know *when* to show it.
+    rows.push({ id: tag, at: o.at, date: o.date, dateOnly: DATE_ONLY.has(o.type), payload: await encryptJSON(key, { ...text, tag }) });
   }
   await clearStore(db, 'notifications');
   if (rows.length) await putMany(db, 'notifications', rows);
@@ -89,9 +116,10 @@ export async function scheduleLocal(occurrences, discreet) {
   const now = Date.now();
   for (const o of occurrences) {
     const delay = o.at - now;
-    if (delay <= 0 || delay > 24 * 3600_000) continue;
+    const tag = tags.get(o.key);
+    if (!tag || delay <= 0 || delay > 24 * 3600_000) continue;
     const text = renderText(o, discreet);
-    timers.push(setTimeout(() => show(text.title, text.body, o.key), delay));
+    timers.push(setTimeout(() => show(text.title, text.body, tag), delay));
   }
   registerPeriodicSync();
 }
@@ -111,11 +139,20 @@ async function show(title, body, tag) {
   const db = store.get().db;
   // The service worker may already have shown this one (periodic sync / push): never duplicate.
   if (db && tag !== 'menstruapp-test') {
-    const shown = /** @type {string[]} */ ((await get(db, 'meta', 'notifShown')) ?? []);
+    // (Entries with ":" are readable tags from older versions: drop them.)
+    const shown = /** @type {string[]} */ ((await get(db, 'meta', 'notifShown')) ?? []).filter((x) => !x.includes(':'));
     if (shown.includes(tag)) return;
     await put(db, 'meta', [...shown, tag].slice(-300), 'notifShown');
   }
   await reg.showNotification(title, { body, tag, icon: '/assets/icons/icon-192.png', badge: '/assets/icons/badge-96.png', data: { url: '/#/home' } });
+}
+
+/** Stops this page's reminder timers and forgets the stored reminders (e.g. profile deleted). */
+export async function clearLocalReminders() {
+  timers.forEach(clearTimeout);
+  timers = [];
+  const db = store.get().db;
+  if (db) await clearStore(db, 'notifications');
 }
 
 export async function testNotification() {

@@ -249,8 +249,10 @@ export function toBase32(bytes) {
  */
 export function normalizeBase32(input) {
   return String(input)
+    .normalize('NFKC') // full-width letters/digits → ASCII
     .toUpperCase()
-    .replace(/[\s-]/g, '')
+    // spaces, any dash (typographic ones too) and invisible format characters (zero-width…)
+    .replace(/[\s\p{Pd}\p{Cf}]/gu, '')
     .replace(/[IL]/g, '1')
     .replace(/O/g, '0');
 }

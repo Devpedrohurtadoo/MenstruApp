@@ -47,6 +47,8 @@ export async function startServices() {
       if (e?.kind !== 'sync') scheduleSync();
     });
     bus.on('day-changed', () => scheduleReminders());
+    // A deleted profile's reminders must not keep firing on this device.
+    bus.on('profile-deleted', () => import('./notifications.js').then((m) => m.clearLocalReminders()).catch(() => undefined));
     bus.on('prefs-changed', () => scheduleReminders());
     bus.on('locked', () => {
       scheduleSync.flush();
@@ -54,14 +56,21 @@ export async function startServices() {
     window.addEventListener('online', async () => {
       await detectServer();
       scheduleSync();
+      retryServerCleanup();
     });
   }
   await detectServer();
   await refreshReminders();
+  retryServerCleanup();
   if (store.get().server.sync && store.get().data?.docs.sync?.enabled) {
     const { syncNow } = await import('./sync.js');
     syncNow({ silent: true });
   }
+}
+
+/** Finishes server deletions that could not be done offline (e.g. turning sync off). */
+function retryServerCleanup() {
+  if (store.get().data?.docs.sync?.pendingDelete) import('./sync.js').then((m) => m.retryPendingDeletion()).catch(() => undefined);
 }
 
 async function detectServer() {
@@ -70,11 +79,30 @@ async function detectServer() {
   store.set({ server: { checked: true, ...features } });
 }
 
-/** Removes everything this device stored on the optional backend (push, sync, shares). */
-export async function deleteRemoteData() {
-  const tasks = [];
-  tasks.push(import('./push.js').then((m) => m.deletePushData()));
-  if (store.get().data?.docs.sync?.enabled) tasks.push(import('./sync.js').then((m) => m.deleteRemoteSync()));
-  if (store.get().data?.docs.shares?.items?.length) tasks.push(import('./share.js').then((m) => m.revokeAllShares()));
-  await Promise.allSettled(tasks);
+/**
+ * Removes what the open profile stored on the optional backend: its sync copy and share links,
+ * plus this device's push registration (`scope: 'device'`) or only the profile's scheduled
+ * push reminders (`scope: 'profile'`, other profiles keep using push). Other, locked profiles'
+ * server data cannot be reached without their keys: it expires on its own.
+ * @param {{ scope: 'device' | 'profile' }} opts
+ * @returns {Promise<Array<'push' | 'sync' | 'share'>>} the parts that could not be deleted
+ */
+export async function deleteRemoteData(opts) {
+  /** @type {Array<'push' | 'sync' | 'share'>} */
+  const failed = [];
+  /** @param {'push' | 'sync' | 'share'} part @param {() => Promise<unknown>} fn */
+  const attempt = async (part, fn) => {
+    try {
+      await fn();
+    } catch (err) {
+      console.warn(`[server-cleanup] ${part}`, err);
+      failed.push(part);
+    }
+  };
+  const push = await import('./push.js');
+  await attempt('push', () => (opts.scope === 'device' ? push.deletePushData() : push.clearPushSchedule()));
+  const sync = store.get().data?.docs.sync;
+  if (sync?.enabled || sync?.pendingDelete) await attempt('sync', () => import('./sync.js').then((m) => m.deleteRemoteSync()));
+  if (store.get().data?.docs.shares?.items?.length) await attempt('share', () => import('./share.js').then((m) => m.revokeAllShares()));
+  return failed;
 }

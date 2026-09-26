@@ -188,6 +188,37 @@ export function confirmDialog(opts) {
 }
 
 /**
+ * A question with several answers (e.g. retry / continue anyway / cancel).
+ * @param {{ title: string, message: string, choices: Array<{ value: string, label: string, variant?: 'primary' | 'danger' | 'ghost' | 'soft' }> }} opts
+ * @returns {Promise<string | null>} the chosen value, or null when dismissed
+ */
+export function choiceDialog(opts) {
+  /** @type {string | null} */
+  let chosen = null;
+  const handle = openModal({
+    title: opts.title,
+    variant: 'dialog',
+    content: h('p', { class: 'modal__message', text: opts.message }),
+    footer: h(
+      'div',
+      { class: 'btn-row btn-row--stack' },
+      opts.choices.map((c) =>
+        h('button', {
+          type: 'button',
+          class: ['btn', `btn--${c.variant ?? 'soft'}`],
+          text: c.label,
+          onClick: () => {
+            chosen = c.value;
+            handle.close({ result: c.value });
+          },
+        }),
+      ),
+    ),
+  });
+  return handle.closed.then(() => chosen);
+}
+
+/**
  * Asks for a secret (password) without ever echoing it in the DOM, or, with `plain`, for a
  * visible typed confirmation (e.g. "type DELETE").
  * @param {{ title: string, label: string, hint?: string, confirmLabel?: string, minLength?: number, autocomplete?: string, plain?: boolean, account?: string }} opts
