@@ -6,7 +6,7 @@ import { upcomingOccurrences, contraceptionAction, repeatDates } from '../../pub
 import { loggingStreak, newAchievements } from '../../public/js/domain/streaks.js';
 import { createLuna, normalize } from '../../public/js/domain/luna.js';
 import { modeFlags } from '../../public/js/domain/modes.js';
-import { addDays, diffDays, localTimestamp } from '../../public/js/core/dates.js';
+import { addDays, diffDays, localTimestamp, ageFromProfile } from '../../public/js/core/dates.js';
 
 function periodsEvery(first, len, count, periodLength = 5) {
   const days = {};
@@ -32,6 +32,18 @@ describe('notices', () => {
     expect(adult).toContain('longCycles');
     const teen = computeNotices(a, days, { ...baseCtx, age: 15, today: '2024-06-20' }).map((n) => n.id);
     expect(teen).not.toContain('irregular');
+  });
+
+  it('treats someone who may still be 17 as a teenager, and someone who may be 35 as 35 or older', () => {
+    // Born in December 2008: 17 on 2026-01-10 (the app only knows the year).
+    const teen = ageFromProfile({ birthYear: 2008 }, '2026-01-10');
+    expect(teen).toBe(17);
+    const days = { ...periodsEvery('2024-01-01', 21, 2), ...periodsEvery('2024-02-12', 45, 3) };
+    const a = analyze(days, { today: '2024-06-20', settings: {} });
+    expect(computeNotices(a, days, { ...baseCtx, age: teen, today: '2024-06-20' }).map((n) => n.id)).not.toContain('irregular');
+    // Born in 1991: 34 or 35 on 2026-01-10 → ask for help after 6 months.
+    const help = computeNotices(analyze({}, { today: '2026-01-10' }), {}, { ...baseCtx, mode: 'conceive', age: ageFromProfile({ birthYear: 1991 }, '2026-01-10'), modeSince: '2025-07-01', today: '2026-01-10' });
+    expect(help.find((n) => n.id === 'conceiveHelp')?.params).toEqual({ count: 6 });
   });
 
   it('suggests a pregnancy test when late after unprotected sex', () => {
@@ -171,6 +183,13 @@ describe('pregnancy', () => {
     expect(pregnancyInfo({ basis: 'due', date: '2024-10-07' }, '2024-03-11').lmp).toBe('2024-01-01');
     expect(pregnancyInfo({ basis: 'conception', date: '2024-01-15' }, '2024-03-11').lmp).toBe('2024-01-01');
     expect(pregnancyInfo({ basis: 'lmp', date: '2024-01-01' }, '2024-08-01').trimester).toBe(3);
+  });
+
+  it('flags impossible dates instead of showing negative weeks', () => {
+    // A due date 304 days away puts the LMP 24 days in the future.
+    expect(pregnancyInfo({ basis: 'due', date: '2025-06-01' }, '2024-08-01')).toMatchObject({ weeks: 0, days: 0, progress: 0, valid: false, issue: 'future' });
+    expect(pregnancyInfo({ basis: 'lmp', date: '2023-01-01' }, '2024-03-01')).toMatchObject({ weeks: 44, days: 0, valid: false, issue: 'tooLong', overdue: true });
+    expect(pregnancyInfo({ basis: 'lmp', date: '2024-01-01' }, '2024-03-11')).toMatchObject({ valid: true, issue: null, overdue: false });
   });
 
   it('recognises the 5-1-1 contraction pattern', () => {

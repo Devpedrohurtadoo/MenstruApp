@@ -33,6 +33,9 @@ export function pregnancyExclusions(preg, active, settings, today) {
   return { excludeRanges, nonMenstrual };
 }
 
+/** No pregnancy lasts longer than this: beyond it the dates (or the mode) need updating. */
+export const MAX_GESTATION_DAYS = 44 * 7;
+
 /**
  * @param {{ basis: 'lmp' | 'due' | 'conception', date: string }} preg
  * @param {string} today
@@ -40,7 +43,10 @@ export function pregnancyExclusions(preg, active, settings, today) {
 export function pregnancyInfo(preg, today) {
   const lmp = preg.basis === 'lmp' ? preg.date : preg.basis === 'due' ? addDays(preg.date, -PREGNANCY_DAYS) : addDays(preg.date, -14);
   const dueDate = addDays(lmp, PREGNANCY_DAYS);
-  const gaDays = diffDays(lmp, today);
+  const elapsed = diffDays(lmp, today);
+  // Impossible dates (an LMP after today, or more than 44 weeks ago) are flagged, and the
+  // gestational age is kept within 0+0 and 44+0 so that nothing shows "-2+4 weeks".
+  const gaDays = Math.min(MAX_GESTATION_DAYS, Math.max(0, elapsed));
   const weeks = Math.floor(gaDays / 7);
   const days = gaDays - weeks * 7;
   /** @type {1 | 2 | 3} */
@@ -53,9 +59,11 @@ export function pregnancyInfo(preg, today) {
     days,
     trimester,
     daysToDue: diffDays(today, dueDate),
-    progress: Math.min(1, Math.max(0, gaDays / PREGNANCY_DAYS)),
-    valid: gaDays >= 0 && gaDays <= 44 * 7,
-    overdue: gaDays > PREGNANCY_DAYS,
+    progress: Math.min(1, gaDays / PREGNANCY_DAYS),
+    valid: elapsed >= 0 && elapsed <= MAX_GESTATION_DAYS,
+    /** Why the dates look impossible: 'future' (LMP after today) or 'tooLong' (more than 44 weeks). */
+    issue: /** @type {null | 'future' | 'tooLong'} */ (elapsed < 0 ? 'future' : elapsed > MAX_GESTATION_DAYS ? 'tooLong' : null),
+    overdue: elapsed > PREGNANCY_DAYS,
     /** Week number used for weekly notes (clamped to the content we have). */
     noteWeek: Math.min(42, Math.max(4, weeks)),
   };

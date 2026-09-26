@@ -163,7 +163,9 @@ export function isTime(hhmm) {
 }
 
 /**
- * Whole years between a birth date/year and a reference date.
+ * Age in whole years on a reference date. Only the birth year is known, and the birthday may not
+ * have come yet this year: the youngest possible age is returned (the oldest is one more), so
+ * guidance for teenagers is never withheld from someone who may still be 17.
  * @param {{ birthYear?: number | null }} profile
  * @param {string} today
  * @returns {number | null}
@@ -171,5 +173,5 @@ export function isTime(hhmm) {
 export function ageFromProfile(profile, today) {
   if (!profile?.birthYear) return null;
   const [y] = parts(today);
-  return y - profile.birthYear;
+  return Math.max(0, y - profile.birthYear - 1);
 }
