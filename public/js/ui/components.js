@@ -295,11 +295,11 @@ export function field(o) {
 }
 
 /**
- * @param {{ title?: string, icon?: string, tone?: string, children?: any, action?: Node | null, class?: string, headingLevel?: 2 | 3 }} o
+ * @param {{ title?: string, icon?: string, tone?: string, children?: any, action?: Node | null, class?: string, headingLevel?: 1 | 2 | 3 }} o
  *   Cards are the sections of a screen whose title (in the top bar) is the h1: h2 by default.
  */
 export function card(o) {
-  const tag = o.headingLevel === 3 ? 'h3' : 'h2';
+  const tag = /** @type {'h1' | 'h2' | 'h3'} */ (`h${o.headingLevel ?? 2}`);
   return h(
     'section',
     { class: ['card', o.tone ? `card--${o.tone}` : '', o.class ?? ''] },

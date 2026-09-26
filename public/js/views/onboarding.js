@@ -105,8 +105,18 @@ export function renderOnboarding(root, opts) {
           render();
         },
       });
-      const consent = h('input', { type: 'checkbox', id: 'consent', checked: s.consent, onChange: (/** @type {Event} */ e) => { s.consent = /** @type {HTMLInputElement} */ (e.target).checked; startBtn.disabled = !s.consent; } });
-      const startBtn = button({ label: t('onboarding.start'), variant: 'primary', size: 'lg', full: true, disabled: !s.consent, onClick: () => go(1) });
+      const consentHint = h('p', { class: 'muted small', id: 'consent-hint', hidden: s.consent, text: t('onboarding.consentHint') });
+      const consent = h('input', {
+        type: 'checkbox',
+        id: 'consent',
+        checked: s.consent,
+        onChange: (/** @type {Event} */ e) => {
+          s.consent = /** @type {HTMLInputElement} */ (e.target).checked;
+          startBtn.disabled = !s.consent;
+          consentHint.hidden = s.consent;
+        },
+      });
+      const startBtn = button({ label: t('onboarding.start'), variant: 'primary', size: 'lg', full: true, disabled: !s.consent, attrs: { 'aria-describedby': 'consent-hint' }, onClick: () => go(1) });
       return {
         title: t('onboarding.welcomeTitle'),
         body: [
@@ -130,15 +140,12 @@ export function renderOnboarding(root, opts) {
                 action: toggle({ label: t('onboarding.legacyImport'), checked: s.importLegacy, onChange: (v) => (s.importLegacy = v) }),
               })
             : null,
-          h(
-            'label',
-            { class: 'check', for: 'consent' },
-            consent,
-            h('span', null, t('onboarding.consent'), ' ', h('button', { type: 'button', class: 'link-btn', text: t('onboarding.readPolicy'), onClick: () => openModal({ title: t('legal.privacyTitle'), content: privacyPolicy(), variant: 'full' }) })),
-          ),
+          // One whole sentence (no pieces glued together) and the policy link outside the label.
+          h('label', { class: 'check', for: 'consent' }, consent, h('span', { text: t('onboarding.consent') })),
+          h('button', { type: 'button', class: 'link-btn', text: t('onboarding.readPolicy'), onClick: () => openModal({ title: t('legal.privacyTitle'), content: privacyPolicy(), variant: 'full' }) }),
           h('p', { class: 'muted small', text: t('onboarding.disclaimer') }),
         ],
-        footer: [startBtn],
+        footer: [startBtn, consentHint],
       };
     },
 

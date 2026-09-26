@@ -70,7 +70,7 @@ export function installCard(o = {}) {
         h(
           'ol',
           { class: 'steps-list' },
-          h('li', null, t('install.ios1'), ' ', h('span', { class: 'inline-icon', 'aria-label': t('install.shareIcon') }, icon('share-2', { size: 16 }))),
+          h('li', null, t('install.ios1'), ' ', h('span', { class: 'inline-icon', role: 'img', 'aria-label': t('install.shareIcon') }, icon('share-2', { size: 16 }))),
           h('li', { text: t('install.ios2') }),
           h('li', { text: t('install.ios3') }),
         ),

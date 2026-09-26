@@ -5,3 +5,4 @@ package-lock.json
 .scratch/
 playwright-report/
 test-results/
+.claude/

@@ -237,7 +237,7 @@ export function showRecoveryCode(code, opts = {}) {
     'div',
     { class: 'stack' },
     h('p', { text: t('recovery.explain') }),
-    h('div', { class: 'recovery-code', 'aria-label': t('recovery.codeLabel') }, h('code', { text: grouped })),
+    h('div', { class: 'recovery-code', role: 'group', 'aria-label': t('recovery.codeLabel') }, h('code', { text: grouped })),
     h(
       'div',
       { class: 'btn-row' },
@@ -258,7 +258,7 @@ export function showRecoveryCode(code, opts = {}) {
         label: t('common.download'),
         icon: 'download',
         variant: 'soft',
-        onClick: () => downloadBlob(new Blob([`${t('recovery.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), 'menstruapp-codigo-recuperacion.txt'),
+        onClick: () => downloadBlob(new Blob([`${t('recovery.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), `${t('files.recoveryCode')}.txt`),
       }),
     ),
     h('p', { class: 'muted small' }, icon('info', { size: 14 }), ' ', t('recovery.warning')),

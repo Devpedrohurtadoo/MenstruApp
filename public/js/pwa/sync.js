@@ -319,7 +319,7 @@ function showCode(code) {
         'div',
         { class: 'btn-row' },
         button({ label: t('common.copy'), icon: 'copy', variant: 'soft', onClick: () => navigator.clipboard.writeText(grouped).then(() => toast(t('common.copied'), { type: 'success' }), () => toast(t('common.copyFailed'), { type: 'error' })) }),
-        button({ label: t('common.download'), icon: 'download', variant: 'soft', onClick: () => downloadBlob(new Blob([`${t('sync.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), 'menstruapp-codigo-sincronizacion.txt') }),
+        button({ label: t('common.download'), icon: 'download', variant: 'soft', onClick: () => downloadBlob(new Blob([`${t('sync.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), `${t('files.syncCode')}.txt`) }),
       ),
       notice({ level: 'consult', title: t('sync.codeWarningTitle'), text: t('sync.codeWarning') }),
     ),

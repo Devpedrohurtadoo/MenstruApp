@@ -18,6 +18,7 @@ let loadSeq = 0;
 
 async function main() {
   const seq = ++loadSeq;
+  document.title = `${t('shareView.title')} · Menstruapp`;
   // Another link opened meanwhile (see the hashchange listener): drop this older one.
   const stale = () => seq !== loadSeq;
   setLanguage(detectLanguage());

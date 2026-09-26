@@ -17,7 +17,7 @@ const HTML_SINKS = [
 
 export default [
   {
-    ignores: ['node_modules/', 'coverage/', 'test-results/', 'playwright-report/', '.scratch/', 'public/js/ui/icon-data.js'],
+    ignores: ['node_modules/', 'coverage/', 'test-results/', 'playwright-report/', '.scratch/', '.claude/', 'public/js/ui/icon-data.js'],
   },
   js.configs.recommended,
   {

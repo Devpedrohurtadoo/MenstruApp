@@ -5,6 +5,7 @@ import { t, fmtDate, fmtTime, getLanguage, fmtNumber } from '../core/i18n.js';
 import { todayISO } from '../core/dates.js';
 import { card, button, emptyState, notice, progressBar } from '../ui/components.js';
 import { toast } from '../ui/toast.js';
+import { confirmDialog } from '../ui/modal.js';
 import { saveDoc } from '../app.js';
 import { contractionStats, lastKickSession } from '../domain/pregnancy.js';
 
@@ -154,7 +155,19 @@ export async function render(ctx) {
             }),
           )
         : null,
-      recentContractions.length ? button({ label: t('pregnancy.contractions.clear'), variant: 'ghost', size: 'sm', onClick: async () => { await savePreg({ contractions: [] }); rerender(); } }) : null,
+      recentContractions.length
+        ? button({
+            label: t('pregnancy.contractions.clear'),
+            variant: 'ghost',
+            size: 'sm',
+            onClick: async () => {
+              const ok = await confirmDialog({ title: t('pregnancy.contractions.clear'), message: t('pregnancy.contractions.clearText'), confirmLabel: t('common.delete'), danger: true });
+              if (!ok) return;
+              await savePreg({ contractions: [] });
+              rerender();
+            },
+          })
+        : null,
       h('p', { class: 'muted small', text: t('pregnancy.contractions.note') }),
     ],
   });

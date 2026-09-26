@@ -59,6 +59,12 @@ export default {
     updateReady: 'Hay una nueva versión disponible.',
   },
 
+  files: {
+    report: 'menstruapp-informe',
+    recoveryCode: 'menstruapp-codigo-recuperacion',
+    syncCode: 'menstruapp-codigo-sincronizacion',
+  },
+
   fatal: {
     title: 'No podemos abrir Menstruapp',
     crypto: 'Tu navegador no ofrece el cifrado seguro que necesitamos para proteger tus datos. Actualízalo o prueba con uno reciente (Chrome, Safari, Firefox o Edge).',
@@ -152,8 +158,9 @@ export default {
     promise3: 'Funciona sin conexión, como una app instalada.',
     promise4: 'Información de salud fiable, clara y sin juicios.',
     language: 'Idioma',
-    consent: 'He leído y acepto la',
-    readPolicy: 'política de privacidad',
+    consent: 'He leído y acepto la política de privacidad.',
+    consentHint: 'Marca la casilla de la política de privacidad para empezar.',
+    readPolicy: 'Leer la política de privacidad',
     disclaimer: 'Menstruapp no sustituye el consejo médico. Ante cualquier síntoma que te preocupe, consulta con un profesional sanitario.',
     start: 'Empezar',
     legacyTitle: { one: 'Hemos encontrado 1 día registrado de una versión anterior', other: 'Hemos encontrado {count} días registrados de una versión anterior' },
@@ -957,6 +964,7 @@ export default {
       patternText: 'Tus contracciones parecen regulares y frecuentes (cada 5 minutos o menos, de 1 minuto, durante 1 hora). Contacta con tu maternidad según te indicaron.',
       note: 'Ante rotura de la bolsa, sangrado, fiebre o menos movimientos, acude sin esperar al patrón de contracciones.',
       clear: 'Borrar historial',
+      clearText: 'Se borrarán todas las contracciones cronometradas. No se puede deshacer.',
     },
   },
 
@@ -1000,7 +1008,7 @@ export default {
     meanRange: 'Media {mean} d (rango {min}–{max}, DE {sd})',
     lastPeriod: 'Última regla',
     nextPeriod: 'Próxima regla estimada',
-    predicted: '{date} (± {margin} días)',
+    predicted: '{date} (± {margin} d)',
     start: 'Inicio',
     period: 'Periodo del informe',
     ovulation: 'Ovulación',
@@ -1057,6 +1065,7 @@ export default {
       anonymous: 'Tu perfil',
       uploadPhoto: 'Subir foto',
       removePhoto: 'Quitar foto',
+      photoRemoved: 'Foto quitada.',
       photoSaved: 'Foto actualizada. Se guarda cifrada en tu dispositivo.',
       photoError: 'No se pudo usar esa imagen. Prueba con otra (JPG o PNG).',
       yearInvalid: 'Introduce un año válido.',
@@ -1491,7 +1500,7 @@ export default {
     from: 'Compartido por {name}',
     createdAt: 'Creado el {date}',
     predictions: 'Predicciones',
-    nextPeriod: 'Próxima regla estimada: {date} (± {margin} días)',
+    nextPeriod: 'Próxima regla estimada: {date} (± {margin} d)',
     phase: 'Fase del ciclo el {date}: {phase}',
     fertile: 'Ventana fértil estimada: del {from} al {to}',
     cycles: 'Ciclos',

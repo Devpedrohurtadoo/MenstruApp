@@ -56,7 +56,7 @@ async function exportPdf(share) {
   const { data, derived } = store.get();
   if (!data || !derived) return;
   const blob = buildReport(data, derived, opts);
-  const filename = `menstruapp-informe-${todayISO()}.pdf`;
+  const filename = `${t('files.report')}-${todayISO()}.pdf`;
   try {
     if (share && navigator.canShare?.({ files: [new File([blob], filename, { type: 'application/pdf' })] })) {
       await navigator.share({ files: [new File([blob], filename, { type: 'application/pdf' })], title: t('report.title') });

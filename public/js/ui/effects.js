@@ -83,6 +83,9 @@ export function startParticles(canvas, level) {
   };
   window.addEventListener('resize', resize);
   document.addEventListener('visibilitychange', onVisibility);
+  const motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const onMotionChange = () => (prefersReducedMotion() ? cancelAnimationFrame(raf) : running && begin());
+  motionQuery?.addEventListener('change', onMotionChange);
   // Decoration never competes with the first render: start once the browser is idle.
   const idle = /** @type {any} */ (window).requestIdleCallback ?? ((/** @type {() => void} */ cb) => setTimeout(cb, 1200));
   idle(() => running && begin(), { timeout: 2500 });
@@ -92,6 +95,7 @@ export function startParticles(canvas, level) {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibility);
+      motionQuery?.removeEventListener('change', onMotionChange);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     },
     setLevel(n) {

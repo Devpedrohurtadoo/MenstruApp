@@ -139,7 +139,8 @@ export function lineChart(o) {
 export function heatTable(o) {
   return h(
     'div',
-    { class: 'heat-wrap' },
+    // Scrolls sideways on narrow screens: focusable so it can be scrolled with the keyboard.
+    { class: 'heat-wrap', tabIndex: 0, role: 'region', 'aria-label': o.caption },
     h(
       'table',
       { class: 'heat' },
@@ -153,7 +154,7 @@ export function heatTable(o) {
             'tr',
             null,
             h('th', { scope: 'row', text: r.label }),
-            r.values.map((v) => h('td', { class: 'heat__cell', style: { '--v': String(Math.min(1, v / 100)) } }, h('span', { text: `${v}%` }))),
+            r.values.map((v) => h('td', { class: 'heat__cell', style: { '--v': String(Math.min(1, v / 100)) } }, h('span', { text: fmtNumber(v / 100, { style: 'percent' }) }))),
           ),
         ),
       ),

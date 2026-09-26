@@ -58,6 +58,12 @@ export default {
     updateReady: 'A new version is available.',
   },
 
+  files: {
+    report: 'menstruapp-report',
+    recoveryCode: 'menstruapp-recovery-code',
+    syncCode: 'menstruapp-sync-code',
+  },
+
   fatal: {
     title: "We can't open Menstruapp",
     crypto: "Your browser doesn't provide the secure encryption we need to protect your data. Update it or try a recent one (Chrome, Safari, Firefox or Edge).",
@@ -151,8 +157,9 @@ export default {
     promise3: 'Works offline, like an installed app.',
     promise4: 'Reliable, clear and judgement-free health information.',
     language: 'Language',
-    consent: "I've read and accept the",
-    readPolicy: 'privacy policy',
+    consent: "I've read and accept the privacy policy.",
+    consentHint: 'Tick the privacy policy box to get started.',
+    readPolicy: 'Read the privacy policy',
     disclaimer: "Menstruapp doesn't replace medical advice. If a symptom worries you, talk to a healthcare professional.",
     start: 'Get started',
     legacyTitle: { one: 'We found 1 logged day from an earlier version', other: 'We found {count} logged days from an earlier version' },
@@ -956,6 +963,7 @@ export default {
       patternText: 'Your contractions look regular and frequent (every 5 minutes or less, lasting 1 minute, for 1 hour). Contact your maternity unit as you were advised.',
       note: "If your waters break, or you have bleeding, a fever or fewer movements, go in without waiting for a contraction pattern.",
       clear: 'Clear history',
+      clearText: "All timed contractions will be deleted. This can't be undone.",
     },
   },
 
@@ -999,7 +1007,7 @@ export default {
     meanRange: 'Mean {mean} d (range {min}–{max}, SD {sd})',
     lastPeriod: 'Last period',
     nextPeriod: 'Estimated next period',
-    predicted: '{date} (± {margin} days)',
+    predicted: '{date} (± {margin} d)',
     start: 'Start',
     period: 'Time range',
     ovulation: 'Ovulation',
@@ -1056,6 +1064,7 @@ export default {
       anonymous: 'Your profile',
       uploadPhoto: 'Upload photo',
       removePhoto: 'Remove photo',
+      photoRemoved: 'Photo removed.',
       photoSaved: "Photo updated. It's stored encrypted on your device.",
       photoError: "Couldn't use that image. Try another one (JPG or PNG).",
       yearInvalid: 'Enter a valid year.',
@@ -1490,7 +1499,7 @@ export default {
     from: 'Shared by {name}',
     createdAt: 'Created on {date}',
     predictions: 'Predictions',
-    nextPeriod: 'Estimated next period: {date} (± {margin} days)',
+    nextPeriod: 'Estimated next period: {date} (± {margin} d)',
     phase: 'Cycle phase on {date}: {phase}',
     fertile: 'Estimated fertile window: {from} to {to}',
     cycles: 'Cycles',

@@ -37,7 +37,18 @@ export function render(ctx) {
     { class: 'stack' },
     card({
       children: [
-        h('div', { class: 'profile-edit' }, avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 72), h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'p-photo', text: t('settings.profile.uploadPhoto') }), fileInput, profile.photo ? button({ label: t('settings.profile.removePhoto'), variant: 'ghost', size: 'sm', onClick: () => updateProfile({ photo: null }) }) : null)),
+        h('div', { class: 'profile-edit' }, avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 72), h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'p-photo', text: t('settings.profile.uploadPhoto') }), fileInput, profile.photo
+            ? button({
+                label: t('settings.profile.removePhoto'),
+                variant: 'ghost',
+                size: 'sm',
+                onClick: async () => {
+                  const photo = profile.photo;
+                  await updateProfile({ photo: null });
+                  toast(t('settings.profile.photoRemoved'), { action: { label: t('common.undo'), onClick: () => updateProfile({ photo }) } });
+                },
+              })
+            : null)),
         h('span', { class: 'field__label', id: 'emoji-label', text: t('onboarding.avatar') }),
         rovingRadios(h(
           'div',

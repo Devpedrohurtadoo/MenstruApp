@@ -142,6 +142,12 @@ export function openModal(opts) {
 
   const content = typeof opts.content === 'function' ? opts.content(handle) : opts.content;
   replace(body, content);
+  // Long text without controls (privacy policy, terms) must still scroll with the keyboard.
+  if (!focusables(body).length) {
+    body.tabIndex = 0;
+    body.setAttribute('role', 'region');
+    body.setAttribute('aria-labelledby', `${id}-title`);
+  }
   document.body.append(root);
   const entry = { handle, pushed: false, dismissible };
   stack.push(entry);
@@ -173,10 +179,12 @@ export function hasOpenModal() {
  */
 export function confirmDialog(opts) {
   let answered = false;
+  const messageId = `confirm-${Date.now().toString(36)}`;
   const handle = openModal({
     title: opts.title,
     variant: 'dialog',
-    content: h('p', { class: 'modal__message', text: opts.message }),
+    describedBy: messageId,
+    content: h('p', { class: 'modal__message', id: messageId, text: opts.message }),
     footer: h(
       'div',
       { class: 'btn-row' },

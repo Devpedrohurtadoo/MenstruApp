@@ -39,6 +39,7 @@ export function renderGuest(root, onExit) {
       { class: 'screen screen--center guest' },
       card({
         title: t('guest.title'),
+        headingLevel: 1,
         icon: 'users',
         children: [
           h('p', { class: 'muted', text: t('guest.text') }),
@@ -69,10 +70,20 @@ export function renderCalculator(root, onExit) {
   let checking = false;
   const screen = h('output', { class: 'calc__display', 'aria-live': 'polite', text: display });
   let pressTimer = 0;
+  // Holding the display for 1.5 s leaves the calculator: with a finger, or holding Enter/Space
+  // on it with a keyboard (it is focusable for that).
+  screen.tabIndex = 0;
   screen.addEventListener('pointerdown', () => {
     pressTimer = window.setTimeout(onExit, 1500);
   });
   for (const evt of ['pointerup', 'pointerleave', 'pointercancel']) screen.addEventListener(evt, () => clearTimeout(pressTimer));
+  screen.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+      e.preventDefault();
+      pressTimer = window.setTimeout(onExit, 1500);
+    }
+  });
+  screen.addEventListener('keyup', () => clearTimeout(pressTimer));
 
   const show = () => {
     const n = Number(display);
