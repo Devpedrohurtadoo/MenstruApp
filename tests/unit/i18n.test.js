@@ -203,4 +203,13 @@ describe('t()', () => {
     expect(t('does.not.exist')).toBe('does.not.exist');
     setLanguage('es');
   });
+
+  it('says "today" rather than "in 0 days" in period reminders', () => {
+    setLanguage('es');
+    expect(t('notifications.period_soon.body', { count: 0, start: '3 de mayo' })).toBe('Podría llegar hoy (3 de mayo).');
+    expect(t('notifications.period_soon.body', { count: 2, start: '3 de mayo' })).toBe('Podría llegar en 2 días (hacia el 3 de mayo).');
+    setLanguage('en');
+    expect(t('notifications.period_soon.body', { count: 0, start: 'May 3' })).toBe('It could start today (May 3).');
+    setLanguage('es');
+  });
 });

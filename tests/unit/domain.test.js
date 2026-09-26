@@ -6,7 +6,7 @@ import { upcomingOccurrences, contraceptionAction, repeatDates } from '../../pub
 import { loggingStreak, newAchievements } from '../../public/js/domain/streaks.js';
 import { createLuna, normalize } from '../../public/js/domain/luna.js';
 import { modeFlags } from '../../public/js/domain/modes.js';
-import { addDays, localTimestamp } from '../../public/js/core/dates.js';
+import { addDays, diffDays, localTimestamp } from '../../public/js/core/dates.js';
 
 function periodsEvery(first, len, count, periodLength = 5) {
   const days = {};
@@ -206,6 +206,36 @@ describe('reminders', () => {
     expect(occ.filter((o) => o.type === 'log_daily')).toHaveLength(31);
     expect(occ.every((o) => o.at > now)).toBe(true);
     expect(occ.some((o) => o.reminderId === 'off')).toBe(false);
+  });
+
+  it('pauses pill reminders in the break week only for the combined pill', () => {
+    // Day 22 of a 21+7 pack.
+    expect(contraceptionAction('pill', '2024-01-01', '2024-01-22', '21_7', 'pill_combined')).toBeNull();
+    expect(contraceptionAction('pill', '2024-01-01', '2024-01-22', '21_7', 'pill_progestin')).toBe('take');
+    expect(contraceptionAction('pill', '2024-01-01', '2024-01-22', '24_4', 'pill_combined')).toBe('take');
+    const now = localTimestamp('2024-01-01', '08:00');
+    const minipill = upcomingOccurrences([{ id: 'pill', type: 'pill', enabled: true, time: '21:00' }], {
+      now,
+      today: '2024-01-01',
+      horizonDays: 30,
+      contraception: { method: 'pill_progestin', startDate: '2024-01-01', pillRegimen: '21_7' },
+    });
+    expect(minipill).toHaveLength(31);
+  });
+
+  it('keeps reminding of injections however long ago the first one was', () => {
+    const now = localTimestamp('2026-09-26', '08:00');
+    const occ = upcomingOccurrences([{ id: 'inj', type: 'injection', enabled: true, time: '09:00', daysBefore: 7 }], {
+      now,
+      today: '2026-09-26',
+      horizonDays: 91,
+      contraception: { method: 'injection', startDate: '2021-03-01' },
+    });
+    expect(occ).toHaveLength(1);
+    const due = occ[0].params.due;
+    expect(diffDays('2021-03-01', due) % 91).toBe(0);
+    expect(occ[0].date).toBe(addDays(due, -7));
+    expect(occ[0].date >= '2026-09-26').toBe(true);
   });
 
   it('expands repeating dated reminders', () => {

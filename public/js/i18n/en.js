@@ -1417,7 +1417,7 @@ export default {
     },
     period_soon: {
       title: 'Your period is coming',
-      body: { one: 'It could start in 1 day (around {start}).', other: 'It could start in {count} days (around {start}).' },
+      body: { zero: 'It could start today ({start}).', one: 'It could start in 1 day (around {start}).', other: 'It could start in {count} days (around {start}).' },
     },
     period_late: {
       title: 'Has your period started?',

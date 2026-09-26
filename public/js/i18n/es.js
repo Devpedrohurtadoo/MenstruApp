@@ -1418,7 +1418,7 @@ export default {
     },
     period_soon: {
       title: 'Tu regla se acerca',
-      body: { one: 'Podría llegar en 1 día (hacia el {start}).', other: 'Podría llegar en {count} días (hacia el {start}).' },
+      body: { zero: 'Podría llegar hoy ({start}).', one: 'Podría llegar en 1 día (hacia el {start}).', other: 'Podría llegar en {count} días (hacia el {start}).' },
     },
     period_late: {
       title: '¿Te ha venido la regla?',
