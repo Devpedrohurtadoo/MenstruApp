@@ -4,14 +4,31 @@ Dos partes: lo **automático** (bloquea el despliegue si falla; se ejecuta en CI
 
 ## Resultado de la última verificación
 
-<!-- qa-results -->
+Verificado el 26 de septiembre de 2026 sobre el código de la rama `claude/menstrual-app-netlify-mobile-wl3v5j`, en el entorno de desarrollo (Linux, Node 22 y el Chromium de Playwright emulando un Pixel 7).
+
+| Comprobación                                                                                  | Resultado                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run build` (sello del service worker, ESLint y tests unitarios: lo que ejecuta Netlify)  | ✅ En verde                                                                                                                                                                              |
+| ESLint                                                                                        | ✅ 0 errores y 0 avisos                                                                                                                                                                  |
+| Prettier (`npm run format:check`)                                                             | ✅ Todo el repositorio formateado                                                                                                                                                        |
+| TypeScript (`npm run typecheck`)                                                              | ✅ 0 errores                                                                                                                                                                             |
+| Tests unitarios (Vitest)                                                                      | ✅ 305 de 305, en 13 archivos                                                                                                                                                            |
+| Tests e2e (Playwright, móvil)                                                                 | ✅ 24 de 24. Ninguno registra errores de consola, violaciones de CSP o Trusted Types, ni peticiones a terceros (cualquiera de ellos hace fallar el test)                                 |
+| Accesibilidad automática (axe-core: WCAG 2.2 A/AA y buenas prácticas, cualquier impacto)      | ✅ 0 incidencias en todas las pantallas, diálogos, bloqueo, recuperación, calculadora y página del enlace compartido; en tema claro, oscuro y con «Alto contraste»                       |
+| Contraste de los tokens de diseño (cada color principal y cada fondo, en claro y oscuro)      | ✅ 0 fallos en 1777 combinaciones                                                                                                                                                        |
+| Lighthouse 13.5 (móvil, 4G lenta simulada, servidor local)                                    | Rendimiento 94 · Accesibilidad 100 · Buenas prácticas 100 · SEO 100 (FCP 1,2 s · LCP 3,0 s · TBT 0 ms · CLS 0). Lighthouse no tiene categoría PWA desde la versión 12: ver la sección 11 |
+| `npm audit` (todas las dependencias)                                                          | ✅ 0 vulnerabilidades                                                                                                                                                                    |
+| Instalabilidad (Chrome `Page.getInstallabilityErrors`), arranque sin conexión y actualización | ✅ Sin errores                                                                                                                                                                           |
+
+Queda por hacer a mano, porque no se puede automatizar desde aquí: las secciones 1 a 7 en un Android y un iPhone reales, y Lighthouse sobre el sitio ya publicado en Netlify.
 
 ## 0. Automático (bloquea el despliegue si falla)
 
 - [ ] `npm run build` en verde (sello del service worker, ESLint con reglas de seguridad, tests unitarios). Es lo que ejecuta Netlify: si falla, no se publica nada.
 - [ ] `npm run typecheck` sin errores (TypeScript estricto sobre JSDoc).
-- [ ] `npm run test:e2e` en verde (onboarding, bloqueo, registro, calendario, navegación rápida, cifrado en reposo, offline, instalabilidad, actualización de versión, axe en claro/oscuro, Luna, idiomas, copia/borrado/restauración, embarazo, PDF, sync y enlaces).
-- [ ] CI de GitHub en verde: además de lo anterior, `npm audit --omit=dev` sin vulnerabilidades altas y el service worker sellado con el contenido actual.
+- [ ] `npm run format:check` sin diferencias (Prettier).
+- [ ] `npm run test:e2e` en verde (onboarding, bloqueo, registro, calendario, navegación rápida, cifrado en reposo, offline, instalabilidad, actualización de versión, axe en claro/oscuro, Luna, idiomas, anticoncepción hormonal, copia/borrado/restauración, embarazo, PDF, sync y enlaces). Cualquier error de consola, violación de CSP o petición a terceros hace fallar el test.
+- [ ] CI de GitHub en verde: además de lo anterior, `npm audit --omit=dev` sin vulnerabilidades altas, Prettier y el service worker sellado con el contenido actual.
 
 ## 1. Instalación y PWA
 
@@ -31,6 +48,7 @@ Dos partes: lo **automático** (bloquea el despliegue si falla; se ejecuta en CI
 - [ ] Bloqueo automático por inactividad y «Bloquear al salir de la app».
 - [ ] Pantalla segura: la calculadora funciona y volver exige desbloquear.
 - [ ] Varios perfiles: cada uno con su PIN; los datos no se mezclan.
+- [ ] Perimenopausia con «Llevo más de un año sin regla»: cualquier sangrado registrado muestra el aviso de consulta.
 
 ## 3. Registro y predicciones
 
@@ -39,11 +57,15 @@ Dos partes: lo **automático** (bloquea el despliegue si falla; se ejecuta en CI
 - [ ] Calendario: «Editar regla» marca/desmarca días; flechas y teclado recorren los días; no se pueden registrar días futuros.
 - [ ] Con 3+ ciclos, las predicciones y la ventana fértil son coherentes con el calendario y el anillo.
 - [ ] Avisos: retraso ≥ 5 días, sangrado abundante, sangrado entre reglas, síntomas de alarma (fiebre, desmayo, dolor intenso) muestran la tarjeta adecuada y enlazan al artículo.
+- [ ] Con píldora combinada, parche o anillo: se habla de «sangrado por privación» y no hay días fértiles ni fase premenstrual. Con minipíldora, implante, inyección o DIU hormonal no se predicen fechas.
+- [ ] Embarazo con una fecha imposible (futura o de más de 44 semanas): aparece el aviso para corregirla.
 
 ## 4. Recordatorios
 
 - [ ] Permiso de notificaciones; notificación de prueba.
-- [ ] Recordatorio de píldora con pauta 21+7: no suena en la semana de descanso.
+- [ ] Recordatorio de píldora combinada con pauta 21+7: no suena en la semana de descanso. La minipíldora suena todos los días.
+- [ ] «Consejo del día»: llega a la hora elegida con el mismo consejo que muestra Inicio.
+- [ ] Una cita con título avisa «hoy», «mañana» o con la fecha.
 - [ ] Notificaciones discretas: el texto no menciona la regla ni la salud.
 - [ ] (Con VAPID configurado) Avisos con la app cerrada: llegan a su hora.
 
@@ -68,7 +90,7 @@ Dos partes: lo **automático** (bloquea el despliegue si falla; se ejecuta en CI
 
 - [ ] Español e inglés: sin claves sin traducir ni textos cortados.
 - [ ] Luna: preguntas sugeridas, preguntas personales, y frases de crisis/violencia muestran los teléfonos de ayuda.
-- [ ] Artículos: enlaces relacionados y «Cuándo consultar».
+- [ ] Artículos: enlaces relacionados y «Cuándo consultar»; la categoría «Mitos y realidades» aparece en Aprende y en el buscador.
 
 ## 8. Seguridad: OWASP Top 10
 

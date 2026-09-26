@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "build": "node scripts/stamp-sw.mjs && eslint . && vitest run",
-    "verify": "node scripts/stamp-sw.mjs && eslint . && tsc -p tsconfig.json && vitest run && playwright test"
+    "verify": "node scripts/stamp-sw.mjs && eslint . && prettier --check . && tsc -p tsconfig.json && vitest run && playwright test"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
