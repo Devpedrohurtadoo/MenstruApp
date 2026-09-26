@@ -1,70 +1,189 @@
 // Base de conocimiento de Luna (español). Todo se evalúa en el dispositivo.
 // - redFlags: se comprueban siempre primero y se muestran arriba (urgencias, crisis, violencia).
+//   Saltan con una frase de `patterns` o con una combinación (`combos`) cuando aparece al menos
+//   una palabra de cada grupo en cualquier parte del mensaje ("fiebre" + "tampón"). "@pregnant"
+//   y "@postpartum" remiten a `contexts` y también se cumplen por el modo de uso de la usuaria.
+//   Una negación justo antes ("no tengo fiebre") desactiva la regla, salvo en las marcadas con
+//   `alwaysFlag` (suicidio, autolesiones, violencia...).
+//   Solo se añade después la información relacionada (`related`, o `follow` si no hay otra).
 // - contextual: preguntas personales que se responden con los datos de la usuaria (views/luna.js).
 // - intents: respuestas informativas; `topic` es la pregunta que se ofrece como sugerencia.
-// Las palabras clave se normalizan (minúsculas, sin tildes). Las de 4 letras o menos deben
-// coincidir como palabra completa. Pesos: 2 = pista débil, 4 = tema claro, 6 = frase exacta.
+// Las palabras clave se normalizan (minúsculas, sin tildes) y coinciden como palabras completas;
+// un "*" final marca una raíz ("sangr*") y "#" un número. En las respuestas informativas se admite
+// además el plural (s/es) de la última palabra. Pesos: 2 = pista débil, 4 = tema claro, 6 = frase exacta.
+
+// Grupos de palabras de las reglas combinadas.
+const SANGRADO = [
+  'sangro', 'sangra', 'sangran', 'sangrando', 'sangrado', 'sangrados', 'sangrar', 'he sangrado', 'sangre en la', 'sangre en el',
+  'sangre en las', 'sangre en los', 'con sangre', 'mucha sangre', 'pierdo sangre', 'perdiendo sangre', 'perdida de sangre',
+  'perdidas de sangre', 'manchas de sangre', 'restos de sangre', 'hemorragia*', 'desangr*', 'mancho', 'manchando', 'manchado',
+  'manchar', 'manche', 'coagulo*',
+];
+const MAREO = ['mare*', 'desmay*', 'debil', 'muy debil', 'sin fuerzas', 'aturdida', 'aturdido', 'se me va la cabeza', 'veo negro'];
+const EMPAPAR = ['empap*'];
+const PRODUCTO = [
+  'compresa*', 'tampon*', 'copa menstrual', 'la copa', 'mi copa', 'disco menstrual', 'braga*', 'salvaslip*', 'protegeslip*',
+  'panal*', 'toalla higienica', 'toallas higienicas',
+];
+const FIEBRE = ['fiebre', 'febril', 'febricula', 'calentura', 'temperatura alta', 'tengo temperatura', 'mucha temperatura'];
+const TAMPON_COPA = ['tampon*', 'copa menstrual', 'la copa', 'mi copa', 'con copa', 'disco menstrual'];
+const DOLOR_FUERTE = [
+  'me duele mucho', 'me duele muchisimo', 'me duela mucho', 'duele mucho', 'duele muchisimo', 'mucho dolor', 'muchisimo dolor',
+  'dolor fuerte', 'dolor muy fuerte', 'dolores fuertes', 'dolor intenso', 'dolor muy intenso', 'dolor agudo', 'dolor horrible',
+  'dolor insoportable', 'no aguanto el dolor', 'colicos fuertes', 'colicos muy fuertes', 'retortijones fuertes', 'pinchazo fuerte',
+  'pinchazos fuertes',
+];
+const SANGRADO_ABUNDANTE = [
+  'sangro mucho', 'sangro muchisimo', 'sangrando mucho', 'sangrando muchisimo', 'mucha sangre', 'mucho sangrado',
+  'sangrado abundante', 'sangrado muy abundante', 'coagulos grandes', 'coagulo grande', 'coagulos enormes', 'coagulos muy grandes',
+  'sangro mas', 'sangrando mas', 'vuelvo a sangrar', 'he vuelto a sangrar', 'aumenta el sangrado', 'el sangrado aumenta',
+];
+const GOLPES = [
+  'me pega', 'me pego', 'me pegaba', 'me pegan', 'me pegaron', 'me ha pegado', 'me han pegado', 'me golpea', 'me golpeo',
+  'me golpeaba', 'me golpean', 'me ha golpeado', 'me da golpes', 'me empuja', 'me empujo', 'me ha empujado', 'me agrede',
+  'me agredio', 'me ha agredido', 'me zarandea',
+];
+const PERSONA = [
+  'pareja', 'expareja', 'novio', 'novia', 'exnovio', 'marido', 'esposo', 'esposa', 'mi mujer', 'mi ex', 'mi padre', 'mi madre',
+  'mi padrastro', 'mi madrastra', 'mi hermano', 'mi hermana', 'mi tio', 'mi familia', 'mis padres', 'alguien', 'un chico',
+  'un hombre', 'el me', 'ella me', 'en casa',
+];
 
 /** @type {import('../domain/luna.js').KnowledgeBase} */
 export default {
+  // Situaciones que activan los grupos "@..." de las reglas: frases afirmativas (no "si estoy
+  // embarazada") o el modo de uso (embarazo; posparto durante las primeras 12 semanas).
+  contexts: {
+    pregnant: [
+      'estoy embarazada', 'estando embarazada', 'sigo embarazada', 'embarazada de # semanas', 'embarazada de # meses',
+      'embarazada de gemelos', 'estoy de # semanas', 'estoy de # meses', 'semanas de embarazo', 'meses de embarazo',
+      'semanas de gestacion', 'en el embarazo', 'durante el embarazo', 'en mi embarazo', 'mi embarazo', 'al principio del embarazo',
+      'primer trimestre', 'segundo trimestre', 'tercer trimestre', 'estoy encinta',
+    ],
+    postpartum: [
+      'tras el parto', 'despues del parto', 'tras dar a luz', 'despues de dar a luz', 'he dado a luz', 'di a luz', 'acabo de dar a luz',
+      'posparto', 'postparto', 'puerperio', 'cesarea', 'loquios',
+    ],
+  },
+
   redFlags: [
     {
       id: 'heavyBleeding',
-      patterns: ['empapo', 'empapando', 'empapa una compresa', 'empapa la compresa', 'hemorragia', 'sangro muchisimo', 'no para de sangrar', 'no deja de sangrar', 'no me para de sangrar', 'coagulos enormes', 'coagulos muy grandes', 'me estoy desangrando', 'charco de sangre'],
+      patterns: [
+        'empapo una compresa', 'empapa una compresa', 'empapa la compresa', 'hemorragia*', 'sangro muchisimo', 'sangrando muchisimo',
+        'no para de sangrar', 'no deja de sangrar', 'no me para de sangrar', 'no puedo parar de sangrar', 'coagulos enormes',
+        'coagulos muy grandes', 'me estoy desangrando', 'charco de sangre', 'sangro a chorros', 'sangrando a chorros',
+      ],
+      combos: [
+        [EMPAPAR, PRODUCTO],
+        [SANGRADO, MAREO],
+      ],
       answer: ['⚠️ Si empapas una compresa o un tampón cada hora durante 2 horas o más, expulsas coágulos muy grandes o te sientes mareada o débil, busca atención médica urgente ahora: acude a urgencias o llama al 112.'],
+      related: ['heavyBleeding', 'anemia', 'postpartumBleeding', 'miscarriage'],
     },
     {
       id: 'severePain',
       patterns: ['dolor insoportable', 'dolor muy fuerte', 'dolor horrible', 'dolor terrible', 'muero de dolor', 'no aguanto el dolor', 'dolor muy intenso', 'dolor repentino'],
+      combos: [[['@postpartum'], DOLOR_FUERTE]],
       answer: ['⚠️ Si el dolor es muy intenso o repentino, no mejora con analgésicos, o viene con fiebre, vómitos, mareo o sangrado —sobre todo si podrías estar embarazada—, acude a urgencias o llama al 112.'],
+      related: ['cramps', 'endometriosis', 'ovarianCyst', 'postpartumBleeding'],
     },
     {
       id: 'fainting',
-      patterns: ['me desmaye', 'me he desmayado', 'me desmayo', 'desmayo', 'perdi el conocimiento', 'casi me desmayo'],
+      patterns: ['desmay*', 'perdi el conocimiento', 'he perdido el conocimiento', 'perder el conocimiento'],
       answer: ['⚠️ Si te has desmayado o sientes que vas a desmayarte, túmbate con las piernas en alto y pide ayuda. Si sangras mucho, podrías estar embarazada o no te recuperas enseguida, llama al 112.'],
+      related: ['heavyBleeding', 'anemia'],
     },
     {
       id: 'pregnancyBleeding',
       patterns: ['embarazada y sangro', 'embarazada y estoy sangrando', 'embarazada y tengo sangrado', 'embarazada y mancho', 'sangrado en el embarazo', 'sangrado durante el embarazo', 'sangro y estoy embarazada', 'estoy sangrando y estoy embarazada'],
+      combos: [[['@pregnant'], SANGRADO]],
+      // Sangrados frecuentes en el embarazo que no son vaginales.
+      unless: ['encia*', 'nariz', 'nasal', 'hemorroide*', 'almorrana*'],
       answer: ['⚠️ Cualquier sangrado en el embarazo debe valorarlo un profesional. Si es abundante, con coágulos, dolor fuerte o mareo, acude a urgencias ahora o llama al 112. Si es un manchado leve, llama hoy a tu matrona o centro de salud.'],
+      related: ['pregnancyWarning', 'miscarriage'],
+      follow: 'pregnancyWarning',
+    },
+    {
+      id: 'pregnancyPain',
+      combos: [[['@pregnant'], DOLOR_FUERTE]],
+      answer: ['⚠️ En el embarazo, un dolor fuerte que no se calma —sobre todo si es de un solo lado o viene con sangrado, fiebre, mareo o pérdida de líquido— necesita valoración urgente: acude ahora a urgencias o llama al 112.'],
+      related: ['pregnancyWarning', 'miscarriage', 'contractions'],
+      follow: 'pregnancyWarning',
+    },
+    {
+      id: 'postpartumHaemorrhage',
+      combos: [[['@postpartum'], SANGRADO_ABUNDANTE]],
+      answer: ['⚠️ Tras el parto, empapar una compresa en una hora o menos, expulsar coágulos grandes o que el sangrado aumente en vez de disminuir —sobre todo con mareo, fiebre o mal olor— puede ser una hemorragia o una infección: acude a urgencias ahora o llama al 112.'],
+      related: ['postpartumBleeding'],
+      follow: 'postpartumBleeding',
     },
     {
       id: 'toxicShock',
       patterns: ['fiebre y tampon', 'tampon y fiebre', 'fiebre con tampon', 'fiebre con el tampon', 'fiebre y la copa', 'copa y fiebre', 'fiebre con la copa'],
+      combos: [[FIEBRE, TAMPON_COPA]],
       answer: ['⚠️ Una fiebre alta repentina mientras usas tampón o copa, con vómitos, diarrea, erupción o mareo, puede ser un síndrome de shock tóxico: retíralo y acude a urgencias ahora.'],
+      related: ['tss'],
+      follow: 'tss',
     },
     {
       id: 'preeclampsia',
       patterns: ['vision borrosa', 'veo borroso', 'veo destellos', 'veo lucecitas', 'veo puntitos'],
       answer: ['⚠️ La visión borrosa o con destellos, sobre todo con dolor de cabeza intenso o hinchazón brusca, puede ser un signo de preeclampsia si estás embarazada o has dado a luz hace poco. Contacta hoy mismo con urgencias o llama al 112.'],
+      related: ['pregnancyWarning', 'headache'],
     },
     {
       id: 'fetalMovement',
       patterns: ['no noto al bebe', 'no noto a mi bebe', 'el bebe no se mueve', 'mi bebe no se mueve', 'se mueve menos', 'no siento al bebe', 'no siento a mi bebe', 'no noto movimientos'],
+      alwaysFlag: true,
       answer: ['⚠️ Si notas que tu bebé se mueve menos o de forma diferente, no esperes a mañana: llama hoy mismo a tu maternidad o acude a urgencias obstétricas.'],
+      related: ['pregnancyWarning', 'contractions'],
     },
     {
       id: 'waterBreak',
-      patterns: ['rompi aguas', 'he roto aguas', 'rompi la bolsa', 'se me ha roto la bolsa', 'se rompio la bolsa', 'pierdo liquido', 'estoy perdiendo liquido'],
+      patterns: ['rompi aguas', 'he roto aguas', 'rompi la bolsa', 'he roto la bolsa', 'rompi la fuente', 'he roto la fuente', 'se me ha roto la bolsa', 'se rompio la bolsa', 'pierdo liquido', 'estoy perdiendo liquido'],
       answer: ['⚠️ Si crees que has roto aguas, anota la hora y el color del líquido y contacta con tu maternidad. Si el líquido es verdoso, marrón o con sangre, si notas menos movimientos o estás de menos de 37 semanas, acude sin esperar.'],
+      related: ['contractions', 'pregnancyWarning'],
     },
     {
       id: 'chest',
-      patterns: ['dolor en el pecho', 'me falta el aire', 'no puedo respirar', 'me ahogo', 'pierna hinchada', 'dolor en la pantorrilla'],
+      patterns: ['dolor en el centro del pecho', 'opresion en el pecho', 'me oprime el pecho', 'me falta el aire', 'falta de aire', 'no puedo respirar', 'me ahogo', 'pierna hinchada', 'pantorrilla hinchada', 'dolor en la pantorrilla'],
+      // "Pecho" también es la mama: el dolor de pecho premenstrual o de la lactancia no es una urgencia.
+      combos: [[['dolor en el pecho', 'dolor de pecho', 'me duele el pecho']]],
+      unless: ['regla', 'lactancia', 'mamar', 'dar el pecho', 'pezon*', 'bulto', 'sujetador', 'premenstrual'],
       answer: ['⚠️ Un dolor opresivo en el centro del pecho, la falta de aire repentina o el dolor e hinchazón en una pierna pueden ser graves, sobre todo en el embarazo, tras el parto o si tomas anticonceptivos con estrógenos. Llama al 112 ahora.'],
     },
     {
       id: 'selfHarm',
-      patterns: ['suicid', 'quitarme la vida', 'no quiero vivir', 'quiero morir', 'quiero morirme', 'me quiero morir', 'quiero hacerme dano', 'hacerme dano a mi misma', 'pienso en hacerme dano', 'autolesion', 'me autolesiono', 'autolesionarme', 'acabar con mi vida', 'no quiero seguir viviendo', 'quiero matarme', 'voy a matarme', 'desaparecer para siempre'],
+      patterns: [
+        'suicid*', 'quitarme la vida', 'no quiero vivir', 'quiero morir', 'quiero morirme', 'me quiero morir', 'me quiero matar',
+        'me voy a matar', 'quiero matarme', 'voy a matarme', 'pienso en matarme', 'ganas de matarme', 'quiero hacerme dano',
+        'hacerme dano a mi misma', 'me hago dano a mi misma', 'me hago dano a proposito', 'pienso en hacerme dano',
+        'ganas de hacerme dano', 'autolesion*', 'me autolesiono', 'autolesionarme', 'me corto los brazos', 'me corto el brazo',
+        'me corto las munecas', 'me corto la muneca', 'me corto los muslos', 'me corto las venas', 'cortarme las venas',
+        'cortarme los brazos', 'me hago cortes', 'hacerme cortes', 'me quemo a proposito', 'acabar con mi vida',
+        'no quiero seguir viviendo', 'desaparecer para siempre', 'no quiero estar viva',
+      ],
+      alwaysFlag: true,
       answer: [
         'Siento mucho que estés pasando por esto. No estás sola y mereces ayuda ahora mismo. 💜',
         'En España puedes llamar al 024 (atención a la conducta suicida: gratuito, confidencial y 24 horas) o al 112 si estás en peligro. Si eres menor, también a la Fundación ANAR: 900 20 20 10. En otros países: 988 (EE. UU.), 116 123 (Samaritans, Reino Unido e Irlanda) o tu número de emergencias.',
         'Si puedes, habla ahora con alguien de confianza y no te quedes sola.',
       ],
+      related: ['mood', 'postpartumMood', 'pms'],
     },
     {
       id: 'violence',
-      patterns: ['me pega', 'me ha pegado', 'me pegan', 'me maltrata', 'maltrato', 'violencia de genero', 'violencia machista', 'me han violado', 'me violo', 'violacion', 'abuso sexual', 'abusaron de mi', 'agresion sexual', 'me forzo', 'me obligo a tener relaciones', 'me obliga a tener relaciones', 'tengo miedo de mi pareja', 'mi pareja me controla'],
+      patterns: [
+        'me maltrata', 'maltrato', 'malos tratos', 'violencia de genero', 'violencia machista', 'violencia domestica', 'me han violado',
+        'me violo', 'me violaron', 'violacion', 'abuso sexual', 'abusaron de mi', 'abusa de mi', 'agresion sexual', 'me forzo',
+        'me forzaron', 'me obligo a tener relaciones', 'me obliga a tener relaciones', 'tengo miedo de mi pareja',
+        'mi pareja me controla', 'me dio una paliza', 'me da palizas', 'me ha dado una paliza', 'me dio una bofetada',
+        'me da bofetadas',
+      ],
+      // "Me pega" solo es violencia si hay una persona: "la regla me pega fuerte" no lo es.
+      combos: [[GOLPES, PERSONA]],
+      alwaysFlag: true,
       answer: [
         'Lo que cuentas es muy serio y no es culpa tuya. Mereces estar segura. 💜',
         'Si estás en peligro, llama al 112. En España, el 016 atiende 24 horas a víctimas de violencia machista y sexual; es gratuito, no deja rastro en la factura y también funciona por WhatsApp (600 000 016). Si eres menor: Fundación ANAR, 900 20 20 10.',
@@ -96,6 +215,8 @@ export default {
       ],
       article: 'dolor-menstrual',
       followUps: ['endometriosis', 'heavyBleeding'],
+      // En el embarazo no se aconsejan antiinflamatorios: se responde con la información del embarazo.
+      insteadIn: { pregnant: 'pregnancyCramps' },
     },
     {
       id: 'heavyBleeding',
@@ -174,7 +295,7 @@ export default {
     {
       id: 'breastPain',
       topic: '¿Por qué me duelen los pechos?',
-      keywords: { pechos: 3, senos: 3, mamas: 3, 'pecho sensible': 5, 'me duelen los pechos': 6, 'bulto en el pecho': 6, 'bulto en la mama': 6 },
+      keywords: { pechos: 3, senos: 3, 'me duelen las mamas': 6, 'dolor en las mamas': 5, 'mamas sensibles': 5, 'mamas hinchadas': 5, 'pecho sensible': 5, 'me duelen los pechos': 6, 'bulto en el pecho': 6, 'bulto en la mama': 6 },
       answer: [
         'Es frecuente notar los pechos hinchados o sensibles en los días previos a la regla por la progesterona; mejora al empezar el sangrado. Un sujetador cómodo y reducir la cafeína pueden ayudar.',
         'Si notas un bulto, cambios en la piel o el pezón, secreción con sangre o un dolor que no sigue tu ciclo, pide cita para que te exploren.',
@@ -218,7 +339,7 @@ export default {
     {
       id: 'irregular',
       topic: '¿Por qué tengo ciclos irregulares?',
-      keywords: { irregular: 4, 'ciclos irregulares': 4, 'regla irregular': 4, 'cada mes cambia': 2, 'no me viene cuando toca': 4 },
+      keywords: { irregular: 4, irregularidad: 4, 'ciclos irregulares': 4, 'regla irregular': 4, 'cada mes cambia': 2, 'no me viene cuando toca': 4 },
       answer: [
         'En personas adultas, un ciclo normal dura entre 24 y 38 días y puede variar hasta 7–9 días de un mes a otro. En la adolescencia y la perimenopausia es normal que varíe más.',
         'El estrés, los viajes, los cambios de peso, el ejercicio intenso, la lactancia, el SOP o el tiroides pueden alterarlo. Consulta si pasas 3 meses sin regla, si tus ciclos son habitualmente más cortos de 24 días o más largos de 38, o si sangras entre reglas.',
@@ -374,7 +495,7 @@ export default {
       topic: '¿Cómo funciona la píldora del día después?',
       keywords: { 'pildora del dia despues': 6, 'dia despues': 4, 'anticoncepcion de urgencia': 5, 'anticoncepcion de emergencia': 5, 'pildora de emergencia': 5, 'se rompio el condon': 5, 'se rompio el preservativo': 5, 'sin proteccion': 3, 'sin condon': 3, poscoital: 4, postcoital: 4 },
       answer: [
-        'Cuanto antes, mejor. La píldora de levonorgestrel sirve hasta 72 horas después, y la de ulipristal hasta 120 horas (más eficaz en los últimos días). El DIU de cobre, hasta 5 días, es la opción más eficaz.',
+        'Tómala cuanto antes: no esperes. La píldora de ulipristal sigue siendo eficaz hasta 5 días (120 horas) después y la de levonorgestrel, hasta 3 días (72 horas). El DIU de cobre, colocado en los 5 días siguientes, es la opción más eficaz.',
         'En España la píldora se vende sin receta en farmacias. No provoca un aborto: retrasa la ovulación. Si vomitas en las 3 horas siguientes necesitas otra dosis, y haz un test si la regla se retrasa más de 7 días.',
       ],
       article: 'anticoncepcion-emergencia',
@@ -552,6 +673,17 @@ export default {
       article: 'embarazo-inicio',
     },
     {
+      id: 'pregnancyCramps',
+      topic: '¿Es normal tener dolor en el embarazo?',
+      keywords: { 'dolor en el embarazo': 6, 'dolores en el embarazo': 6, 'colicos en el embarazo': 6, 'molestias en el embarazo': 5, 'dolor de tripa en el embarazo': 6, 'dolor abdominal en el embarazo': 6, 'tirantez en la tripa': 4 },
+      answer: [
+        'Al principio del embarazo son frecuentes unas molestias leves, como tirantez o pinchazos suaves en la parte baja de la tripa, mientras el útero crece. Descansar, cambiar de postura o un baño templado (no caliente) pueden aliviarlas.',
+        'Si necesitas un analgésico, pregunta antes a tu matrona, médica o farmacéutica: en el embarazo se suele usar paracetamol y no se recomiendan el ibuprofeno ni otros antiinflamatorios salvo indicación médica. Acude a urgencias si el dolor es fuerte, no se calma, es de un solo lado o viene con sangrado, fiebre, mareo o pérdida de líquido.',
+      ],
+      article: 'embarazo-alarma',
+      followUps: ['pregnancyWarning'],
+    },
+    {
       id: 'pregnancyWarning',
       topic: 'Señales de alarma en el embarazo',
       keywords: { 'embarazada y sangro': 6, 'embarazada y tengo sangrado': 6, 'sangrado en el embarazo': 6, 'sangrado embarazada': 5, 'senales de alarma': 5, 'sintomas de alarma': 5, preeclampsia: 5, 'urgencias embarazo': 5, 'cuando ir a urgencias': 5, 'hinchazon de manos': 4, 'movimientos del bebe': 4, 'bebe se mueve': 4 },
@@ -595,7 +727,8 @@ export default {
     {
       id: 'postpartumBleeding',
       topic: '¿Cuánto dura el sangrado tras el parto?',
-      keywords: { loquios: 5, 'sangrado tras el parto': 6, 'sangrado despues del parto': 6, cuarentena: 4, puerperio: 5, posparto: 3, postparto: 3 },
+      // "Cuarentena" sola es una pista débil (también se usa por enfermedades): necesita otra palabra.
+      keywords: { loquios: 5, 'sangrado tras el parto': 6, 'sangrado despues del parto': 6, 'sangrado en la cuarentena': 6, 'sangrar en la cuarentena': 6, 'sangro en la cuarentena': 6, 'cuarentena del parto': 5, 'cuarentena posparto': 5, cuarentena: 1, puerperio: 5, posparto: 3, postparto: 3 },
       answer: [
         'Los loquios duran hasta unas 6 semanas: empiezan rojos y abundantes y se van aclarando a rosado, marrón y amarillento.',
         'Acude a urgencias si empapas una compresa en una hora o menos, expulsas coágulos grandes, el sangrado aumenta de nuevo o tienes fiebre o mal olor.',
@@ -631,7 +764,7 @@ export default {
       keywords: { menopausia: 4, perimenopausia: 5, climaterio: 5, 'ultima regla': 3, 'terapia hormonal': 4, thm: 4, 'reemplazo hormonal': 4 },
       answer: [
         'La perimenopausia son los años previos a la última regla, con ciclos cambiantes, sofocos, peor sueño o cambios de ánimo. La menopausia se confirma tras 12 meses sin regla y llega de media hacia los 51 años.',
-        'La terapia hormonal es el tratamiento más eficaz para los síntomas y, para muchas personas, sus beneficios superan los riesgos; también hay opciones sin hormonas. Sigue usando anticoncepción hasta 12 meses después de la última regla.',
+        'La terapia hormonal es el tratamiento más eficaz para los síntomas y, para muchas personas, sus beneficios superan los riesgos; también hay opciones sin hormonas. Sigue usando anticoncepción hasta 2 años después de la última regla si ocurre antes de los 50, o hasta 1 año después si ocurre a partir de los 50 (si usas un método hormonal, pregunta a tu médica cuándo dejarlo).',
       ],
       article: 'menopausia',
       followUps: ['hotFlashes', 'dryness'],

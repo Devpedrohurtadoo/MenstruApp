@@ -157,7 +157,7 @@ describe('i18n coverage of the source code', () => {
     each('home.fertility', ['high', 'medium', 'low', 'none']);
     each('luna.ctx.fertile', ['high', 'medium', 'low', 'none']);
     each('calendar.a11y.fertility', ['high', 'medium', 'low']);
-    each('calendar.a11y.ovulation', ['confirmed', 'estimated']);
+    each('calendar.a11y.ovulation', ['confirmed', 'lh', 'estimated']);
     each('calendar.excluded', ['gap', 'pregnancy']);
     each('report.ovMethod', ['bbt', 'lh', 'estimate']);
     each('analysis.regularity', ['veryRegular', 'regular', 'variable']);
@@ -201,6 +201,15 @@ describe('t()', () => {
     expect(t('common.days', { count: 1 })).toBe('1 day');
     expect(t('home.periodIn', { count: 12 })).toBe('Period in 12 days');
     expect(t('does.not.exist')).toBe('does.not.exist');
+    setLanguage('es');
+  });
+
+  it('says "today" rather than "in 0 days" in period reminders', () => {
+    setLanguage('es');
+    expect(t('notifications.period_soon.body', { count: 0, start: '3 de mayo' })).toBe('Podría llegar hoy (3 de mayo).');
+    expect(t('notifications.period_soon.body', { count: 2, start: '3 de mayo' })).toBe('Podría llegar en 2 días (hacia el 3 de mayo).');
+    setLanguage('en');
+    expect(t('notifications.period_soon.body', { count: 0, start: 'May 3' })).toBe('It could start today (May 3).');
     setLanguage('es');
   });
 });

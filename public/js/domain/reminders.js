@@ -37,18 +37,24 @@ function occ(r, iso, params = {}) {
   return { key: `${r.id}:${iso}`, reminderId: r.id, type: r.type, at: localTimestamp(iso, r.time), date: iso, params };
 }
 
+/** Days between injections (13 weeks); the reminder comes `daysBefore` days earlier. */
+const INJECTION_INTERVAL = 91;
+
 /**
  * Contraceptive schedule for patch/ring/pill-with-break regimens.
  * @param {string} type
  * @param {string} startDate first day of the current pack/patch/ring
  * @param {string} iso
  * @param {string} [regimen]
+ * @param {string} [method] contraceptive method: the progestogen-only pill is taken every day with no break
  * @returns {string | null} action key or null when nothing is due that day
  */
-export function contraceptionAction(type, startDate, iso, regimen) {
+export function contraceptionAction(type, startDate, iso, regimen, method) {
   const day = (((diffDays(startDate, iso) % 28) + 28) % 28);
   if (type === 'pill') {
-    if (regimen === '21_7' && day >= 21) return null;
+    // Only the combined pill has a pill-free week, and only in the 21+7 regimen.
+    const pillFree = regimen === '21_7' && (method === undefined || method === 'pill_combined');
+    if (pillFree && day >= 21) return null;
     return 'take';
   }
   if (type === 'patch') {
@@ -90,7 +96,7 @@ export function upcomingOccurrences(reminders, ctx) {
         break;
       case 'pill':
         for (const d of dates) {
-          const action = contra?.startDate ? contraceptionAction('pill', contra.startDate, d, contra.pillRegimen) : 'take';
+          const action = contra?.startDate ? contraceptionAction('pill', contra.startDate, d, contra.pillRegimen, contra.method) : 'take';
           if (action) out.push(occ(r, d, { action }));
         }
         break;
@@ -104,10 +110,14 @@ export function upcomingOccurrences(reminders, ctx) {
         break;
       case 'injection':
         if (contra?.startDate) {
-          for (let k = 1; k < 12; k++) {
-            const due = addDays(contra.startDate, 91 * k);
-            const remind = addDays(due, -(r.daysBefore ?? 7));
-            if (remind >= ctx.today && remind <= end) out.push(occ(r, remind, { due }));
+          // Next doses from today on, however long ago the first injection was.
+          const lead = r.daysBefore ?? 7;
+          const first = Math.max(1, Math.ceil((diffDays(contra.startDate, ctx.today) + lead) / INJECTION_INTERVAL));
+          for (let k = first; ; k++) {
+            const due = addDays(contra.startDate, INJECTION_INTERVAL * k);
+            const remind = addDays(due, -lead);
+            if (remind > end) break;
+            if (remind >= ctx.today) out.push(occ(r, remind, { due }));
           }
         }
         break;

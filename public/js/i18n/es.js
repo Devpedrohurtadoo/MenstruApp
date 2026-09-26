@@ -280,6 +280,10 @@ export default {
     periodIn: { one: 'Regla en 1 día', other: 'Regla en {count} días' },
     late: { one: '1 día de retraso', other: '{count} días de retraso' },
     nextPeriod: 'Próxima regla: {date} (± {margin} d)',
+    nextBleed: 'Próximo sangrado por privación: {date} (± {margin} d)',
+    bleedIn: { one: 'Sangrado en 1 día', other: 'Sangrado en {count} días' },
+    bleedToday: 'Tu sangrado por privación podría llegar hoy',
+    hormonalNoPredictions: 'Con tu método los sangrados suelen ser irregulares o desaparecer, así que no predecimos fechas. Registra cualquier sangrado y consulta si te preocupa.',
     ovulationIn: { one: 'Ovulación estimada mañana', other: 'Ovulación estimada en {count} días' },
     fertility: {
       high: 'Fertilidad alta hoy',
@@ -311,6 +315,7 @@ export default {
       ovulation: 'Ovulación estimada',
       pms: 'Posibles síntomas premenstruales',
       period: 'Regla prevista',
+      withdrawalBleed: 'Sangrado por privación previsto',
     },
     tipTitle: 'Consejo del día',
     streak: { one: '1 día seguido registrando', other: '{count} días seguidos registrando' },
@@ -381,6 +386,10 @@ export default {
       title: { one: '1 día de retraso', other: '{count} días de retraso' },
       text: 'Registraste relaciones sin protección en este ciclo. Un test de embarazo de orina es fiable desde el día de la falta; si da negativo y la regla sigue sin llegar, repítelo en 3–5 días.',
     },
+    lateWithdrawal: {
+      title: { one: 'Tu sangrado por privación lleva 1 día de retraso', other: 'Tu sangrado por privación lleva {count} días de retraso' },
+      text: 'Con los anticonceptivos hormonales es frecuente que el sangrado del descanso sea escaso o no llegue. Si has usado tu método correctamente (sin olvidos ni retrasos, ni vómitos o diarrea si tomas la píldora), un embarazo es muy poco probable: sigue con tu método como indica el prospecto. Si no es así, o si no te ha venido en dos descansos seguidos, haz un test de embarazo.',
+    },
     amenorrhea: {
       title: { one: '1 día sin regla', other: '{count} días sin regla' },
       text: 'Si no estás embarazada, en lactancia ni usas un método que la retire, pasar 3 meses o más sin regla es motivo de consulta: puede deberse a estrés, cambios de peso, ejercicio intenso, SOP, tiroides u otras causas con tratamiento.',
@@ -414,11 +423,11 @@ export default {
       text: { one: 'Si llevas 1 mes o más buscando embarazo con relaciones regulares sin protección, puedes pedir una valoración de fertilidad.', other: 'Si llevas {count} meses o más buscando embarazo con relaciones regulares sin protección, se recomienda pedir una valoración de fertilidad (antes si tus ciclos son muy irregulares o tienes antecedentes conocidos).' },
     },
     emergencyContraception: {
-      title: 'Relación sin protección en días fértiles',
+      title: 'Relación sin protección',
       text: {
-        zero: 'Hoy registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
-        one: 'Ayer registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
-        other: 'Hace {count} días registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
+        zero: 'Hoy registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
+        one: 'Ayer registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
+        other: 'Hace {count} días registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
       },
     },
   },
@@ -524,7 +533,8 @@ export default {
         low: 'fertilidad baja',
       },
       ovulation: {
-        confirmed: 'ovulación confirmada',
+        confirmed: 'ovulación confirmada por la temperatura',
+        lh: 'ovulación prevista por un test de LH',
         estimated: 'ovulación estimada',
       },
     },
@@ -882,12 +892,17 @@ export default {
       pregnantNoPeriod: 'Estás en modo embarazo, así que no calculo la regla. ¿Quieres saber de cuántas semanas estás?',
       late: { one: 'Tu regla lleva 1 día de retraso según tus registros.', other: 'Tu regla lleva {count} días de retraso según tus registros.' },
       nextPeriod: 'Según tus registros, tu próxima regla llegaría hacia el {date} (probablemente entre el {from} y el {to}).',
+      nextBleed: 'Según tus registros, tu próximo sangrado por privación llegaría hacia el {date} (probablemente entre el {from} y el {to}). Con la anticoncepción hormonal no hay una regla natural ni ovulación.',
+      predictionsHiddenPostpartum: 'Tras el parto no calculo la próxima regla hasta que vuelva. Cuando te venga, márcalo en Ajustes → Modo de uso y empezaré a predecirla. Recuerda que puedes quedarte embarazada antes de la primera regla.',
+      predictionsHiddenHormonal: 'Con tu método (minipíldora, píldora continua, inyección, implante o DIU hormonal) los sangrados suelen ser irregulares o desaparecer, así que no predigo fechas. Si un sangrado te preocupa, consúltalo.',
       confidence: {
         high: 'Tus ciclos son regulares, así que la predicción es bastante fiable.',
         medium: 'La predicción es razonable, pero puede variar unos días.',
         low: 'Tómalo como una estimación aproximada: necesito más ciclos registrados para afinar.',
       },
       fertilityHidden: 'Has elegido no mostrar la fertilidad. Puedes activarla en Ajustes → Modo de uso.',
+      fertilityHiddenMode: 'En este modo no calculo los días fértiles.',
+      fertilityHiddenHormonal: 'Con tu método hormonal no hay una ovulación natural que predecir, así que no muestro días fértiles. Tu protección depende de usar el método correctamente.',
       fertile: {
         high: 'Hoy estás en tus días de fertilidad más alta según la estimación.',
         medium: 'Hoy estás en tu ventana fértil (fertilidad media).',
@@ -897,7 +912,9 @@ export default {
       fertileWindow: 'Tu ventana fértil estimada va del {from} al {to}.',
       notContraception: 'Recuerda: es una estimación y no sirve como método anticonceptivo.',
       ovulationEstimated: 'Tu ovulación estimada es el {date}. Puedes confirmarla registrando temperatura basal o tests de LH.',
-      ovulationConfirmed: 'Según tus datos de temperatura o LH, tu ovulación fue hacia el {date}.',
+      ovulationConfirmed: 'Según tus registros de temperatura basal o de LH, tu ovulación de este ciclo se sitúa hacia el {date}.',
+      ovulationBbt: 'Tu temperatura basal confirma que ovulaste hacia el {date}.',
+      ovulationLh: 'Tu test de LH positivo sitúa la ovulación hacia el {date}. El test la predice, pero no la confirma: la subida posterior de la temperatura basal sí.',
       cycleDay: 'Hoy es el día {day} de tu ciclo ({phase}).',
       phaseInfo: {
         menstrual: 'Estás en la menstruación: el cuerpo elimina el endometrio. El cansancio y los cólicos son frecuentes; el calor y el movimiento suave ayudan.',
@@ -1424,7 +1441,7 @@ export default {
     },
     period_soon: {
       title: 'Tu regla se acerca',
-      body: { one: 'Podría llegar en 1 día (hacia el {start}).', other: 'Podría llegar en {count} días (hacia el {start}).' },
+      body: { zero: 'Podría llegar hoy ({start}).', one: 'Podría llegar en 1 día (hacia el {start}).', other: 'Podría llegar en {count} días (hacia el {start}).' },
     },
     period_late: {
       title: '¿Te ha venido la regla?',

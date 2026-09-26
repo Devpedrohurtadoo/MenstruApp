@@ -10,6 +10,7 @@ import {
   todayISO,
   daysInMonth,
   parseTime,
+  ageFromProfile,
 } from '../../public/js/core/dates.js';
 
 describe('dates', () => {
@@ -75,5 +76,12 @@ describe('dates', () => {
   it('parses times defensively', () => {
     expect(parseTime('07:30')).toEqual([7, 30]);
     expect(parseTime('24:00')).toEqual([9, 0]);
+  });
+
+  it('takes the youngest possible age when only the birth year is known', () => {
+    expect(ageFromProfile({ birthYear: 2008 }, '2026-01-10')).toBe(17);
+    expect(ageFromProfile({ birthYear: 2008 }, '2026-12-31')).toBe(17);
+    expect(ageFromProfile({ birthYear: null }, '2026-01-10')).toBeNull();
+    expect(ageFromProfile({}, '2026-01-10')).toBeNull();
   });
 });

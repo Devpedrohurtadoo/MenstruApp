@@ -5,19 +5,47 @@
 
 import { BLEEDING, SYMPTOMS, DIFFICULT_MOODS, MOODS } from './catalog.js';
 import { addDays, diffDays, rangeISO } from '../core/dates.js';
-import { calendarMarks, fertilityLevel } from './cycle.js';
+import { calendarMarks } from './cycle.js';
 
 /**
  * @typedef {{ id: string, level: 'urgent' | 'consult' | 'info', params?: Record<string, any>, article?: string }} Notice
  */
 
 const RED_FLAGS = new Set(SYMPTOMS.filter((s) => s.redFlag).map((s) => s.id));
+/** Recent enough to mention bleeding between periods or after menopause. */
+const RECENT_DAYS = 90;
+/** Emergency contraception still works up to 5 days (120 h) after unprotected sex. */
+const EMERGENCY_CONTRACEPTION_DAYS = 5;
+
+/**
+ * Normal variation between the shortest and the longest recent cycle (FIGO 2018): up to 7 days
+ * from 26 to 41 years, up to 9 days at other ages (and when the age is unknown).
+ * @param {number | null | undefined} age
+ */
+export function normalVariation(age) {
+  return typeof age === 'number' && age >= 26 && age <= 41 ? 7 : 9;
+}
+
+/**
+ * Length variation of the last 6 valid cycles (used both by the "irregular" notice and by the
+ * regularity label, so they always agree).
+ * @param {ReturnType<typeof import('./cycle.js').analyze>} a
+ */
+function recentVariation(a) {
+  const lengths = a.cycles
+    .filter((c) => c.length !== null && !c.excluded)
+    .slice(-6)
+    .map((c) => /** @type {number} */ (c.length));
+  return { lengths, range: lengths.length ? Math.max(...lengths) - Math.min(...lengths) : 0 };
+}
 
 /**
  * @param {ReturnType<typeof import('./cycle.js').analyze>} a
  * @param {Record<string, any>} days
- * @param {{ today: string, mode: string, age: number | null, experience?: string, modeSince?: string | null,
- *   pregnancyActive?: boolean, postpartumBirthDate?: string | null }} ctx
+ * @param {{ today: string, mode: string, age: number | null, ageMax?: number | null, experience?: string, modeSince?: string | null,
+ *   pregnancyActive?: boolean, postpartumBirthDate?: string | null, postmenopausal?: boolean }} ctx
+ *   age: youngest possible age (see ageFromProfile); ageMax: oldest possible age (defaults to age + 1, since
+ *   only the birth year is known). postmenopausal: the user stated 12+ months without a period (perimenopause).
  * @returns {Notice[]}
  */
 export function computeNotices(a, days, ctx) {
@@ -25,6 +53,7 @@ export function computeNotices(a, days, ctx) {
   const out = [];
   const { today, mode } = ctx;
   const young = (ctx.age !== null && ctx.age < 18) || (ctx.age === null && ctx.experience === 'new');
+  const ageMax = ctx.ageMax !== undefined ? ctx.ageMax : ctx.age === null ? null : ctx.age + 1;
   const recent = [today, addDays(today, -1)];
 
   // Red-flag symptoms logged today or yesterday.
@@ -43,50 +72,65 @@ export function computeNotices(a, days, ctx) {
   }
 
   if (mode === 'postpartum' && ctx.postpartumBirthDate) {
-    const weeks = diffDays(ctx.postpartumBirthDate, today) / 7;
-    const heavy = recent.some((d) => days[d]?.flow === 'heavy' && days[d]?.clots === 'large');
-    if (heavy && weeks <= 12) out.push({ id: 'postpartumHeavyBleeding', level: 'urgent', article: 'posparto' });
+    const birth = ctx.postpartumBirthDate;
+    const sinceBirth = diffDays(birth, today);
+    // Each is a warning sign of a postpartum haemorrhage on its own: large clots at any time, or
+    // heavy bleeding once the first week (when heavy lochia is expected) has passed.
+    const warning = recent.some((d) => days[d]?.clots === 'large' || (days[d]?.flow === 'heavy' && diffDays(birth, d) > 7));
+    if (warning && sinceBirth >= 0 && sinceBirth <= 12 * 7) out.push({ id: 'postpartumHeavyBleeding', level: 'urgent', article: 'posparto' });
   }
 
   const periods = a.periods;
   const last = periods[periods.length - 1] ?? null;
+  // Days without a period are counted from the end of the last one (as for menopause).
+  const withoutPeriod = last ? diffDays(last.end, today) : 0;
 
-  if (mode === 'perimenopause' && periods.length >= 2) {
-    const prev = periods[periods.length - 2];
-    if (last && diffDays(prev.end, last.start) >= 365) out.push({ id: 'postmenopausalBleeding', level: 'consult', article: 'menopausia' });
+  if (mode === 'perimenopause') {
+    // Any bleeding, spotting included, 12+ months after the last period must be checked.
+    const bleeds = Object.keys(days).filter((d) => d <= today && d > addDays(today, -RECENT_DAYS) && days[d]?.flow && days[d].flow !== 'none');
+    const afterMenopause = bleeds.some((d) => {
+      const before = periods.filter((p) => p.end < d).at(-1);
+      return before ? diffDays(before.end, d) >= 365 : Boolean(ctx.postmenopausal);
+    });
+    if (afterMenopause) out.push({ id: 'postmenopausalBleeding', level: 'consult', article: 'menopausia' });
+    if (last && withoutPeriod >= 365) out.push({ id: 'menopauseMilestone', level: 'info', params: { count: withoutPeriod }, article: 'menopausia' });
   }
-  if (mode === 'perimenopause' && last && diffDays(last.end, today) >= 365) {
-    out.push({ id: 'menopauseMilestone', level: 'info', params: { count: diffDays(last.end, today) }, article: 'menopausia' });
-  }
-
-  const cur = a.current;
-  if (cur?.stale) out.push({ id: 'stale', level: 'info' });
 
   const tracking = mode === 'track' || mode === 'conceive' || mode === 'avoid';
+  const cur = a.current;
+  // After a birth or around menopause long gaps are expected: nothing to "pause".
+  if (tracking && cur?.stale) out.push({ id: 'stale', level: 'info' });
+  // Hormonal contraception: there is no natural cycle, so a late or absent bleed, amenorrhoea or
+  // irregular bleeding do not mean what they mean in a natural cycle (see cycle.js).
+  const hormonal = a.hormonal ?? null;
+  // A natural cycle, as opposed to bleeding driven by a hormonal method.
+  const natural = tracking && !hormonal;
   if (tracking && cur && !cur.stale && cur.late && cur.lateDays >= 5) {
-    const unprotected = Object.keys(days).some((d) => d >= cur.start && days[d]?.sex === 'unprotected');
-    out.push({ id: unprotected ? 'lateTest' : 'late', level: 'info', params: { count: cur.lateDays }, article: 'test-embarazo' });
+    if (hormonal) {
+      out.push({ id: 'lateWithdrawal', level: 'info', params: { count: cur.lateDays }, article: 'metodos-anticonceptivos' });
+    } else {
+      const unprotected = Object.keys(days).some((d) => d >= cur.start && days[d]?.sex === 'unprotected');
+      out.push({ id: unprotected ? 'lateTest' : 'late', level: 'info', params: { count: cur.lateDays }, article: 'test-embarazo' });
+    }
   }
 
   // No bleeding for 90+ days while the user keeps logging other things.
-  if (tracking && last && diffDays(last.start, today) >= 90) {
-    const logging = Object.keys(days).filter((d) => d > addDays(today, -30)).length >= 5;
-    if (logging) out.push({ id: 'amenorrhea', level: 'consult', params: { count: diffDays(last.start, today) }, article: 'ciclos-irregulares' });
+  if (natural && last && withoutPeriod >= 90) {
+    const logging = Object.keys(days).filter((d) => d > addDays(today, -30) && d <= today).length >= 5;
+    if (logging) out.push({ id: 'amenorrhea', level: 'consult', params: { count: withoutPeriod }, article: 'ciclos-irregulares' });
   }
 
-  const recentCycles = a.cycles.filter((c) => c.length !== null && !c.excluded).slice(-6);
-  const lengths = recentCycles.map((c) => /** @type {number} */ (c.length));
-  if (tracking && !young && lengths.length >= 3) {
-    const variation = Math.max(...lengths) - Math.min(...lengths);
-    const limit = ctx.age !== null && ctx.age >= 26 && ctx.age <= 41 ? 7 : 9;
-    if (variation > limit) out.push({ id: 'irregular', level: 'info', params: { count: variation }, article: 'ciclos-irregulares' });
+  const { lengths, range } = recentVariation(a);
+  if (natural && !young && lengths.length >= 3 && range > normalVariation(ctx.age)) {
+    out.push({ id: 'irregular', level: 'info', params: { count: range }, article: 'ciclos-irregulares' });
   }
   const [minNormal, maxNormal] = young ? [21, 45] : [24, 38];
-  if (tracking && lengths.filter((l) => l < minNormal).length >= 2) out.push({ id: 'shortCycles', level: 'consult', params: { min: minNormal }, article: 'ciclos-irregulares' });
-  if (tracking && lengths.filter((l) => l > maxNormal).length >= 2) out.push({ id: 'longCycles', level: 'consult', params: { max: maxNormal }, article: 'ciclos-irregulares' });
+  if (natural && lengths.filter((l) => l < minNormal).length >= 2) out.push({ id: 'shortCycles', level: 'consult', params: { min: minNormal }, article: 'ciclos-irregulares' });
+  if (natural && lengths.filter((l) => l > maxNormal).length >= 2) out.push({ id: 'longCycles', level: 'consult', params: { max: maxNormal }, article: 'ciclos-irregulares' });
 
-  const knownPeriods = periods.filter((p) => p.lengthKnown).slice(-3);
-  if (mode !== 'postpartum' && knownPeriods.some((p) => /** @type {number} */ (p.length) > 8)) {
+  // Bleeding for more than 8 days, including episodes longer than a typical period (> 15 days)
+  // and a period that is still going on.
+  if (mode !== 'postpartum' && periods.slice(-3).some((p) => diffDays(p.start, p.end) + 1 > 8)) {
     out.push({ id: 'longPeriod', level: 'consult', article: 'sangrado-abundante' });
   }
 
@@ -97,20 +141,25 @@ export function computeNotices(a, days, ctx) {
     if (heavyDays >= 3 || bigClots) out.push({ id: 'heavyFlow', level: 'info', article: 'sangrado-abundante' });
   }
 
-  if (a.intermenstrual.some((r) => r.start >= addDays(today, -90)) && mode !== 'postpartum') {
+  // Without a scheduled bleed (implant, hormonal IUD, injection, minipill...) all bleeding is
+  // "unscheduled": "between periods" does not apply.
+  if (a.intermenstrual.some((r) => r.start >= addDays(today, -RECENT_DAYS)) && mode !== 'postpartum' && !(hormonal && !hormonal.scheduledBleeds)) {
     out.push({ id: 'intermenstrual', level: 'consult', article: 'ciclos-irregulares' });
   }
 
   if (mode === 'conceive' && ctx.modeSince) {
     const months = diffDays(ctx.modeSince, today) / 30.44;
-    const threshold = ctx.age !== null && ctx.age >= 35 ? 6 : 12;
+    // From 35 the advice is to ask after 6 months: use the oldest age she can be.
+    const threshold = ageMax !== null && ageMax >= 35 ? 6 : 12;
     if (months >= threshold) out.push({ id: 'conceiveHelp', level: 'info', params: { count: threshold }, article: 'buscar-embarazo' });
   }
 
-  if (mode === 'avoid' && a.prediction) {
-    const risky = rangeISO(addDays(today, -5), today).find(
-      (d) => days[d]?.sex === 'unprotected' && fertilityLevel(diffDays(/** @type {any} */ (a.prediction).ovulationDay, d)) !== null,
-    );
+  // Emergency contraception after any unprotected sex while it can still work, whatever the
+  // estimated fertile window (estimates are not contraception).
+  if (mode === 'avoid') {
+    const risky = rangeISO(addDays(today, -EMERGENCY_CONTRACEPTION_DAYS), today)
+      .reverse()
+      .find((d) => days[d]?.sex === 'unprotected');
     if (risky) out.push({ id: 'emergencyContraception', level: 'consult', params: { count: diffDays(risky, today) }, article: 'anticoncepcion-emergencia' });
   }
 
@@ -122,8 +171,9 @@ export function computeNotices(a, days, ctx) {
  * Personal patterns: symptoms/moods that cluster in a phase, energy by phase, regularity.
  * @param {ReturnType<typeof import('./cycle.js').analyze>} a
  * @param {Record<string, any>} days
+ * @param {{ age?: number | null }} [opts] age: for the normal variation between cycles (as in the notices)
  */
-export function computeInsights(a, days) {
+export function computeInsights(a, days, opts = {}) {
   const dates = Object.keys(days).sort();
   if (!dates.length || !a.periods.length) return { patterns: [], energy: null, regularity: null, phaseTable: null };
   const marks = calendarMarks(a, days, dates, { showPredictions: false });
@@ -183,8 +233,10 @@ export function computeInsights(a, days) {
     if (avgs[best] - avgs[worst] >= 1) energyInsight = { best, worst, averages: avgs };
   }
 
-  const stats = a.stats.cycle;
-  const regularity = stats && stats.count >= 3 ? (stats.range <= 3 ? 'veryRegular' : stats.range <= 7 ? 'regular' : 'variable') : null;
+  // Same cycles and threshold as the "irregular" notice, so the label never contradicts it.
+  const variation = recentVariation(a);
+  const regularity =
+    variation.lengths.length >= 3 ? (variation.range <= 3 ? 'veryRegular' : variation.range <= normalVariation(opts.age) ? 'regular' : 'variable') : null;
 
   // Symptom × phase frequency table for the analysis view.
   const phaseOrder = ['menstrual', 'follicular', 'ovulatory', 'luteal'].filter((p) => phaseDays[p]);

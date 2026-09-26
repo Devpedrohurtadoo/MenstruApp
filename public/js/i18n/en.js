@@ -279,6 +279,10 @@ export default {
     periodIn: { one: 'Period in 1 day', other: 'Period in {count} days' },
     late: { one: '1 day late', other: '{count} days late' },
     nextPeriod: 'Next period: {date} (± {margin} d)',
+    nextBleed: 'Next withdrawal bleed: {date} (± {margin} d)',
+    bleedIn: { one: 'Bleed in 1 day', other: 'Bleed in {count} days' },
+    bleedToday: 'Your withdrawal bleed could start today',
+    hormonalNoPredictions: "With your method bleeding is often irregular or stops altogether, so we don't predict dates. Log any bleeding and get advice if it worries you.",
     ovulationIn: { one: 'Estimated ovulation tomorrow', other: 'Estimated ovulation in {count} days' },
     fertility: {
       high: 'High fertility today',
@@ -310,6 +314,7 @@ export default {
       ovulation: 'Estimated ovulation',
       pms: 'Possible PMS symptoms',
       period: 'Expected period',
+      withdrawalBleed: 'Expected withdrawal bleed',
     },
     tipTitle: 'Tip of the day',
     streak: { one: '1-day logging streak', other: '{count}-day logging streak' },
@@ -380,6 +385,10 @@ export default {
       title: { one: '1 day late', other: '{count} days late' },
       text: "You logged unprotected sex this cycle. A urine pregnancy test is reliable from the day your period is due; if it's negative and your period still doesn't come, repeat it in 3–5 days.",
     },
+    lateWithdrawal: {
+      title: { one: 'Your withdrawal bleed is 1 day late', other: 'Your withdrawal bleed is {count} days late' },
+      text: "With hormonal contraception it's common for the bleed in the break to be light or not come at all. If you've used your method correctly (no missed or late doses, and no vomiting or diarrhoea if you take the pill), pregnancy is very unlikely: carry on with your method as the leaflet says. If not, or if you've missed two withdrawal bleeds in a row, take a pregnancy test.",
+    },
     amenorrhea: {
       title: { one: '1 day without a period', other: '{count} days without a period' },
       text: "If you're not pregnant, breastfeeding or using a method that stops periods, going 3 months or more without one is worth checking: it can be due to stress, weight changes, intense exercise, PCOS, thyroid issues or other treatable causes.",
@@ -413,11 +422,11 @@ export default {
       text: { one: "If you've been trying for 1 month or more with regular unprotected sex, you can ask for a fertility assessment.", other: "If you've been trying for {count} months or more with regular unprotected sex, it's recommended to ask for a fertility assessment (sooner if your cycles are very irregular or you have known risk factors)." },
     },
     emergencyContraception: {
-      title: 'Unprotected sex on fertile days',
+      title: 'Unprotected sex',
       text: {
-        zero: "Today you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
-        one: "Yesterday you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
-        other: "{count} days ago you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
+        zero: "Today you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
+        one: "Yesterday you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
+        other: "{count} days ago you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
       },
     },
   },
@@ -523,7 +532,8 @@ export default {
         low: 'low fertility',
       },
       ovulation: {
-        confirmed: 'confirmed ovulation',
+        confirmed: 'ovulation confirmed by temperature',
+        lh: 'ovulation predicted by an LH test',
         estimated: 'estimated ovulation',
       },
     },
@@ -881,12 +891,17 @@ export default {
       pregnantNoPeriod: "You're in pregnancy mode, so I don't calculate periods. Would you like to know how many weeks you are?",
       late: { one: 'According to your logs, your period is 1 day late.', other: 'According to your logs, your period is {count} days late.' },
       nextPeriod: 'According to your logs, your next period should start around {date} (probably between {from} and {to}).',
+      nextBleed: "According to your logs, your next withdrawal bleed should start around {date} (probably between {from} and {to}). With hormonal contraception there's no natural period or ovulation.",
+      predictionsHiddenPostpartum: "After giving birth I don't calculate your next period until it comes back. When it does, mark it in Settings → Usage mode and I'll start predicting it. Remember you can get pregnant before your first period.",
+      predictionsHiddenHormonal: "With your method (progestogen-only pill, continuous pill, injection, implant or hormonal IUD) bleeding is often irregular or stops, so I don't predict dates. If any bleeding worries you, get it checked.",
       confidence: {
         high: 'Your cycles are regular, so the prediction is fairly reliable.',
         medium: 'The prediction is reasonable, but it may vary by a few days.',
         low: 'Take it as a rough estimate: I need more logged cycles to fine-tune it.',
       },
       fertilityHidden: "You've chosen not to show fertility. You can turn it on in Settings → Usage mode.",
+      fertilityHiddenMode: "In this mode I don't calculate fertile days.",
+      fertilityHiddenHormonal: "With your hormonal method there's no natural ovulation to predict, so I don't show fertile days. Your protection depends on using your method correctly.",
       fertile: {
         high: "Today you're in your highest-fertility days according to the estimate.",
         medium: "Today you're in your fertile window (medium fertility).",
@@ -896,7 +911,9 @@ export default {
       fertileWindow: 'Your estimated fertile window runs from {from} to {to}.',
       notContraception: "Remember: it's an estimate and doesn't work as contraception.",
       ovulationEstimated: 'Your estimated ovulation is on {date}. You can confirm it by logging basal temperature or LH tests.',
-      ovulationConfirmed: 'According to your temperature or LH data, you ovulated around {date}.',
+      ovulationConfirmed: 'According to your basal temperature or LH logs, ovulation this cycle is around {date}.',
+      ovulationBbt: 'Your basal temperature confirms that you ovulated around {date}.',
+      ovulationLh: "Your positive LH test places ovulation around {date}. The test predicts ovulation but doesn't confirm it; a later rise in basal temperature does.",
       cycleDay: 'Today is day {day} of your cycle ({phase}).',
       phaseInfo: {
         menstrual: "You're menstruating: your body is shedding the uterine lining. Tiredness and cramps are common; warmth and gentle movement help.",
@@ -1423,7 +1440,7 @@ export default {
     },
     period_soon: {
       title: 'Your period is coming',
-      body: { one: 'It could start in 1 day (around {start}).', other: 'It could start in {count} days (around {start}).' },
+      body: { zero: 'It could start today ({start}).', one: 'It could start in 1 day (around {start}).', other: 'It could start in {count} days (around {start}).' },
     },
     period_late: {
       title: 'Has your period started?',
