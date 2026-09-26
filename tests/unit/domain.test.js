@@ -162,10 +162,19 @@ describe('modes', () => {
 describe('luna engine', () => {
   const kb = {
     intents: [
-      { id: 'cramps', keywords: { colicos: 3, 'dolor de regla': 4 }, answer: ['Calor local ayuda.'], article: 'dolor-menstrual' },
-      { id: 'pcos', keywords: { sop: 4, 'ovario poliquistico': 4 }, answer: ['El SOP es...'], article: 'sop' },
+      { id: 'cramps', topic: 'Cólicos', keywords: { colico: 3, 'dolor de regla': 4 }, answer: ['Calor local ayuda.'], article: 'dolor-menstrual', insteadIn: { pregnant: 'pregnancyPain' } },
+      { id: 'pcos', topic: 'SOP', keywords: { sop: 4, 'ovario poliquistico': 4 }, answer: ['El SOP es...'], article: 'sop' },
+      { id: 'anemia', topic: 'Anemia', keywords: { 'anemi*': 4 }, answer: ['El hierro...'] },
+      { id: 'products', topic: 'Productos', keywords: { compresa: 3 }, answer: ['Compresas y tampones...'] },
+      { id: 'pregnancyPain', topic: 'Dolor en el embarazo', keywords: { 'dolor en el embarazo': 6 }, answer: ['En el embarazo, pregunta antes de tomar analgésicos.'] },
     ],
-    redFlags: [{ id: 'heavy', patterns: ['empapo una compresa cada hora'], answer: ['Busca atención médica.'] }],
+    contexts: { pregnant: ['estoy embarazada', 'estoy de # semanas'] },
+    redFlags: [
+      { id: 'heavy', patterns: ['empapo una compresa cada hora'], answer: ['Busca atención médica.'], related: ['cramps', 'anemia'] },
+      { id: 'tss', combos: [[['fiebre'], ['tampon*', 'copa menstrual']]], answer: ['Retira el tampón y ve a urgencias.'] },
+      { id: 'pregnancyBleeding', combos: [[['@pregnant'], ['sangro', 'sangrando']]], unless: ['nariz'], answer: ['Sangrado en el embarazo: consulta.'] },
+      { id: 'crisis', patterns: ['me quiero morir'], alwaysFlag: true, answer: ['Llama al 024.'] },
+    ],
     contextual: { nextPeriod: { 'cuando me baja': 4, 'proxima regla': 4 } },
     smalltalk: { hello: { keywords: ['hola'], answer: ['¡Hola {name}!'] } },
     fallback: ['No te he entendido.'],
@@ -183,16 +192,47 @@ describe('luna engine', () => {
     expect(r.paragraphs.at(-1)).toBe(kb.disclaimer);
   });
 
-  it('puts red flags first', () => {
+  it('puts red flags first, followed only by related information', () => {
     const r = luna.reply('Empapo una compresa cada hora y tengo colicos');
     expect(r.urgent).toBe(true);
+    expect(r.flags).toEqual(['heavy']);
     expect(r.paragraphs[0]).toBe('Busca atención médica.');
     expect(r.intent).toBe('cramps');
+    // "compresa" also matches the products topic, which is unrelated to the emergency.
+    const alone = luna.reply('Empapo una compresa cada hora');
+    expect(alone.intent).toBeUndefined();
+    expect(alone.paragraphs).toEqual(['Busca atención médica.', kb.disclaimer]);
   });
 
-  it('does not match short keywords inside other words', () => {
+  it('matches whole words, plurals and explicit stems only', () => {
     expect(luna.reply('me gusta la sopa').intent).toBeUndefined();
     expect(luna.reply('creo que tengo sop').intent).toBe('pcos');
+    expect(luna.reply('tengo colicos').intent).toBe('cramps');
+    expect(luna.reply('¿tengo anemia?').intent).toBe('anemia');
+    expect(luna.reply('dolor de reglamento').intent).toBeUndefined();
+  });
+
+  it('fires combined rules anywhere in the message and respects negations', () => {
+    expect(luna.reply('Tengo fiebre y llevo un tampón').flags).toEqual(['tss']);
+    expect(luna.reply('Llevo tampones desde ayer y ahora tengo fiebre').flags).toEqual(['tss']);
+    expect(luna.reply('No tengo fiebre y llevo un tampón').urgent).toBe(false);
+    expect(luna.reply('Tengo fiebre, sin tampón').urgent).toBe(false);
+    // A clause break stops a negation: "No, ..." answers the question and then states the problem.
+    expect(luna.reply('No, tengo fiebre y llevo tampón').urgent).toBe(true);
+    // Crisis flags are never silenced.
+    expect(luna.reply('No, no me quiero morir... bueno, sí').urgent).toBe(true);
+  });
+
+  it('uses the mode or an affirmative statement as context', () => {
+    expect(luna.reply('estoy sangrando').urgent).toBe(false);
+    expect(luna.reply('estoy sangrando', { mode: 'pregnant' }).flags).toEqual(['pregnancyBleeding']);
+    expect(luna.reply('estoy de 9 semanas y estoy sangrando').flags).toEqual(['pregnancyBleeding']);
+    expect(luna.reply('si estoy embarazada, ¿es normal que esté sangrando?').urgent).toBe(false);
+    expect(luna.reply('no estoy embarazada y estoy sangrando').urgent).toBe(false);
+    expect(luna.reply('estoy embarazada y sangro por la nariz').urgent).toBe(false);
+    // A safer intent is used in pregnancy.
+    expect(luna.reply('tengo colicos', { mode: 'pregnant' }).intent).toBe('pregnancyPain');
+    expect(luna.reply('estoy embarazada y tengo colicos').intent).toBe('pregnancyPain');
   });
 
   it('uses contextual handlers with personal data', () => {

@@ -1,70 +1,188 @@
 // Luna knowledge base (English). Everything is evaluated on the device.
-// - redFlags: always checked first and shown on top (emergencies, crisis, violence).
+// - redFlags: always checked first and shown on top (emergencies, crisis, violence). They fire on
+//   a phrase from `patterns` or on a `combo` when at least one word of every group appears anywhere
+//   in the message ("fever" + "tampon"). "@pregnant" and "@postpartum" refer to `contexts` and are
+//   also satisfied by the user's mode. A negation right before a term ("no fever") silences the
+//   rule, except for flags marked `alwaysFlag` (suicide, self-harm, violence...). Only related
+//   information (`related`, or `follow` when there is none) is added after an urgent answer.
 // - contextual: personal questions answered with the user's own data (views/luna.js).
 // - intents: informational answers; `topic` is the question offered as a follow-up chip.
-// Keywords are normalised (lower case, no accents, apostrophes become spaces). Keywords of 4
-// letters or fewer must match a whole word. Weights: 2 = weak hint, 4 = clear topic, 6 = exact phrase.
+// Keywords are normalised (lower case, no accents, apostrophes become spaces) and match whole
+// words; a trailing "*" marks a stem ("bleed*") and "#" a number. Informational keywords also
+// accept an s/es plural on their last word. Weights: 2 = weak hint, 4 = clear topic, 6 = exact phrase.
+
+// Word groups used by the combined rules.
+const BLEED = [
+  'bleed', 'bleeding', 'bleeds', 'bled', 'spotting', 'spotted', 'blood on', 'blood in my', 'blood when', 'some blood', 'bit of blood',
+  'brown blood', 'red blood', 'pink blood', 'passing blood', 'losing blood', 'lost blood', 'lot of blood', 'lots of blood',
+  'so much blood', 'blood clot*', 'clots', 'haemorrhag*', 'hemorrhag*',
+];
+const DIZZY = [
+  'dizz*', 'lightheaded', 'light headed', 'feel faint', 'feeling faint', 'felt faint', 'going to faint', 'gonna faint',
+  'about to faint', 'might faint', 'fainted', 'fainting', 'pass out', 'passing out', 'passed out', 'blacked out', 'feel weak',
+  'feeling weak', 'very weak', 'woozy',
+];
+const SOAK = ['soak*', 'drench*', 'bleeding through', 'bled through', 'bleed through'];
+const PRODUCT = [
+  'pad', 'pads', 'tampon*', 'menstrual cup', 'my cup', 'period cup', 'menstrual disc', 'my disc', 'period pants',
+  'period underwear', 'maternity pad*', 'liner', 'liners', 'panty liner*',
+];
+const FEVER = ['fever*', 'high temperature', 'temperature of #', 'running a temperature', 'febrile'];
+const TAMPON_CUP = ['tampon*', 'menstrual cup', 'my cup', 'period cup', 'using a cup', 'wearing a cup', 'menstrual disc', 'my disc'];
+const STRONG_PAIN = [
+  'hurts a lot', 'hurts so much', 'hurts really bad', 'really hurts', 'hurting a lot', 'lot of pain', 'lots of pain', 'so much pain',
+  'bad pain', 'really bad pain', 'bad cramps', 'really bad cramps', 'strong cramps', 'severe cramps', 'painful cramps',
+  'strong pain', 'severe pain', 'sharp pain', 'intense pain', 'terrible pain', 'awful pain', 'horrible pain', 'unbearable pain',
+  'cramping badly', 'cramping a lot',
+];
+const HEAVY_BLEEDING = [
+  'bleeding a lot', 'bleed a lot', 'bleeding heavily', 'heavy bleeding', 'bleeding very heavily', 'lots of blood', 'lot of blood',
+  'so much blood', 'large clots', 'big clots', 'huge clots', 'bleeding more', 'bleeding is getting heavier', 'getting heavier',
+  'bleeding again', 'started bleeding again',
+];
+const HIT = [
+  'hits me', 'hit me', 'hitting me', 'beats me', 'beat me', 'beating me', 'pushes me', 'pushed me', 'shoves me', 'shoved me',
+  'kicks me', 'kicked me', 'grabbed me', 'throws things at me',
+];
+const PERSON = [
+  'partner', 'ex partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'ex', 'my ex', 'he', 'she', 'him', 'someone', 'somebody',
+  'my dad', 'my father', 'my mum', 'my mom', 'my mother', 'my stepdad', 'my stepfather', 'my stepmum', 'my stepmom', 'my brother',
+  'my sister', 'my uncle', 'my family', 'my parents', 'a guy', 'a man', 'at home',
+];
 
 /** @type {import('../domain/luna.js').KnowledgeBase} */
 export default {
+  // Situations for the "@..." groups: affirmative phrases (not "if I'm pregnant") or the usage
+  // mode (pregnant; postpartum during the first 12 weeks).
+  contexts: {
+    pregnant: [
+      "i'm pregnant", 'im pregnant', 'i am pregnant', 'weeks pregnant', 'months pregnant', 'while pregnant', 'during pregnancy',
+      'during my pregnancy', 'in pregnancy', 'in my pregnancy', 'early pregnancy', 'my pregnancy', 'being pregnant',
+      'currently pregnant', 'still pregnant', 'weeks along', 'first trimester', 'second trimester', 'third trimester',
+      "i'm expecting", 'pregnant with twins',
+    ],
+    postpartum: [
+      'after birth', 'after giving birth', 'gave birth', 'given birth', 'since the birth', 'since giving birth', 'postpartum',
+      'post partum', 'postnatal', 'after delivery', 'c section', 'caesarean', 'cesarean', 'lochia',
+    ],
+  },
+
   redFlags: [
     {
       id: 'heavyBleeding',
-      patterns: ['soaking a pad', 'soaking through', 'soak a pad', 'soaked a pad', 'soaking pads', 'soaking a tampon', 'haemorrhag', 'hemorrhag', 'bleeding heavily', 'bleeding so much', "won't stop bleeding", 'wont stop bleeding', 'huge clots', 'massive clots', 'bleeding out'],
+      patterns: [
+        'soaking a pad', 'soaking through', 'soak a pad', 'soaked a pad', 'soaking pads', 'soaking a tampon', 'haemorrhag*',
+        'hemorrhag*', 'bleeding heavily', 'bleeding so much', "won't stop bleeding", 'wont stop bleeding', "can't stop bleeding",
+        'cant stop bleeding', 'huge clots', 'massive clots', 'bleeding out',
+      ],
+      combos: [
+        [SOAK, PRODUCT],
+        [BLEED, DIZZY],
+      ],
       answer: ['⚠️ If you soak a pad or tampon every hour for 2 hours or more, pass very large clots, or feel dizzy or weak, get urgent medical help now: go to the emergency department or call your emergency number (112 / 911 / 999).'],
+      related: ['heavyBleeding', 'anemia', 'postpartumBleeding', 'miscarriage'],
     },
     {
       id: 'severePain',
       patterns: ['unbearable pain', 'excruciating', 'worst pain', 'severe pain', 'pain is unbearable', "can't stand the pain", 'sudden pain', 'agonising', 'agonizing'],
+      combos: [[['@postpartum'], STRONG_PAIN]],
       answer: ["⚠️ If the pain is very intense or sudden, doesn't improve with painkillers, or comes with fever, vomiting, dizziness or bleeding — especially if you could be pregnant — go to the emergency department or call your emergency number."],
+      related: ['cramps', 'endometriosis', 'ovarianCyst', 'postpartumBleeding'],
     },
     {
       id: 'fainting',
-      patterns: ['fainted', 'passed out', 'fainting', 'about to faint', 'going to faint', 'blacked out'],
+      patterns: [
+        'fainted', 'fainting', 'passed out', 'blacked out', 'about to faint', 'going to faint', 'gonna faint', 'might faint', 'feel faint',
+        'feeling faint', 'felt faint', 'about to pass out', 'going to pass out', 'gonna pass out',
+      ],
       answer: ["⚠️ If you've fainted or feel you're about to, lie down with your legs raised and ask for help. If you're bleeding heavily, could be pregnant or don't recover quickly, call your emergency number."],
+      related: ['heavyBleeding', 'anemia'],
     },
     {
       id: 'pregnancyBleeding',
       patterns: ['pregnant and bleeding', 'bleeding while pregnant', 'bleeding in pregnancy', 'bleeding during pregnancy', 'pregnant and spotting', 'spotting while pregnant', "i'm pregnant and i'm bleeding"],
+      combos: [[['@pregnant'], BLEED]],
+      // Common kinds of bleeding in pregnancy that are not vaginal.
+      unless: ['gum', 'gums', 'nose', 'nosebleed*', 'haemorrhoid*', 'hemorrhoid*', 'piles'],
       answer: ['⚠️ Any bleeding in pregnancy should be checked by a professional. If it is heavy, with clots, strong pain or dizziness, go to the emergency department now. If it is light spotting, call your midwife or maternity unit today.'],
+      related: ['pregnancyWarning', 'miscarriage'],
+      follow: 'pregnancyWarning',
+    },
+    {
+      id: 'pregnancyPain',
+      combos: [[['@pregnant'], STRONG_PAIN]],
+      answer: ["⚠️ In pregnancy, strong pain that doesn't settle — especially if it's on one side or comes with bleeding, fever, dizziness or leaking fluid — needs urgent assessment: go to the emergency department or maternity triage now, or call your emergency number."],
+      related: ['pregnancyWarning', 'miscarriage', 'contractions'],
+      follow: 'pregnancyWarning',
+    },
+    {
+      id: 'postpartumHaemorrhage',
+      combos: [[['@postpartum'], HEAVY_BLEEDING]],
+      answer: ['⚠️ After giving birth, soaking a pad in an hour or less, passing large clots, or bleeding that gets heavier instead of lighter — especially with dizziness, fever or a bad smell — can be a haemorrhage or an infection: go to the emergency department now or call your emergency number.'],
+      related: ['postpartumBleeding'],
+      follow: 'postpartumBleeding',
     },
     {
       id: 'toxicShock',
       patterns: ['fever with a tampon', 'tampon and fever', 'fever and tampon', 'fever and a tampon', 'fever with my cup', 'cup and fever', 'fever with a cup'],
+      combos: [[FEVER, TAMPON_CUP]],
       answer: ['⚠️ A sudden high fever while using a tampon or cup, with vomiting, diarrhoea, a rash or dizziness, may be toxic shock syndrome: remove it and go to the emergency department now.'],
+      related: ['tss'],
+      follow: 'tss',
     },
     {
       id: 'preeclampsia',
       patterns: ['blurred vision', 'blurry vision', 'seeing spots', 'flashing lights', 'seeing flashes'],
       answer: ["⚠️ Blurred vision or flashing lights, especially with a severe headache or sudden swelling, can be a sign of pre-eclampsia if you're pregnant or recently gave birth. Contact maternity triage today or call your emergency number."],
+      related: ['pregnancyWarning', 'headache'],
     },
     {
       id: 'fetalMovement',
       patterns: ["baby isn't moving", 'baby not moving', 'baby is moving less', 'baby moving less', 'reduced movements', "can't feel the baby", "can't feel my baby", 'fewer kicks', 'baby stopped moving'],
+      alwaysFlag: true,
       answer: ["⚠️ If your baby is moving less or differently, don't wait until tomorrow: call your maternity unit or go to maternity triage today."],
+      related: ['pregnancyWarning', 'contractions'],
     },
     {
       id: 'waterBreak',
-      patterns: ['waters broke', 'water broke', 'waters have broken', 'my waters have gone', 'leaking fluid'],
+      patterns: ['waters broke', 'water broke', 'waters have broken', 'water has broken', 'my waters have gone', 'leaking fluid'],
       answer: ["⚠️ If you think your waters have broken, note the time and the colour of the fluid and contact your maternity unit. If it's green, brown or bloody, the baby is moving less or you're under 37 weeks, go in without waiting."],
+      related: ['contractions', 'pregnancyWarning'],
     },
     {
       id: 'chest',
-      patterns: ['chest pain', 'short of breath', "can't breathe", 'cannot breathe', 'swollen leg', 'calf pain'],
+      patterns: [
+        'chest pain', 'pain in my chest', 'tight chest', 'chest tightness', 'short of breath', 'shortness of breath', "can't breathe",
+        'cannot breathe', 'struggling to breathe', 'swollen leg', 'swollen calf', 'calf pain', 'painful calf',
+      ],
       answer: ['⚠️ Chest pain, sudden shortness of breath, or pain and swelling in one leg can be serious, especially in pregnancy, after birth or if you take oestrogen-containing contraception. Call your emergency number now.'],
     },
     {
       id: 'selfHarm',
-      patterns: ['suicid', 'kill myself', 'end my life', 'want to die', "don't want to live", 'dont want to live', 'self harm', 'self-harm', 'want to hurt myself', 'harm myself', 'better off dead'],
+      patterns: [
+        'suicid*', 'kill myself', 'killing myself', 'end my life', 'take my own life', 'end it all', 'want to die', "don't want to live",
+        'dont want to live', "don't want to be alive", 'dont want to be alive', "don't want to be here anymore", 'want to be dead',
+        'wish i was dead', 'wish i were dead', 'better off dead', 'no reason to live', 'self harm', 'self harming', 'want to hurt myself',
+        'hurting myself', 'harm myself', 'cut myself', 'cutting myself', 'cut my wrists', 'cut my arms', 'burn myself',
+      ],
+      alwaysFlag: true,
       answer: [
         "I'm so sorry you're going through this. You're not alone and you deserve help right now. 💜",
         'In the US, call or text 988 (Suicide & Crisis Lifeline). In the UK and Ireland, call Samaritans on 116 123. In Spain, call 024. Elsewhere, call your local emergency number (112 in Europe, 911 in the US, 999 in the UK).',
         "If you can, reach out to someone you trust now and don't stay alone.",
       ],
+      related: ['mood', 'postpartumMood', 'pms'],
     },
     {
       id: 'violence',
-      patterns: ['hits me', 'beats me', 'hit me', 'abusive partner', 'domestic violence', 'domestic abuse', 'raped', 'rape', 'sexual assault', 'sexually assaulted', 'forced me to have sex', 'afraid of my partner', 'scared of my partner'],
+      patterns: [
+        'beats me up', 'beat me up', 'abusive partner', 'abusive relationship', 'domestic violence', 'domestic abuse', 'raped', 'rape',
+        'sexual assault', 'sexually assaulted', 'sexually abused', 'forced me to have sex', 'forces me to have sex', 'afraid of my partner',
+        'scared of my partner', 'punched me', 'slapped me', 'choked me', 'strangled me', 'abuses me', 'abused me',
+      ],
+      // "Hit me" is only violence when someone does it: "cramps hit me hard" is not.
+      combos: [[HIT, PERSON]],
+      alwaysFlag: true,
       answer: [
         "What you're describing is serious and it's not your fault. You deserve to be safe. 💜",
         'If you are in danger, call your emergency number. In the US: National Domestic Violence Hotline 1-800-799-7233 (or text START to 88788) and RAINN 1-800-656-4673 for sexual assault. In the UK: National Domestic Abuse Helpline 0808 2000 247 (free, 24 h). In Spain: 016.',
@@ -89,13 +207,15 @@ export default {
     {
       id: 'cramps',
       topic: 'How can I ease cramps?',
-      keywords: { cramp: 4, 'period pain': 4, 'menstrual pain': 4, 'painful period': 4, dysmenorrh: 4, 'my period hurts': 4, 'stomach ache': 2, 'tummy ache': 2, 'ease the pain': 2, hurts: 2, pain: 1 },
+      keywords: { 'cramp*': 4, 'period pain': 4, 'menstrual pain': 4, 'painful period': 4, 'dysmenorrh*': 4, 'my period hurts': 4, 'stomach ache': 2, 'tummy ache': 2, 'ease the pain': 2, hurts: 2, pain: 1 },
       answer: [
         'Cramps are caused by prostaglandins, which make the uterus contract. What works best: an anti-inflammatory such as ibuprofen as the pain starts (following the leaflet), heat on your tummy or lower back, and gentle movement like walking or stretching.',
         "If that doesn't help, if it makes you miss school or work, or if you have pain during sex or outside your period, talk to your doctor: there may be a treatable cause such as endometriosis.",
       ],
       article: 'dolor-menstrual',
       followUps: ['endometriosis', 'heavyBleeding'],
+      // Anti-inflammatories are not advised in pregnancy: answer with the pregnancy information instead.
+      insteadIn: { pregnant: 'pregnancyCramps' },
     },
     {
       id: 'heavyBleeding',
@@ -133,7 +253,7 @@ export default {
     {
       id: 'anemia',
       topic: 'Could I be anaemic?',
-      keywords: { anaemi: 5, anemi: 5, iron: 4, ferritin: 5, tired: 2, tiredness: 2, exhausted: 2, 'no energy': 2 },
+      keywords: { 'anaemi*': 5, 'anemi*': 5, iron: 4, ferritin: 5, tired: 2, tiredness: 2, exhausted: 2, 'no energy': 2 },
       answer: [
         'Heavy periods are a very common cause of low iron. Symptoms include persistent tiredness, pale skin, hair loss, dizziness or breathlessness on exertion.',
         'To prevent it, include legumes, meat, fish, eggs and leafy greens with foods rich in vitamin C. If you have symptoms, get a blood test before taking supplements on your own.',
@@ -154,7 +274,7 @@ export default {
     {
       id: 'bloating',
       topic: 'How can I reduce bloating?',
-      keywords: { bloat: 5, 'water retention': 5, gas: 3, 'swollen belly': 5, 'swollen tummy': 5 },
+      keywords: { 'bloat*': 5, 'water retention': 5, gas: 3, 'swollen belly': 5, 'swollen tummy': 5 },
       answer: [
         'Bloating before and during your period is very common because of hormonal changes. Cutting down on salt and alcohol, drinking water, gradually eating more fibre and moving every day usually help.',
         "If bloating is persistent, doesn't follow your cycle or comes with feeling full quickly or weight loss, get it checked.",
@@ -374,7 +494,7 @@ export default {
       topic: 'How does the morning-after pill work?',
       keywords: { 'morning after': 6, 'morning-after': 6, 'emergency contraception': 5, 'emergency pill': 5, 'plan b': 5, 'condom broke': 5, 'condom split': 5, unprotected: 3, 'without a condom': 3, 'without protection': 3 },
       answer: [
-        'The sooner, the better. The levonorgestrel pill works up to 72 hours after, and the ulipristal pill up to 120 hours (more effective in the later days). A copper IUD, up to 5 days, is the most effective option.',
+        "Take it as soon as possible — don't wait. The ulipristal pill stays effective for up to 5 days (120 hours) and the levonorgestrel pill for up to 3 days (72 hours). A copper IUD fitted within 5 days is the most effective option.",
         "It doesn't cause an abortion: it delays ovulation. If you vomit within 3 hours you need another dose, and take a test if your period is more than 7 days late.",
       ],
       article: 'anticoncepcion-emergencia',
@@ -394,7 +514,7 @@ export default {
     {
       id: 'contraceptionMethods',
       topic: 'Which contraceptive method is right for me?',
-      keywords: { contracepti: 3, 'birth control': 4, iud: 4, coil: 4, implant: 3, 'vaginal ring': 4, patch: 3, 'contraceptive injection': 4, condom: 2, 'which method': 2 },
+      keywords: { 'contracepti*': 3, 'birth control': 4, iud: 4, coil: 4, implant: 3, 'vaginal ring': 4, patch: 3, 'contraceptive injection': 4, condom: 2, 'which method': 2 },
       answer: [
         'The most effective are the implant and IUDs (fewer than 1 pregnancy per 100 people a year). The pill, patch and ring are about 7 in 100 with typical use, and condoms about 13 — but condoms are the only method that also protects against STIs.',
         'The best option depends on your health, your preferences and whether you want to avoid hormones or oestrogen. A sexual health or family planning clinic can help you choose.',
@@ -405,7 +525,7 @@ export default {
     {
       id: 'pillBleeding',
       topic: 'Is it normal to bleed on the pill?',
-      keywords: { 'bleed on the pill': 6, 'bleeding on the pill': 6, 'spotting on the pill': 6, 'withdrawal bleed': 5, 'period on the pill': 4, 'break week': 4, 'skip the break': 4, 'back to back': 3 },
+      keywords: { 'bleed on the pill': 6, 'bleeding on the pill': 6, 'spotting on the pill': 6, 'withdrawal bleed*': 5, 'period on the pill': 4, 'break week': 4, 'skip the break': 4, 'back to back': 3 },
       answer: [
         "On the pill there's no natural period: bleeding in the break week is a withdrawal bleed. Spotting between doses is common in the first 3 months and usually settles.",
         'Many regimens let you safely skip the break. If spotting persists, starts suddenly after months without it or comes with pain, get checked to rule out missed pills, interactions or infection.',
@@ -415,7 +535,7 @@ export default {
     {
       id: 'sti',
       topic: 'How do I know if I have an STI?',
-      keywords: { sti: 5, std: 5, 'sexually transmitted': 5, chlamydia: 5, gonorrh: 5, hpv: 5, herpes: 4, syphilis: 5, hiv: 5, 'smear test': 4, 'pap smear': 4 },
+      keywords: { sti: 5, std: 5, 'sexually transmitted': 5, chlamydia: 5, 'gonorrh*': 5, hpv: 5, herpes: 4, syphilis: 5, hiv: 5, 'smear test': 4, 'pap smear': 4 },
       answer: [
         'Many sexually transmitted infections cause no symptoms, so testing is the only way to know, especially with a new partner. They can cause unusual discharge, sores, warts, pain when peeing or bleeding after sex.',
         'Condoms protect against most, the HPV vaccine prevents most cervical cancers, and after a possible HIV exposure there is preventive treatment that must start within 72 hours.',
@@ -482,7 +602,7 @@ export default {
     {
       id: 'sleep',
       topic: "I'm sleeping badly, what can I do?",
-      keywords: { insomnia: 5, 'sleeping badly': 5, "can't sleep": 5, 'cant sleep': 5, sleep: 3, 'wake up at night': 3 },
+      keywords: { insomnia: 5, 'sleeping badly': 5, "can't sleep": 5, 'cant sleep': 5, 'sleep*': 3, 'wake up at night': 3 },
       answer: [
         "Poorer sleep is common before your period and in menopause. Regular hours, a cool dark bedroom, avoiding screens, caffeine and alcohol at night, and moving during the day all help.",
         "If you've slept badly for weeks, cognitive behavioural therapy for insomnia is very effective. Also get checked if you snore loudly or wake up gasping.",
@@ -502,7 +622,7 @@ export default {
     {
       id: 'exercise',
       topic: 'Can I exercise on my period?',
-      keywords: { 'exercise on my period': 5, 'exercise during my period': 5, 'swim on my period': 5, 'swimming on my period': 5, 'sport on my period': 5, exercise: 2, workout: 2, sport: 2, swim: 2 },
+      keywords: { 'exercise on my period': 5, 'exercise during my period': 5, 'swim on my period': 5, 'swimming on my period': 5, 'sport on my period': 5, 'exercis*': 2, workout: 2, sport: 2, swim: 2 },
       answer: [
         'Yes! Exercise often eases pain and lifts your mood. Adjust the intensity to how you feel. You can swim without any problem with a tampon or cup.',
         'If you train a lot and your periods stop, get checked: it may be due to low energy availability.',
@@ -544,12 +664,23 @@ export default {
     {
       id: 'nausea',
       topic: 'How can I ease pregnancy nausea?',
-      keywords: { nausea: 4, 'morning sickness': 6, vomiting: 3, 'feel sick': 4, hyperemesis: 5, "can't keep anything down": 5 },
+      keywords: { 'nausea*': 4, 'morning sickness': 6, vomiting: 3, 'feel sick': 4, hyperemesis: 5, "can't keep anything down": 5 },
       answer: [
         'It usually helps to eat small, frequent meals, have dry foods (crackers, toast) on waking, avoid strong smells and sip drinks between meals. Ginger may help.',
         "Get checked if you can't keep fluids down, pee very little, lose weight or feel dizzy when standing: it may be hyperemesis, which is treatable.",
       ],
       article: 'embarazo-inicio',
+    },
+    {
+      id: 'pregnancyCramps',
+      topic: 'Is it normal to have cramps or pain in pregnancy?',
+      keywords: { 'cramps in pregnancy': 6, 'cramping in pregnancy': 6, 'pain in pregnancy': 6, 'pregnancy cramps': 6, 'pregnancy pain': 5, 'cramps while pregnant': 6, 'cramping while pregnant': 6, 'stomach pain in pregnancy': 6, 'tummy pain in pregnancy': 6, 'abdominal pain in pregnancy': 6 },
+      answer: [
+        'Mild aches, pulling or twinges low in your tummy are common in early pregnancy as the uterus grows. Resting, changing position or a warm (not hot) bath may help.',
+        "If you need a painkiller, check with your midwife, doctor or pharmacist first: paracetamol is usually the choice in pregnancy, and ibuprofen and other anti-inflammatories aren't recommended unless a doctor advises them. Go to the emergency department if the pain is strong, doesn't settle, is on one side, or comes with bleeding, fever, dizziness or leaking fluid.",
+      ],
+      article: 'embarazo-alarma',
+      followUps: ['pregnancyWarning'],
     },
     {
       id: 'pregnancyWarning',
@@ -606,7 +737,7 @@ export default {
     {
       id: 'breastfeedingFertility',
       topic: 'Can I get pregnant while breastfeeding?',
-      keywords: { breastfeeding: 4, 'breast feeding': 4, nursing: 4, lam: 5, 'pregnant while breastfeeding': 6 },
+      keywords: { 'breastfeed*': 4, 'breast feeding': 4, nursing: 4, lam: 5, 'pregnant while breastfeeding': 6 },
       answer: [
         'Yes, you can. Breastfeeding only protects you if your baby is under 6 months, feeds only on breast milk day and night, and your period hasn’t returned. If any of these fails, you could ovulate before your first period.',
         'The progestogen-only pill, IUDs, the implant and condoms are compatible with breastfeeding.',
@@ -631,7 +762,7 @@ export default {
       keywords: { menopause: 4, perimenopause: 5, climacteric: 5, 'last period': 3, hrt: 5, 'hormone therapy': 4, 'hormone replacement': 4 },
       answer: [
         'Perimenopause is the years before your last period, with changing cycles, hot flashes, poorer sleep or mood changes. Menopause is confirmed after 12 months without a period and arrives on average around age 51.',
-        'Hormone therapy is the most effective treatment for symptoms and, for many people, its benefits outweigh the risks; non-hormonal options exist too. Keep using contraception until 12 months after your last period.',
+        'Hormone therapy is the most effective treatment for symptoms and, for many people, its benefits outweigh the risks; non-hormonal options exist too. Keep using contraception until 2 years after your last period if it happens before age 50, or until 1 year after if it happens at 50 or later (if you use a hormonal method, ask your doctor when to stop).',
       ],
       article: 'menopausia',
       followUps: ['hotFlashes', 'dryness'],
@@ -672,7 +803,7 @@ export default {
     {
       id: 'appPrivacy',
       topic: 'Who can see my data?',
-      keywords: { privacy: 4, 'my data': 3, 'who can see': 4, encrypt: 4, 'is it safe': 3, 'sell my data': 5, 'sell data': 5 },
+      keywords: { privacy: 4, 'my data': 3, 'who can see': 4, 'encrypt*': 4, 'is it safe': 3, 'sell my data': 5, 'sell data': 5 },
       answer: [
         'Only you. Your data is encrypted with AES-256 on your device and unlocked with your PIN, passphrase or biometrics. There are no accounts, ads or trackers, and we never sell data.',
         'Sync, cloud reminders and sharing links are optional and end-to-end encrypted. You can export or delete everything in Settings → Your data.',
