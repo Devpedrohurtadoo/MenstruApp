@@ -109,7 +109,14 @@ describe('hormonal contraception', () => {
     const occurrences = (/** @type {Record<string, any>} */ s) => {
       const a = analyze(days, { today: '2024-05-01', settings: s });
       const flags = modeFlags(s);
-      return upcomingOccurrences(reminders, { now: localTimestamp('2024-05-01', '08:00'), today: '2024-05-01', horizonDays: 30, prediction: flags.predictions ? a.prediction : null, current: a.current, flags: { fertility: flags.fertility } }).map((o) => o.type);
+      return upcomingOccurrences(reminders, {
+        now: localTimestamp('2024-05-01', '08:00'),
+        today: '2024-05-01',
+        horizonDays: 30,
+        prediction: flags.predictions ? a.prediction : null,
+        current: a.current,
+        flags: { fertility: flags.fertility },
+      }).map((o) => o.type);
     };
     expect(occurrences(settings('iud_copper'))).toEqual(expect.arrayContaining(['fertile_start', 'ovulation', 'period_soon']));
     const pill = occurrences(settings('pill_combined', { pillRegimen: '21_7' }));

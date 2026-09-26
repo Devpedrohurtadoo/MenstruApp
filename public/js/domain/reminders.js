@@ -51,7 +51,7 @@ const INJECTION_INTERVAL = 91;
  * @returns {string | null} action key or null when nothing is due that day
  */
 export function contraceptionAction(type, startDate, iso, regimen, method) {
-  const day = (((diffDays(startDate, iso) % 28) + 28) % 28);
+  const day = ((diffDays(startDate, iso) % 28) + 28) % 28;
   if (type === 'pill') {
     // Only the combined pill has a pill-free week, and only in the 21+7 regimen.
     const pillFree = regimen === '21_7' && (method === undefined || method === 'pill_combined');

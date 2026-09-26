@@ -11,7 +11,13 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-prac
 async function audit(page, label) {
   await page.waitForTimeout(350);
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  const found = results.violations.map((v) => `${label}: ${v.id} (${v.impact}) — ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
+  const found = results.violations.map(
+    (v) =>
+      `${label}: ${v.id} (${v.impact}) — ${v.nodes
+        .slice(0, 3)
+        .map((n) => n.target.join(' '))
+        .join(' | ')}`,
+  );
   expect(found).toEqual([]);
 }
 

@@ -14,7 +14,7 @@ import { toast } from '../ui/toast.js';
 /** @returns {Promise<{ token: string } | null>} */
 async function client() {
   const db = store.get().db;
-  return db ? (await get(db, 'meta', 'pushClient')) ?? null : null;
+  return db ? ((await get(db, 'meta', 'pushClient')) ?? null) : null;
 }
 
 export async function enablePush() {

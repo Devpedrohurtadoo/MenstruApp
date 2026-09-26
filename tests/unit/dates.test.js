@@ -1,17 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  addDays,
-  diffDays,
-  isISODate,
-  monthGrid,
-  weekdayMonday0,
-  rangeISO,
-  addMonths,
-  todayISO,
-  daysInMonth,
-  parseTime,
-  ageFromProfile,
-} from '../../public/js/core/dates.js';
+import { addDays, diffDays, isISODate, monthGrid, weekdayMonday0, rangeISO, addMonths, todayISO, daysInMonth, parseTime, ageFromProfile } from '../../public/js/core/dates.js';
 
 describe('dates', () => {
   it('validates ISO dates strictly', () => {

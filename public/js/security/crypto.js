@@ -96,13 +96,7 @@ export function timingSafeEqual(a, b) {
 export async function pbkdf2Key(secret, salt, iterations = PBKDF2_ITERATIONS) {
   const s = ensure();
   const material = await s.importKey('raw', utf8.encode(secret), 'PBKDF2', false, ['deriveKey']);
-  return s.deriveKey(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt'],
-  );
+  return s.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
 /**
@@ -119,13 +113,10 @@ export async function hkdfBase(bytes) {
  * @param {boolean} [extractable]
  */
 export async function deriveAesKey(base, info, extractable = false) {
-  return ensure().deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) },
-    base,
-    { name: 'AES-GCM', length: 256 },
-    extractable,
-    ['encrypt', 'decrypt'],
-  );
+  return ensure().deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) }, base, { name: 'AES-GCM', length: 256 }, extractable, [
+    'encrypt',
+    'decrypt',
+  ]);
 }
 
 /**
@@ -133,13 +124,9 @@ export async function deriveAesKey(base, info, extractable = false) {
  * @param {string} info context label
  */
 export async function deriveHmacKey(base, info) {
-  return ensure().deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) },
-    base,
-    { name: 'HMAC', hash: 'SHA-256', length: 256 },
-    false,
-    ['sign'],
-  );
+  return ensure().deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) }, base, { name: 'HMAC', hash: 'SHA-256', length: 256 }, false, [
+    'sign',
+  ]);
 }
 
 /**
@@ -148,11 +135,7 @@ export async function deriveHmacKey(base, info) {
  * @param {number} length bytes
  */
 export async function deriveBytes(base, info, length = 32) {
-  const bits = await ensure().deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) },
-    base,
-    length * 8,
-  );
+  const bits = await ensure().deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: utf8.encode(info) }, base, length * 8);
   return new Uint8Array(bits);
 }
 
@@ -248,13 +231,15 @@ export function toBase32(bytes) {
  * @param {string} input
  */
 export function normalizeBase32(input) {
-  return String(input)
-    .normalize('NFKC') // full-width letters/digits → ASCII
-    .toUpperCase()
-    // spaces, any dash (typographic ones too) and invisible format characters (zero-width…)
-    .replace(/[\s\p{Pd}\p{Cf}]/gu, '')
-    .replace(/[IL]/g, '1')
-    .replace(/O/g, '0');
+  return (
+    String(input)
+      .normalize('NFKC') // full-width letters/digits → ASCII
+      .toUpperCase()
+      // spaces, any dash (typographic ones too) and invisible format characters (zero-width…)
+      .replace(/[\s\p{Pd}\p{Cf}]/gu, '')
+      .replace(/[IL]/g, '1')
+      .replace(/O/g, '0')
+  );
 }
 
 /** @param {string} input @returns {Uint8Array<ArrayBuffer>} */

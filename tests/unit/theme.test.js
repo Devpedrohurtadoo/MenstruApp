@@ -25,7 +25,10 @@ function colour(value) {
 
 describe('theme tokens', () => {
   it('mirror the colours declared in app.css', () => {
-    for (const [theme, selector] of /** @type {const} */ ([['dark', ":root,\n[data-theme='dark']"], ['light', "[data-theme='light']"]])) {
+    for (const [theme, selector] of /** @type {const} */ ([
+      ['dark', ":root,\n[data-theme='dark']"],
+      ['light', "[data-theme='light']"],
+    ])) {
       const declared = tokensOf(selector);
       const t = THEME_TOKENS[theme];
       expect(declared.bg).toBe(t.bg);

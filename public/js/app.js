@@ -9,17 +9,7 @@ import { ProfileRepo } from './data/repo.js';
 import { dayEntrySchema, DOC_SCHEMAS, defaultSettings, PORTABLE_DOCS } from './data/schema.js';
 import { loadPrefs, savePrefs, clearPrefs, clearWebStorage } from './data/prefs.js';
 import { clearLegacyData } from './data/legacy.js';
-import {
-  createVault,
-  unlockVault,
-  deriveProfileKeys,
-  describeVault,
-  setPrimaryLock,
-  regenerateRecovery,
-  addWebAuthnLock,
-  removeLock,
-  WrongSecretError,
-} from './security/vault.js';
+import { createVault, unlockVault, deriveProfileKeys, describeVault, setPrimaryLock, regenerateRecovery, addWebAuthnLock, removeLock, WrongSecretError } from './security/vault.js';
 import { wipe } from './security/crypto.js';
 import { lockStatus, registerFailure, initialLockout, normalizeLockout } from './security/lockout.js';
 import { registerBiometric, unlockWithBiometric, forgetCredential } from './security/webauthn.js';
@@ -445,7 +435,15 @@ export async function saveDay(iso, entry) {
   const r = requireRepo();
   if (iso > todayISO()) throw new RangeError('future');
   const cleaned = Object.fromEntries(
-    Object.entries(entry).filter(([k, v]) => k !== 'updatedAt' && v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length) && !(typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)),
+    Object.entries(entry).filter(
+      ([k, v]) =>
+        k !== 'updatedAt' &&
+        v !== undefined &&
+        v !== null &&
+        v !== '' &&
+        !(Array.isArray(v) && !v.length) &&
+        !(typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length),
+    ),
   );
   const checked = validate(dayEntrySchema, cleaned);
   if (!checked.ok) throw new ValidationError(checked.errors);
@@ -496,9 +494,9 @@ export async function updateProfile(patch) {
   await saveDoc('profile', { ...current, ...patch });
   if ('name' in patch || 'avatar' in patch) {
     const session = requireSession();
-    const profiles = store.get().profiles.map((p) =>
-      p.id === session.profileId ? { ...p, label: String(patch.name ?? p.label ?? '').slice(0, 40), avatar: patch.avatar ?? p.avatar } : p,
-    );
+    const profiles = store
+      .get()
+      .profiles.map((p) => (p.id === session.profileId ? { ...p, label: String(patch.name ?? p.label ?? '').slice(0, 40), avatar: patch.avatar ?? p.avatar } : p));
     await saveProfiles(profiles);
   }
 }

@@ -18,6 +18,7 @@ No genera código por sí mismo: es la **especificación completa** (funcionalid
 Este repo **ya no está vacío**: ya existe una primera versión funcional de Menstruapp (HTML/CSS/JS puro, sin frameworks) con, entre otras cosas, pantallas de login/registro, bloqueo por PIN, modo camuflaje/discreto, calendario del ciclo, un asistente llamado **"Luna"** (`coach.js`), un módulo de bienestar (`wellness.js`) y un sistema de temas/fondos personalizables (`settings.js`). Por eso el prompt está escrito para que la IA **audite y complete** lo que ya existe en vez de asumir que parte de cero (esto evita que te reescriba o te duplique trabajo ya hecho). El prompt incluye una sección específica ("Estado actual del proyecto") con estos detalles para que la IA la tenga en cuenta.
 
 Cosas a tener en cuenta que el prompt le pide corregir:
+
 - Hay **archivos duplicados**: existe una copia completa en la raíz del repo y otra copia (ligeramente distinta) dentro de la carpeta `menstruapp/`. Hay que decidir una única carpeta fuente de verdad.
 - Todavía **no hay Service Worker** ni `netlify.toml`, así que la app aún no es 100% instalable/offline ni está configurada para Netlify.
 - Todo el almacenamiento es local (`localStorage`); no hay backend ni copia de seguridad en la nube todavía.
@@ -27,7 +28,7 @@ Cosas a tener en cuenta que el prompt le pide corregir:
 
 ## 🧠 EMPIEZA EL PROMPT (copia desde aquí)
 
-````
+```
 Actúa como un equipo de desarrollo de software senior y multidisciplinar formado por: arquitecta/o full-stack, diseñadora/or UX/UI especializada en salud femenina, especialista en seguridad informática (AppSec) y QA. Vas a diseñar, completar y dejar lista para producción una Progressive Web App (PWA) llamada "Menstruapp".
 
 ===========================================================
@@ -272,7 +273,7 @@ Considera la tarea terminada solo cuando:
 - Cualquier contenido educativo sobre salud debe ser prudente, general y no alarmista, evitando afirmaciones médicas categóricas no verificables.
 
 Antes de darte por finalizada la tarea, resume en una checklist qué has completado de cada sección de este prompt (5 a 15) y qué queda pendiente, si algo queda pendiente.
-````
+```
 
 ## ⬆️ TERMINA EL PROMPT
 

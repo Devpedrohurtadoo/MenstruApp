@@ -77,7 +77,12 @@ export function renderOnboarding(root, opts) {
   // no role="alert" here, or they would be read twice.
   const errorBox = () => h('p', { class: 'field__error', id: 'ob-error', hidden: true });
 
-  const dateInput = (/** @type {string} */ id, /** @type {string | null} */ value, /** @type {(v: string | null) => void} */ onChange, /** @type {{ min?: string, max?: string }} */ range = {}) =>
+  const dateInput = (
+    /** @type {string} */ id,
+    /** @type {string | null} */ value,
+    /** @type {(v: string | null) => void} */ onChange,
+    /** @type {{ min?: string, max?: string }} */ range = {},
+  ) =>
     h('input', {
       type: 'date',
       class: 'input',
@@ -117,7 +122,15 @@ export function renderOnboarding(root, opts) {
           consentHint.hidden = s.consent;
         },
       });
-      const startBtn = button({ label: t('onboarding.start'), variant: 'primary', size: 'lg', full: true, disabled: !s.consent, attrs: { 'aria-describedby': 'consent-hint' }, onClick: () => go(1) });
+      const startBtn = button({
+        label: t('onboarding.start'),
+        variant: 'primary',
+        size: 'lg',
+        full: true,
+        disabled: !s.consent,
+        attrs: { 'aria-describedby': 'consent-hint' },
+        onClick: () => go(1),
+      });
       return {
         title: t('onboarding.welcomeTitle'),
         body: [
@@ -143,7 +156,12 @@ export function renderOnboarding(root, opts) {
             : null,
           // One whole sentence (no pieces glued together) and the policy link outside the label.
           h('label', { class: 'check', for: 'consent' }, consent, h('span', { text: t('onboarding.consent') })),
-          h('button', { type: 'button', class: 'link-btn', text: t('onboarding.readPolicy'), onClick: () => openModal({ title: t('legal.privacyTitle'), content: privacyPolicy(), variant: 'full' }) }),
+          h('button', {
+            type: 'button',
+            class: 'link-btn',
+            text: t('onboarding.readPolicy'),
+            onClick: () => openModal({ title: t('legal.privacyTitle'), content: privacyPolicy(), variant: 'full' }),
+          }),
           h('p', { class: 'muted small', text: t('onboarding.disclaimer') }),
         ],
         footer: [startBtn, consentHint],
@@ -154,29 +172,31 @@ export function renderOnboarding(root, opts) {
       title: t('onboarding.modeTitle'),
       body: [
         h('p', { class: 'lead', text: t('onboarding.modeLead') }),
-        rovingRadios(h(
-          'div',
-          { class: 'mode-grid', role: 'radiogroup', 'aria-label': t('onboarding.modeTitle') },
-          MODES.map((m) =>
-            h(
-              'button',
-              {
-                type: 'button',
-                role: 'radio',
-                'aria-checked': String(s.mode === m),
-                dataset: { fk: `mode-${m}` },
-                class: ['mode-card', s.mode === m ? 'is-on' : ''],
-                onClick: () => {
-                  s.mode = m;
-                  render();
+        rovingRadios(
+          h(
+            'div',
+            { class: 'mode-grid', role: 'radiogroup', 'aria-label': t('onboarding.modeTitle') },
+            MODES.map((m) =>
+              h(
+                'button',
+                {
+                  type: 'button',
+                  role: 'radio',
+                  'aria-checked': String(s.mode === m),
+                  dataset: { fk: `mode-${m}` },
+                  class: ['mode-card', s.mode === m ? 'is-on' : ''],
+                  onClick: () => {
+                    s.mode = m;
+                    render();
+                  },
                 },
-              },
-              h('span', { class: 'mode-card__icon' }, icon(MODE_ICONS[/** @type {keyof typeof MODE_ICONS} */ (m)], { size: 24 })),
-              h('span', { class: 'mode-card__title', text: t(`modes.${m}.title`) }),
-              h('span', { class: 'mode-card__desc', text: t(`modes.${m}.desc`) }),
+                h('span', { class: 'mode-card__icon' }, icon(MODE_ICONS[/** @type {keyof typeof MODE_ICONS} */ (m)], { size: 24 })),
+                h('span', { class: 'mode-card__title', text: t(`modes.${m}.title`) }),
+                h('span', { class: 'mode-card__desc', text: t(`modes.${m}.desc`) }),
+              ),
             ),
           ),
-        )),
+        ),
       ],
       valid: () => Boolean(s.mode),
     }),
@@ -216,14 +236,34 @@ export function renderOnboarding(root, opts) {
             allowNone: false,
             onChange: (v) => (s.breastfeeding = v),
           }),
-          toggle({ label: t('onboarding.periodReturned'), checked: s.periodReturned, onChange: (v) => { s.periodReturned = v; render(); } }),
+          toggle({
+            label: t('onboarding.periodReturned'),
+            checked: s.periodReturned,
+            onChange: (v) => {
+              s.periodReturned = v;
+              render();
+            },
+          }),
         );
         if (s.periodReturned) {
-          body.push(h('label', { class: 'field__label', for: 'last-period', text: t('onboarding.lastPeriod') }), dateInput('last-period', s.lastPeriod, (v) => (s.lastPeriod = v)));
+          body.push(
+            h('label', { class: 'field__label', for: 'last-period', text: t('onboarding.lastPeriod') }),
+            dateInput('last-period', s.lastPeriod, (v) => (s.lastPeriod = v)),
+          );
         }
       } else {
         if (mode === 'perimenopause') {
-          body.push(toggle({ label: t('onboarding.overAYear'), description: t('onboarding.overAYearDesc'), checked: s.overAYear, onChange: (v) => { s.overAYear = v; render(); } }));
+          body.push(
+            toggle({
+              label: t('onboarding.overAYear'),
+              description: t('onboarding.overAYearDesc'),
+              checked: s.overAYear,
+              onChange: (v) => {
+                s.overAYear = v;
+                render();
+              },
+            }),
+          );
         }
         if (!(mode === 'perimenopause' && s.overAYear)) {
           body.push(
@@ -235,20 +275,72 @@ export function renderOnboarding(root, opts) {
                 s.lastPeriod = v;
                 s.lastPeriodUnknown = false;
               }),
-              h('div', { class: 'chips' }, [
-                ['today', todayISO()],
-                ['yesterday', addDays(todayISO(), -1)],
-              ].map(([key, iso]) =>
-                h('button', { type: 'button', class: ['chip', s.lastPeriod === iso ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriod === iso), dataset: { fk: `quick-${key}` }, text: t(`common.${key}`), onClick: () => { s.lastPeriod = iso; s.lastPeriodUnknown = false; render(); } }),
-              ), h('button', { type: 'button', class: ['chip', s.lastPeriodUnknown ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriodUnknown), dataset: { fk: 'quick-unknown' }, text: t('onboarding.dontRemember'), onClick: () => { s.lastPeriodUnknown = !s.lastPeriodUnknown; if (s.lastPeriodUnknown) s.lastPeriod = null; render(); } })),
+              h(
+                'div',
+                { class: 'chips' },
+                [
+                  ['today', todayISO()],
+                  ['yesterday', addDays(todayISO(), -1)],
+                ].map(([key, iso]) =>
+                  h('button', {
+                    type: 'button',
+                    class: ['chip', s.lastPeriod === iso ? 'chip--on' : ''],
+                    'aria-pressed': String(s.lastPeriod === iso),
+                    dataset: { fk: `quick-${key}` },
+                    text: t(`common.${key}`),
+                    onClick: () => {
+                      s.lastPeriod = iso;
+                      s.lastPeriodUnknown = false;
+                      render();
+                    },
+                  }),
+                ),
+                h('button', {
+                  type: 'button',
+                  class: ['chip', s.lastPeriodUnknown ? 'chip--on' : ''],
+                  'aria-pressed': String(s.lastPeriodUnknown),
+                  dataset: { fk: 'quick-unknown' },
+                  text: t('onboarding.dontRemember'),
+                  onClick: () => {
+                    s.lastPeriodUnknown = !s.lastPeriodUnknown;
+                    if (s.lastPeriodUnknown) s.lastPeriod = null;
+                    render();
+                  },
+                }),
+              ),
             ),
-            stepper({ label: t('onboarding.periodLength'), key: 'period-length', value: s.periodLength, min: 1, max: 12, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.periodLength = v) }),
-            stepper({ label: t('onboarding.cycleLength'), key: 'cycle-length', value: s.cycleLength, min: 18, max: 60, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.cycleLength = v) }),
+            stepper({
+              label: t('onboarding.periodLength'),
+              key: 'period-length',
+              value: s.periodLength,
+              min: 1,
+              max: 12,
+              unit: t('common.daysShort'),
+              allowUnknown: true,
+              onChange: (v) => (s.periodLength = v),
+            }),
+            stepper({
+              label: t('onboarding.cycleLength'),
+              key: 'cycle-length',
+              value: s.cycleLength,
+              min: 18,
+              max: 60,
+              unit: t('common.daysShort'),
+              allowUnknown: true,
+              onChange: (v) => (s.cycleLength = v),
+            }),
             h('p', { class: 'field__hint', text: t('onboarding.cycleLengthHint') }),
           );
         }
         if (mode !== 'perimenopause') {
-          body.push(toggle({ label: t('onboarding.newToThis'), description: t('onboarding.newToThisDesc'), checked: s.experience === 'new', onChange: (v) => (s.experience = v ? 'new' : 'experienced') }));
+          body.push(
+            toggle({
+              label: t('onboarding.newToThis'),
+              description: t('onboarding.newToThisDesc'),
+              checked: s.experience === 'new',
+              onChange: (v) => (s.experience = v ? 'new' : 'experienced'),
+            }),
+          );
         }
         if (mode === 'avoid' || mode === 'track') {
           body.push(
@@ -280,7 +372,13 @@ export function renderOnboarding(root, opts) {
               h('label', { class: 'field__label', for: 'pack-start', text: t('onboarding.packStart') }),
               dateInput('pack-start', s.packStart, (v) => (s.packStart = v ?? todayISO()), { min: addDays(todayISO(), -60) }),
               h('label', { class: 'field__label', for: 'pill-time', text: t('onboarding.pillTime') }),
-              h('input', { type: 'time', class: 'input', id: 'pill-time', value: s.pillTime, onChange: (/** @type {Event} */ e) => (s.pillTime = /** @type {HTMLInputElement} */ (e.target).value || '21:00') }),
+              h('input', {
+                type: 'time',
+                class: 'input',
+                id: 'pill-time',
+                value: s.pillTime,
+                onChange: (/** @type {Event} */ e) => (s.pillTime = /** @type {HTMLInputElement} */ (e.target).value || '21:00'),
+              }),
             );
           }
           if (mode === 'avoid') body.push(notice({ level: 'info', title: t('onboarding.notContraceptionTitle'), text: t('onboarding.notContraception') }));
@@ -304,7 +402,14 @@ export function renderOnboarding(root, opts) {
     },
 
     profile: () => {
-      const nameInput = h('input', { class: 'input', id: 'ob-name', value: s.name, maxLength: 40, autocomplete: 'nickname', onInput: (/** @type {Event} */ e) => (s.name = /** @type {HTMLInputElement} */ (e.target).value) });
+      const nameInput = h('input', {
+        class: 'input',
+        id: 'ob-name',
+        value: s.name,
+        maxLength: 40,
+        autocomplete: 'nickname',
+        onInput: (/** @type {Event} */ e) => (s.name = /** @type {HTMLInputElement} */ (e.target).value),
+      });
       const err = errorBox();
       const maxYear = new Date().getFullYear() - 8;
       const yearInput = h('input', {
@@ -332,13 +437,27 @@ export function renderOnboarding(root, opts) {
           h('p', { class: 'field__hint', text: t('onboarding.birthYearHint') }),
           err,
           h('span', { class: 'field__label', id: 'avatar-label', text: t('onboarding.avatar') }),
-          rovingRadios(h(
-            'div',
-            { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'avatar-label' },
-            AVATARS.map((a, i) =>
-              h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.avatar === a), 'aria-label': a, dataset: { fk: `avatar-${i}` }, class: ['avatar-option', s.avatar === a ? 'is-on' : ''], text: a, onClick: () => { s.avatar = a; render(); } }),
+          rovingRadios(
+            h(
+              'div',
+              { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'avatar-label' },
+              AVATARS.map((a, i) =>
+                h('button', {
+                  type: 'button',
+                  role: 'radio',
+                  'aria-checked': String(s.avatar === a),
+                  'aria-label': a,
+                  dataset: { fk: `avatar-${i}` },
+                  class: ['avatar-option', s.avatar === a ? 'is-on' : ''],
+                  text: a,
+                  onClick: () => {
+                    s.avatar = a;
+                    render();
+                  },
+                }),
+              ),
             ),
-          )),
+          ),
         ],
         // The year is optional, but a typed year out of range is pointed out, not dropped silently.
         valid: () => {
@@ -358,8 +477,28 @@ export function renderOnboarding(root, opts) {
       const inputs = [];
       if (s.lock !== 'none') {
         const isPin = s.lock === 'pin';
-        const a = h('input', { type: 'password', class: 'input', id: 'ob-secret', 'aria-describedby': 'ob-error', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret, onInput: (/** @type {Event} */ e) => (s.secret = /** @type {HTMLInputElement} */ (e.target).value) });
-        const b = h('input', { type: 'password', class: 'input', id: 'ob-secret2', 'aria-describedby': 'ob-error', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret2, onInput: (/** @type {Event} */ e) => (s.secret2 = /** @type {HTMLInputElement} */ (e.target).value) });
+        const a = h('input', {
+          type: 'password',
+          class: 'input',
+          id: 'ob-secret',
+          'aria-describedby': 'ob-error',
+          inputMode: isPin ? 'numeric' : 'text',
+          maxLength: isPin ? 8 : 256,
+          autocomplete: 'new-password',
+          value: s.secret,
+          onInput: (/** @type {Event} */ e) => (s.secret = /** @type {HTMLInputElement} */ (e.target).value),
+        });
+        const b = h('input', {
+          type: 'password',
+          class: 'input',
+          id: 'ob-secret2',
+          'aria-describedby': 'ob-error',
+          inputMode: isPin ? 'numeric' : 'text',
+          maxLength: isPin ? 8 : 256,
+          autocomplete: 'new-password',
+          value: s.secret2,
+          onInput: (/** @type {Event} */ e) => (s.secret2 = /** @type {HTMLInputElement} */ (e.target).value),
+        });
         inputs.push(
           // Lets a password manager file the secret under a recognizable account name.
           h('input', { type: 'text', autocomplete: 'username', value: s.name.trim() || 'Menstruapp', hidden: true, readOnly: true, tabIndex: -1 }),
@@ -370,8 +509,16 @@ export function renderOnboarding(root, opts) {
           b,
         );
       } else {
-        const ack = h('input', { type: 'checkbox', id: 'none-ack', checked: s.noneAck, onChange: (/** @type {Event} */ e) => (s.noneAck = /** @type {HTMLInputElement} */ (e.target).checked) });
-        inputs.push(h('p', { class: 'notice-text', text: t('lock.noneWarning') }), h('label', { class: 'check', for: 'none-ack' }, ack, h('span', { text: t('onboarding.noneAck') })));
+        const ack = h('input', {
+          type: 'checkbox',
+          id: 'none-ack',
+          checked: s.noneAck,
+          onChange: (/** @type {Event} */ e) => (s.noneAck = /** @type {HTMLInputElement} */ (e.target).checked),
+        });
+        inputs.push(
+          h('p', { class: 'notice-text', text: t('lock.noneWarning') }),
+          h('label', { class: 'check', for: 'none-ack' }, ack, h('span', { text: t('onboarding.noneAck') })),
+        );
       }
       return {
         title: t('onboarding.protectTitle'),
@@ -426,7 +573,17 @@ export function renderOnboarding(root, opts) {
           h('p', { class: 'lead', text: t('onboarding.remindersLead') }),
           ...options.map((o) => {
             const [id, ic] = /** @type {[string, string]} */ (o);
-            return h('div', { class: 'reminder-choice' }, icon(ic, { size: 20 }), toggle({ label: t(`reminders.types.${id}.title`), description: t(`reminders.types.${id}.desc`), checked: Boolean(s.reminders[id]), onChange: (v) => (s.reminders[id] = v) }));
+            return h(
+              'div',
+              { class: 'reminder-choice' },
+              icon(ic, { size: 20 }),
+              toggle({
+                label: t(`reminders.types.${id}.title`),
+                description: t(`reminders.types.${id}.desc`),
+                checked: Boolean(s.reminders[id]),
+                onChange: (v) => (s.reminders[id] = v),
+              }),
+            );
           }),
           h('p', { class: 'muted small', text: t('onboarding.remindersNote') }),
         ],
@@ -459,13 +616,24 @@ export function renderOnboarding(root, opts) {
         ...(s.importLegacy && legacy ? legacy.settings : {}),
       };
       if (s.method !== 'none' && (mode === 'avoid' || mode === 'track')) {
-        settings.contraception = { method: s.method, startDate: s.method.startsWith('pill') ? s.packStart : null, ...(s.method === 'pill_combined' ? { pillRegimen: s.pillRegimen } : {}), time: s.pillTime };
+        settings.contraception = {
+          method: s.method,
+          startDate: s.method.startsWith('pill') ? s.packStart : null,
+          ...(s.method === 'pill_combined' ? { pillRegimen: s.pillRegimen } : {}),
+          time: s.pillTime,
+        };
       }
       if (mode === 'perimenopause' && s.overAYear) settings.menopause = { overAYear: true };
       if (mode === 'postpartum' && s.birthDate) settings.postpartum = { birthDate: s.birthDate, breastfeeding: s.breastfeeding, periodReturned: s.periodReturned };
       const reminders = Object.entries(s.reminders)
         .filter(([id, on]) => on && (id !== 'pill' || s.method.startsWith('pill')))
-        .map(([id]) => ({ id, type: id, enabled: true, time: id === 'pill' ? s.pillTime : id === 'bbt' ? '07:00' : id === 'log_daily' ? '21:00' : id === 'daily_tip' ? '10:00' : '09:00', ...(id === 'period_soon' ? { daysBefore: 2 } : {}) }));
+        .map(([id]) => ({
+          id,
+          type: id,
+          enabled: true,
+          time: id === 'pill' ? s.pillTime : id === 'bbt' ? '07:00' : id === 'log_daily' ? '21:00' : id === 'daily_tip' ? '10:00' : '09:00',
+          ...(id === 'period_soon' ? { daysBefore: 2 } : {}),
+        }));
       if (s.importLegacy && legacy) for (const r of legacy.reminders) if (!reminders.some((x) => x.id === r.id)) reminders.push(r);
       const pregnancy = mode === 'pregnant' && s.pregDate ? { active: true, basis: s.pregBasis, date: s.pregDate, startedAt: Date.now(), history: [] } : null;
       const { recoveryCode } = await createProfile({
@@ -531,7 +699,16 @@ export function renderOnboarding(root, opts) {
           : null,
         !standalone ? installCard() : null,
         isIOS && !standalone ? notice({ level: 'info', title: t('onboarding.iosTitle'), text: t('onboarding.iosText') }) : null,
-        button({ label: t('onboarding.enterApp'), variant: 'primary', size: 'lg', full: true, onClick: () => { pendingSecret = ''; opts.onFinish(); } }),
+        button({
+          label: t('onboarding.enterApp'),
+          variant: 'primary',
+          size: 'lg',
+          full: true,
+          onClick: () => {
+            pendingSecret = '';
+            opts.onFinish();
+          },
+        }),
         linkSlot,
       ),
     );
@@ -540,7 +717,8 @@ export function renderOnboarding(root, opts) {
       .then((m) => m.serverFeatures())
       .then((f) => {
         if (!f?.sync) return;
-        replace(linkSlot,
+        replace(
+          linkSlot,
           h('p', { class: 'muted small', text: t('onboarding.linkDeviceText') }),
           button({
             label: t('onboarding.linkDevice'),
@@ -585,9 +763,10 @@ export function renderOnboarding(root, opts) {
       if (isLast) finish();
       else go(1);
     };
+    const nextLabel = /** @type {{ nextLabel?: string }} */ (view).nextLabel ?? t('common.continue');
     const footer = custom ?? [
       s.step > 0 ? button({ label: t('common.back'), variant: 'ghost', onClick: () => go(-1), disabled: s.busy }) : null,
-      button({ label: s.busy ? t('onboarding.creating') : (/** @type {any} */ (view).nextLabel ?? t('common.continue')), variant: 'primary', type: 'submit', busy: s.busy }),
+      button({ label: s.busy ? t('onboarding.creating') : nextLabel, variant: 'primary', type: 'submit', busy: s.busy }),
     ];
     replace(
       screen,

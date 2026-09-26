@@ -18,8 +18,26 @@ function dataTable(headers, rows, caption) {
       'table',
       { class: 'table' },
       h('caption', { class: 'sr-only', text: caption }),
-      h('thead', null, h('tr', null, headers.map((x) => h('th', { scope: 'col', text: x })))),
-      h('tbody', null, rows.map((r) => h('tr', null, r.map((c, i) => (i === 0 ? h('th', { scope: 'row', text: String(c) }) : h('td', { text: String(c) })))))),
+      h(
+        'thead',
+        null,
+        h(
+          'tr',
+          null,
+          headers.map((x) => h('th', { scope: 'col', text: x })),
+        ),
+      ),
+      h(
+        'tbody',
+        null,
+        rows.map((r) =>
+          h(
+            'tr',
+            null,
+            r.map((c, i) => (i === 0 ? h('th', { scope: 'row', text: String(c) }) : h('td', { text: String(c) }))),
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -67,7 +85,11 @@ export function barChart(o) {
     { class: 'chart' },
     h('figcaption', { class: 'chart__title', text: o.title }),
     s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart__svg', role: 'img', 'aria-label': o.summary }, s('title', null, o.summary), ...parts),
-    dataTable([t('charts.cycle'), o.valueHeader ?? o.unit], o.data.map((d) => [d.label, d.value ?? '—']), o.title),
+    dataTable(
+      [t('charts.cycle'), o.valueHeader ?? o.unit],
+      o.data.map((d) => [d.label, d.value ?? '—']),
+      o.title,
+    ),
   );
 }
 
@@ -95,7 +117,13 @@ export function lineChart(o) {
   const decimals = o.decimals ?? 1;
   for (const tick of [yMin + (yMax - yMin) * 0.1, (yMin + yMax) / 2, yMax - (yMax - yMin) * 0.1]) {
     parts.push(s('line', { class: 'chart__grid', x1: pad.l, x2: W - pad.r, y1: y(tick), y2: y(tick) }));
-    parts.push(s('text', { class: 'chart__tick', x: pad.l - 5, y: y(tick) + 3, 'text-anchor': 'end' }, fmtNumber(tick, { maximumFractionDigits: decimals, minimumFractionDigits: decimals })));
+    parts.push(
+      s(
+        'text',
+        { class: 'chart__tick', x: pad.l - 5, y: y(tick) + 3, 'text-anchor': 'end' },
+        fmtNumber(tick, { maximumFractionDigits: decimals, minimumFractionDigits: decimals }),
+      ),
+    );
   }
   if (o.reference) parts.push(s('line', { class: 'chart__avg', x1: pad.l, x2: W - pad.r, y1: y(o.reference), y2: y(o.reference) }));
   let d = '';
@@ -145,7 +173,16 @@ export function heatTable(o) {
       'table',
       { class: 'heat' },
       h('caption', { text: o.caption }),
-      h('thead', null, h('tr', null, h('th', { scope: 'col' }, h('span', { class: 'sr-only', text: t('charts.item') })), o.columns.map((c) => h('th', { scope: 'col', text: c })))),
+      h(
+        'thead',
+        null,
+        h(
+          'tr',
+          null,
+          h('th', { scope: 'col' }, h('span', { class: 'sr-only', text: t('charts.item') })),
+          o.columns.map((c) => h('th', { scope: 'col', text: c })),
+        ),
+      ),
       h(
         'tbody',
         null,

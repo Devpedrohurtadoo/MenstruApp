@@ -141,18 +141,37 @@ export function openDayLog(initialIso) {
     const blocks = [nav];
 
     const section = (/** @type {string} */ id, /** @type {string} */ ic, /** @type {any[]} */ children, /** @type {boolean} */ open = true) =>
-      h('details', { class: 'log-section', open }, h('summary', null, icon(ic, { size: 18 }), h('span', { text: t(`log.sections.${id}`) })), h('div', { class: 'log-section__body' }, children));
+      h(
+        'details',
+        { class: 'log-section', open },
+        h('summary', null, icon(ic, { size: 18 }), h('span', { text: t(`log.sections.${id}`) })),
+        h('div', { class: 'log-section__body' }, children),
+      );
 
     for (const name of sections) {
       if (name === 'period' || name === 'bleeding') {
         const flowOptions = FLOW.map((f) => ({ value: f, label: t(`flow.${f}`), tone: f === 'none' ? undefined : 'period' }));
         /** @type {Node[]} */
         const children = [
-          chipGroup({ label: t(name === 'bleeding' ? 'log.bleeding' : 'log.flow'), key: 'flow', options: flowOptions, value: entry.flow, onChange: (v) => { set('flow', v); render(); } }),
+          chipGroup({
+            label: t(name === 'bleeding' ? 'log.bleeding' : 'log.flow'),
+            key: 'flow',
+            options: flowOptions,
+            value: entry.flow,
+            onChange: (v) => {
+              set('flow', v);
+              render();
+            },
+          }),
         ];
         if (BLEEDING.has(entry.flow ?? '') || entry.flow === 'spotting') {
           children.push(
-            chipGroup({ label: t('log.color'), options: FLOW_COLORS.map((c) => ({ value: c, label: t(`flowColors.${c}`) })), value: entry.flowColor, onChange: (v) => set('flowColor', v) }),
+            chipGroup({
+              label: t('log.color'),
+              options: FLOW_COLORS.map((c) => ({ value: c, label: t(`flowColors.${c}`) })),
+              value: entry.flowColor,
+              onChange: (v) => set('flowColor', v),
+            }),
             chipGroup({ label: t('log.clots'), options: CLOTS.map((c) => ({ value: c, label: t(`clots.${c}`) })), value: entry.clots, onChange: (v) => set('clots', v) }),
             h('a', { class: 'link small', href: '#/learn/article/colores-flujo', text: t('log.colorGuide') }),
           );
@@ -164,7 +183,13 @@ export function openDayLog(initialIso) {
       if (name === 'mood') {
         blocks.push(
           section('mood', 'brain', [
-            chipGroup({ label: t('log.moods'), options: MOODS.map((m) => ({ value: m, label: t(`moods.${m}`) })), value: entry.moods ?? [], multiple: true, onChange: (v) => set('moods', v) }),
+            chipGroup({
+              label: t('log.moods'),
+              options: MOODS.map((m) => ({ value: m, label: t(`moods.${m}`) })),
+              value: entry.moods ?? [],
+              multiple: true,
+              onChange: (v) => set('moods', v),
+            }),
             segmented({
               label: t('log.energy'),
               key: 'energy',
@@ -176,7 +201,19 @@ export function openDayLog(initialIso) {
               },
             }),
             // A chosen energy level can be taken back.
-            entry.energy ? h('button', { type: 'button', class: 'link-btn small', dataset: { fk: 'energy-clear' }, text: t('log.clearEnergy'), onClick: () => { set('energy', undefined); render(); /** @type {HTMLElement | null} */ (content.querySelector('[data-fk^="seg-energy-"]'))?.focus(); } }) : null,
+            entry.energy
+              ? h('button', {
+                  type: 'button',
+                  class: 'link-btn small',
+                  dataset: { fk: 'energy-clear' },
+                  text: t('log.clearEnergy'),
+                  onClick: () => {
+                    set('energy', undefined);
+                    render();
+                    /** @type {HTMLElement | null} */ (content.querySelector('[data-fk^="seg-energy-"]'))?.focus();
+                  },
+                })
+              : null,
             chipGroup({ label: t('log.libido'), options: LIBIDO.map((l) => ({ value: l, label: t(`libido.${l}`) })), value: entry.libido, onChange: (v) => set('libido', v) }),
           ]),
         );
@@ -198,18 +235,45 @@ export function openDayLog(initialIso) {
             'fertility',
             'thermometer',
             [
-              h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-bbt', text: t('log.bbt', { unit: tempUnit === 'F' ? '°F' : '°C' }) }), bbt.input, bbt.error, h('p', { class: 'field__hint', text: t('log.bbtHint') })),
-              toggle({ label: t('log.bbtDisturbed'), description: t('log.bbtDisturbedDesc'), checked: Boolean(entry.bbtDisturbed), onChange: (v) => set('bbtDisturbed', v || undefined) }),
+              h(
+                'div',
+                { class: 'field' },
+                h('label', { class: 'field__label', for: 'log-bbt', text: t('log.bbt', { unit: tempUnit === 'F' ? '°F' : '°C' }) }),
+                bbt.input,
+                bbt.error,
+                h('p', { class: 'field__hint', text: t('log.bbtHint') }),
+              ),
+              toggle({
+                label: t('log.bbtDisturbed'),
+                description: t('log.bbtDisturbedDesc'),
+                checked: Boolean(entry.bbtDisturbed),
+                onChange: (v) => set('bbtDisturbed', v || undefined),
+              }),
               chipGroup({ label: t('log.mucus'), options: MUCUS.map((m) => ({ value: m, label: t(`mucus.${m}`) })), value: entry.mucus, onChange: (v) => set('mucus', v) }),
               chipGroup({ label: t('log.lh'), options: LH.map((m) => ({ value: m, label: t(`lh.${m}`) })), value: entry.lh, onChange: (v) => set('lh', v) }),
-              chipGroup({ label: t('log.pregnancyTest'), options: PREGNANCY_TEST.map((m) => ({ value: m, label: t(`pregnancyTest.${m}`) })), value: entry.pregnancyTest, onChange: (v) => set('pregnancyTest', v) }),
+              chipGroup({
+                label: t('log.pregnancyTest'),
+                options: PREGNANCY_TEST.map((m) => ({ value: m, label: t(`pregnancyTest.${m}`) })),
+                value: entry.pregnancyTest,
+                onChange: (v) => set('pregnancyTest', v),
+              }),
             ],
             derived.flags.fertilityFocus || Boolean(entry.bbt || entry.mucus || entry.lh || entry.pregnancyTest),
           ),
         );
       }
       if (name === 'sex') {
-        blocks.push(section('sex', 'heart', [chipGroup({ label: t('log.sex'), options: SEX.map((m) => ({ value: m, label: t(`sex.${m}`) })), value: entry.sex, onChange: (v) => set('sex', v) }), h('p', { class: 'muted small', text: t('log.sexPrivacy') })], Boolean(entry.sex)));
+        blocks.push(
+          section(
+            'sex',
+            'heart',
+            [
+              chipGroup({ label: t('log.sex'), options: SEX.map((m) => ({ value: m, label: t(`sex.${m}`) })), value: entry.sex, onChange: (v) => set('sex', v) }),
+              h('p', { class: 'muted small', text: t('log.sexPrivacy') }),
+            ],
+            Boolean(entry.sex),
+          ),
+        );
       }
       if (name === 'contraception') {
         const method = derived.settings.contraception?.method;
@@ -237,9 +301,36 @@ export function openDayLog(initialIso) {
             'body',
             'bed',
             [
-              stepper({ label: t('log.sleep'), key: 'sleep', value: entry.sleepHours ?? null, min: 0, max: 24, step: 0.5, decimals: 1, unit: t('common.hoursShort'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('sleepHours', v ?? undefined) }),
-              stepper({ label: t('log.water'), key: 'water', value: entry.water ?? null, min: 0, max: 40, unit: t('log.glasses'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('water', v ?? undefined) }),
-              chipGroup({ label: t('log.exercise'), options: EXERCISE.map((m) => ({ value: m, label: t(`exercise.${m}`) })), value: entry.exercise, onChange: (v) => set('exercise', v) }),
+              stepper({
+                label: t('log.sleep'),
+                key: 'sleep',
+                value: entry.sleepHours ?? null,
+                min: 0,
+                max: 24,
+                step: 0.5,
+                decimals: 1,
+                unit: t('common.hoursShort'),
+                allowUnknown: true,
+                unknownLabel: '—',
+                onChange: (v) => set('sleepHours', v ?? undefined),
+              }),
+              stepper({
+                label: t('log.water'),
+                key: 'water',
+                value: entry.water ?? null,
+                min: 0,
+                max: 40,
+                unit: t('log.glasses'),
+                allowUnknown: true,
+                unknownLabel: '—',
+                onChange: (v) => set('water', v ?? undefined),
+              }),
+              chipGroup({
+                label: t('log.exercise'),
+                options: EXERCISE.map((m) => ({ value: m, label: t(`exercise.${m}`) })),
+                value: entry.exercise,
+                onChange: (v) => set('exercise', v),
+              }),
               h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-weight', text: t('log.weight', { unit: weightUnit }) }), weight.input, weight.error),
             ],
             Boolean(entry.sleepHours || entry.water || entry.exercise || entry.weight),
@@ -305,7 +396,10 @@ export function openDayLog(initialIso) {
                 else next[s.id] = lv;
                 set('symptoms', Object.keys(next).length ? next : undefined);
                 const fresh = symptomPicker(mode);
-                { const body = btn.closest('.log-section__body'); if (body) replace(body, fresh); }
+                {
+                  const body = btn.closest('.log-section__body');
+                  if (body) replace(body, fresh);
+                }
                 /** @type {HTMLElement | null} */ (content.querySelector(`[data-sym="${s.id}"]`))?.focus();
               },
             });
@@ -342,7 +436,10 @@ export function openDayLog(initialIso) {
                     size: 16,
                     fk: `med-remove-${i}`,
                     onClick: () => {
-                      set('meds', meds.filter((_, j) => j !== i));
+                      set(
+                        'meds',
+                        meds.filter((_, j) => j !== i),
+                      );
                       draw();
                       // Focus the item that took its place (or the name field when none is left).
                       const nextBtn = wrap.querySelector(`[data-fk="med-remove-${Math.min(i, meds.length - 2)}"]`) ?? wrap.querySelector('#med-name');
@@ -389,7 +486,12 @@ export function openDayLog(initialIso) {
       variant: 'ghost',
       onClick: async () => {
         if (!Object.keys(store.get().data?.days[iso] ?? {}).length && !Object.keys(entry).length) return;
-        const ok = await confirmDialog({ title: t('log.clearDayTitle'), message: t('log.clearDayText', { date: fmtDate(iso, 'long') }), confirmLabel: t('common.delete'), danger: true });
+        const ok = await confirmDialog({
+          title: t('log.clearDayTitle'),
+          message: t('log.clearDayText', { date: fmtDate(iso, 'long') }),
+          confirmLabel: t('common.delete'),
+          danger: true,
+        });
         if (!ok) return;
         entry = {};
         dirty = true;

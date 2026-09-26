@@ -29,7 +29,11 @@ export async function render(ctx) {
   const d = ctx.state.derived;
   const preg = ctx.state.data?.docs.pregnancy;
   if (!d?.pregnancy || !preg) {
-    return h('div', { class: 'view' }, card({ children: emptyState({ title: t('pregnancy.notActive'), action: h('a', { class: 'btn btn--soft', href: '#/settings/mode', text: t('settings.sections.mode') }) }) }));
+    return h(
+      'div',
+      { class: 'view' },
+      card({ children: emptyState({ title: t('pregnancy.notActive'), action: h('a', { class: 'btn btn--soft', href: '#/settings/mode', text: t('settings.sections.mode') }) }) }),
+    );
   }
   const p = d.pregnancy;
   const profileId = ctx.state.session?.profileId ?? '';
@@ -105,8 +109,21 @@ export async function render(ctx) {
               }),
             ),
           ]
-        : button({ label: t('pregnancy.kicks.start'), icon: 'play', variant: 'primary', onClick: () => { kickSession = { start: Date.now(), count: 0 }; rerender(); } }),
-      lastKick ? h('p', { class: 'muted small', text: t('pregnancy.kicks.last', { count: lastKick.count, minutes: lastKick.minutes, date: fmtDate(todayISO(new Date(lastKick.start)), 'short') }) }) : null,
+        : button({
+            label: t('pregnancy.kicks.start'),
+            icon: 'play',
+            variant: 'primary',
+            onClick: () => {
+              kickSession = { start: Date.now(), count: 0 };
+              rerender();
+            },
+          }),
+      lastKick
+        ? h('p', {
+            class: 'muted small',
+            text: t('pregnancy.kicks.last', { count: lastKick.count, minutes: lastKick.minutes, date: fmtDate(todayISO(new Date(lastKick.start)), 'short') }),
+          })
+        : null,
       notice({ level: 'consult', title: t('pregnancy.kicks.warnTitle'), text: t('pregnancy.kicks.warnText') }),
     ],
   });
@@ -135,11 +152,27 @@ export async function render(ctx) {
               },
             }),
           ]
-        : button({ label: t('pregnancy.contractions.start'), icon: 'play', variant: 'primary', size: 'lg', full: true, fk: 'contraction', onClick: () => { contractionStart = Date.now(); rerender(); } }),
+        : button({
+            label: t('pregnancy.contractions.start'),
+            icon: 'play',
+            variant: 'primary',
+            size: 'lg',
+            full: true,
+            fk: 'contraction',
+            onClick: () => {
+              contractionStart = Date.now();
+              rerender();
+            },
+          }),
       stats.count >= 2
-        ? h('p', { class: 'hero__line', text: t('pregnancy.contractions.stats', { count: stats.count, duration: stats.avgDurationSec ?? 0, interval: fmtNumber(stats.avgIntervalMin ?? 0) }) })
+        ? h('p', {
+            class: 'hero__line',
+            text: t('pregnancy.contractions.stats', { count: stats.count, duration: stats.avgDurationSec ?? 0, interval: fmtNumber(stats.avgIntervalMin ?? 0) }),
+          })
         : null,
-      stats.pattern511 ? notice({ level: 'urgent', announceKey: 'contractions-511', title: t('pregnancy.contractions.pattern'), text: t('pregnancy.contractions.patternText') }) : null,
+      stats.pattern511
+        ? notice({ level: 'urgent', announceKey: 'contractions-511', title: t('pregnancy.contractions.pattern'), text: t('pregnancy.contractions.patternText') })
+        : null,
       recentContractions.length
         ? h(
             'ul',
@@ -150,7 +183,10 @@ export async function render(ctx) {
                 'li',
                 { class: 'events__item' },
                 h('span', { class: 'events__label', text: fmtTime(c.start) }),
-                h('span', { class: 'events__when', text: `${t('pregnancy.contractions.lasted', { seconds: Math.round((c.end - c.start) / 1000) })}${prev ? ` · ${t('pregnancy.contractions.every', { minutes: fmtNumber((c.start - prev.start) / 60000, { maximumFractionDigits: 1 }) })}` : ''}` }),
+                h('span', {
+                  class: 'events__when',
+                  text: `${t('pregnancy.contractions.lasted', { seconds: Math.round((c.end - c.start) / 1000) })}${prev ? ` · ${t('pregnancy.contractions.every', { minutes: fmtNumber((c.start - prev.start) / 60000, { maximumFractionDigits: 1 }) })}` : ''}`,
+                }),
               );
             }),
           )
@@ -161,7 +197,12 @@ export async function render(ctx) {
             variant: 'ghost',
             size: 'sm',
             onClick: async () => {
-              const ok = await confirmDialog({ title: t('pregnancy.contractions.clear'), message: t('pregnancy.contractions.clearText'), confirmLabel: t('common.delete'), danger: true });
+              const ok = await confirmDialog({
+                title: t('pregnancy.contractions.clear'),
+                message: t('pregnancy.contractions.clearText'),
+                confirmLabel: t('common.delete'),
+                danger: true,
+              });
               if (!ok) return;
               await savePreg({ contractions: [] });
               rerender();
@@ -180,8 +221,30 @@ export async function render(ctx) {
       h(
         'div',
         { class: 'btn-row' },
-        button({ label: t('pregnancy.prevWeek'), icon: 'chevron-left', variant: 'ghost', size: 'sm', fk: noteWeek - 1 <= 4 ? 'preg-week-edge' : 'preg-prev', disabled: noteWeek <= 4, onClick: () => { noteWeek--; rerender(); } }),
-        button({ label: t('pregnancy.nextWeek'), iconAfter: 'chevron-right', variant: 'ghost', size: 'sm', fk: noteWeek + 1 >= 42 ? 'preg-week-edge' : 'preg-next', disabled: noteWeek >= 42, onClick: () => { noteWeek++; rerender(); } }),
+        button({
+          label: t('pregnancy.prevWeek'),
+          icon: 'chevron-left',
+          variant: 'ghost',
+          size: 'sm',
+          fk: noteWeek - 1 <= 4 ? 'preg-week-edge' : 'preg-prev',
+          disabled: noteWeek <= 4,
+          onClick: () => {
+            noteWeek--;
+            rerender();
+          },
+        }),
+        button({
+          label: t('pregnancy.nextWeek'),
+          iconAfter: 'chevron-right',
+          variant: 'ghost',
+          size: 'sm',
+          fk: noteWeek + 1 >= 42 ? 'preg-week-edge' : 'preg-next',
+          disabled: noteWeek >= 42,
+          onClick: () => {
+            noteWeek++;
+            rerender();
+          },
+        }),
       ),
     ],
   });
@@ -190,7 +253,12 @@ export async function render(ctx) {
     'div',
     { class: 'view pregnancy' },
     p.issue
-      ? notice({ level: 'info', title: t(`pregnancy.invalid.${p.issue}`), text: t('pregnancy.invalid.text'), action: h('a', { class: 'btn btn--soft btn--sm', href: '#/settings/mode', text: t('pregnancy.invalid.action') }) })
+      ? notice({
+          level: 'info',
+          title: t(`pregnancy.invalid.${p.issue}`),
+          text: t('pregnancy.invalid.text'),
+          action: h('a', { class: 'btn btn--soft btn--sm', href: '#/settings/mode', text: t('pregnancy.invalid.action') }),
+        })
       : null,
     h('p', { class: 'lead', text: `${t('pregnancy.weeks', { weeks: p.weeks, days: p.days })} · ${t('pregnancy.trimester', { n: p.trimester })}` }),
     weekCard,

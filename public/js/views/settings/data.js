@@ -50,7 +50,14 @@ export async function render(ctx) {
             subtitle: t('settings.data.encryptedBackupDesc'),
             onClick: async () => {
               if (!(await mayExport())) return;
-              const password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword'), hint: t('settings.data.backupPasswordHint'), minLength: 8, autocomplete: 'new-password', account: t('settings.data.backupAccount') });
+              const password = await askSecret({
+                title: t('settings.data.encryptedBackup'),
+                label: t('settings.data.backupPassword'),
+                hint: t('settings.data.backupPasswordHint'),
+                minLength: 8,
+                autocomplete: 'new-password',
+                account: t('settings.data.backupAccount'),
+              });
               if (!password) return;
               const blob = await encryptedBackupBlob(data, password);
               downloadBlob(blob, exportName('menstruapp'));
@@ -98,8 +105,16 @@ export async function render(ctx) {
       icon: 'cloud',
       children: ctx.state.server.sync
         ? [
-            h('p', { class: 'muted', text: syncState?.enabled ? t('settings.data.syncOn', { date: syncState.lastSyncAt ? fmtDateTime(syncState.lastSyncAt) : '—' }) : t('settings.data.syncOff') }),
-            button({ label: syncState?.enabled ? t('settings.data.syncManage') : t('settings.data.syncEnable'), icon: 'cloud', variant: 'soft', onClick: () => import('../../pwa/sync.js').then((m) => m.openSyncSettings()) }),
+            h('p', {
+              class: 'muted',
+              text: syncState?.enabled ? t('settings.data.syncOn', { date: syncState.lastSyncAt ? fmtDateTime(syncState.lastSyncAt) : '—' }) : t('settings.data.syncOff'),
+            }),
+            button({
+              label: syncState?.enabled ? t('settings.data.syncManage') : t('settings.data.syncEnable'),
+              icon: 'cloud',
+              variant: 'soft',
+              onClick: () => import('../../pwa/sync.js').then((m) => m.openSyncSettings()),
+            }),
           ]
         : h('p', { class: 'muted', text: t('settings.data.syncUnavailable') }),
     }),
@@ -109,7 +124,15 @@ export async function render(ctx) {
       children: [
         h('p', { text: t(storage.persisted ? 'settings.data.persisted' : 'settings.data.notPersisted') }),
         storage.quota ? progressBar(storage.usage / storage.quota, t('settings.data.usage')) : null,
-        storage.quota ? h('p', { class: 'muted small', text: t('settings.data.usageText', { used: fmtNumber(storage.usage / 1e6, { maximumFractionDigits: 1 }), total: fmtNumber(storage.quota / 1e9, { maximumFractionDigits: 1 }) }) }) : null,
+        storage.quota
+          ? h('p', {
+              class: 'muted small',
+              text: t('settings.data.usageText', {
+                used: fmtNumber(storage.usage / 1e6, { maximumFractionDigits: 1 }),
+                total: fmtNumber(storage.quota / 1e9, { maximumFractionDigits: 1 }),
+              }),
+            })
+          : null,
         !storage.persisted && isIOS() ? notice({ level: 'info', title: t('settings.data.iosTitle'), text: t('settings.data.iosText') }) : null,
         data.unreadable ? notice({ level: 'consult', title: t('settings.data.unreadableTitle', { count: data.unreadable }), text: t('settings.data.unreadableText') }) : null,
       ],
@@ -127,7 +150,12 @@ export async function render(ctx) {
           onClick: async () => {
             const first = await confirmDialog({ title: t('settings.data.deleteAll'), message: t('settings.data.deleteAllText'), confirmLabel: t('common.continue'), danger: true });
             if (!first) return;
-            const word = await askSecret({ title: t('settings.data.deleteAll'), label: t('settings.data.typeDelete', { word: t('settings.data.deleteWord') }), confirmLabel: t('common.delete'), plain: true });
+            const word = await askSecret({
+              title: t('settings.data.deleteAll'),
+              label: t('settings.data.typeDelete', { word: t('settings.data.deleteWord') }),
+              confirmLabel: t('common.delete'),
+              plain: true,
+            });
             if (!word || word.trim().toUpperCase() !== t('settings.data.deleteWord').toUpperCase()) return toast(t('settings.data.deleteCancelled'));
             // Server data first: the keys needed to delete it are wiped with the device data.
             if (!(await deleteServerData('device'))) return toast(t('settings.data.deleteCancelled'));
@@ -142,7 +170,6 @@ export async function render(ctx) {
     }),
   );
 }
-
 
 /** iOS/iPadOS Safari, where storage of non-installed web apps can be evicted after weeks of disuse. */
 function isIOS() {
@@ -182,7 +209,7 @@ async function handleImport(file) {
         summary = t('settings.data.csvSummary', { days: Object.keys(result.days).length, skipped: result.skipped });
       }
     }
-    if (!payload || !Object.keys(payload.days).length && !payload.docs) return toast(t('settings.data.nothingToImport'), { type: 'error' });
+    if (!payload || (!Object.keys(payload.days).length && !payload.docs)) return toast(t('settings.data.nothingToImport'), { type: 'error' });
     let strategy = /** @type {'merge' | 'replace'} */ ('merge');
     const content = h(
       'div',
@@ -204,7 +231,12 @@ async function handleImport(file) {
         full: true,
         onClick: async () => {
           if (strategy === 'replace') {
-            const ok = await confirmDialog({ title: t('settings.data.replace'), message: t('settings.data.replaceWarning'), confirmLabel: t('settings.data.replace'), danger: true });
+            const ok = await confirmDialog({
+              title: t('settings.data.replace'),
+              message: t('settings.data.replaceWarning'),
+              confirmLabel: t('settings.data.replace'),
+              danger: true,
+            });
             if (!ok) return;
           }
           const { imported } = await importData(/** @type {any} */ (payload), strategy);

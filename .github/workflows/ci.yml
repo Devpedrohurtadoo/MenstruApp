@@ -24,6 +24,7 @@ jobs:
       - name: Service worker is stamped
         run: node scripts/stamp-sw.mjs && git diff --exit-code public/sw.js
       - run: npx eslint .
+      - run: npx prettier --check .
       - run: npx tsc -p tsconfig.json
       - run: npx vitest run
       - name: Install Chromium for e2e

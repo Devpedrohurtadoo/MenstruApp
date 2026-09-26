@@ -58,9 +58,7 @@ export class ProfileRepo {
     const rows = await getAll(this.db, 'records', { index: 'profileId', query: this.profileId });
     /** @type {ProfileData} */
     const data = { days: {}, docs: {}, clock: {}, unreadable: 0 };
-    const results = await Promise.allSettled(
-      rows.map(async (row) => /** @type {PlainRecord} */ (await decryptJSON(this.encKey, { iv: row.iv, ct: row.ct }, row.id))),
-    );
+    const results = await Promise.allSettled(rows.map(async (row) => /** @type {PlainRecord} */ (await decryptJSON(this.encKey, { iv: row.iv, ct: row.ct }, row.id))));
     for (const result of results) {
       if (result.status !== 'fulfilled') {
         data.unreadable++;

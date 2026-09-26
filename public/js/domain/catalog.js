@@ -81,18 +81,7 @@ export const SYMPTOMS = [
 ];
 
 export const SYMPTOM_IDS = SYMPTOMS.map((s) => s.id);
-export const SYMPTOM_GROUPS = /** @type {const} */ ([
-  'pain',
-  'digestion',
-  'body',
-  'skin',
-  'sleep',
-  'intimate',
-  'pregnancy',
-  'menopause',
-  'postpartum',
-  'warning',
-]);
+export const SYMPTOM_GROUPS = /** @type {const} */ (['pain', 'digestion', 'body', 'skin', 'sleep', 'intimate', 'pregnancy', 'menopause', 'postpartum', 'warning']);
 
 /**
  * Symptoms offered for a usage mode.
@@ -128,9 +117,9 @@ export const PREGNANCY_OUTCOMES = /** @type {const} */ (['birth', 'loss', 'other
 // Units -------------------------------------------------------------------------------------
 
 /** @param {number} c */
-export const cToF = (c) => Math.round((c * 9) / 5 * 100 + 3200) / 100;
+export const cToF = (c) => Math.round(((c * 9) / 5) * 100 + 3200) / 100;
 /** @param {number} f */
-export const fToC = (f) => Math.round(((f - 32) * 5) / 9 * 100) / 100;
+export const fToC = (f) => Math.round((((f - 32) * 5) / 9) * 100) / 100;
 /** @param {number} kg */
 export const kgToLb = (kg) => Math.round(kg * 2.20462 * 10) / 10;
 /** @param {number} lb */

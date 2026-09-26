@@ -18,7 +18,11 @@ export function render(ctx) {
       icon: 'share-2',
       children: [
         h('p', { text: t('share.intro') }),
-        h('ul', { class: 'bullets' }, ['how1', 'how2', 'how3'].map((k) => h('li', { text: t(`share.${k}`) }))),
+        h(
+          'ul',
+          { class: 'bullets' },
+          ['how1', 'how2', 'how3'].map((k) => h('li', { text: t(`share.${k}`) })),
+        ),
         button({
           label: t('share.create'),
           icon: 'link',
@@ -42,7 +46,15 @@ export function render(ctx) {
               h(
                 'li',
                 null,
-                h('span', { class: 'dated-list__text' }, h('strong', { text: s.label || t('share.untitled') }), h('span', { class: 'muted small', text: `${s.scope.map((/** @type {string} */ x) => t(`share.scopes.${x}`)).join(', ')} · ${t('share.expires', { date: fmtDateTime(s.expiresAt) })}` })),
+                h(
+                  'span',
+                  { class: 'dated-list__text' },
+                  h('strong', { text: s.label || t('share.untitled') }),
+                  h('span', {
+                    class: 'muted small',
+                    text: `${s.scope.map((/** @type {string} */ x) => t(`share.scopes.${x}`)).join(', ')} · ${t('share.expires', { date: fmtDateTime(s.expiresAt) })}`,
+                  }),
+                ),
                 iconButton({ icon: 'copy', label: t('share.copyLinkNamed', { label: s.label || t('share.untitled') }), onClick: () => copy(shareUrl(s)) }),
                 iconButton({
                   icon: 'delete',

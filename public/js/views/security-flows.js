@@ -195,7 +195,8 @@ export function chooseNewLock(currentAttempt, opts = {}) {
       { value: /** @type {const} */ ('passphrase'), label: t('lock.methods.passphrase') },
     ];
     if (opts.allowNone !== false && !opts.forced) options.push(/** @type {any} */ ({ value: 'none', label: t('lock.methods.none') }));
-    replace(container,
+    replace(
+      container,
       segmented({
         label: t('lock.method'),
         options: /** @type {any} */ (options),

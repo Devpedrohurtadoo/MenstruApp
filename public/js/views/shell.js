@@ -41,7 +41,15 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
   const banners = h('div', { class: 'banners', 'aria-live': 'polite' });
   const header = h('header', { class: 'topbar' }, back, title, actions);
   const tabbar = h('nav', { class: 'tabbar', 'aria-label': t('nav.label') });
-  const skip = h('a', { class: 'skip-link', href: '#main', text: t('nav.skip'), onClick: (/** @type {Event} */ e) => { e.preventDefault(); main.focus(); } });
+  const skip = h('a', {
+    class: 'skip-link',
+    href: '#main',
+    text: t('nav.skip'),
+    onClick: (/** @type {Event} */ e) => {
+      e.preventDefault();
+      main.focus();
+    },
+  });
   replace(appRoot, skip, header, banners, main, tabbar);
 
   /** @type {null | { cleanup?: () => void }} */

@@ -13,7 +13,15 @@ const AVATARS = ['🌙', '🌸', '🌷', '🌺', '🌼', '🦋', '🌿', '✨', 
 export function render(ctx) {
   const profile = ctx.state.derived?.profile ?? {};
   const nameInput = h('input', { class: 'input', id: 'p-name', maxLength: 40, value: profile.name ?? '', autocomplete: 'nickname' });
-  const yearInput = h('input', { class: 'input input--short', id: 'p-year', type: 'number', inputMode: 'numeric', min: 1930, max: new Date().getFullYear() - 8, value: profile.birthYear ?? '' });
+  const yearInput = h('input', {
+    class: 'input input--short',
+    id: 'p-year',
+    type: 'number',
+    inputMode: 'numeric',
+    min: 1930,
+    max: new Date().getFullYear() - 8,
+    value: profile.birthYear ?? '',
+  });
   const fileInput = h('input', {
     type: 'file',
     accept: 'image/*',
@@ -37,24 +45,48 @@ export function render(ctx) {
     { class: 'stack' },
     card({
       children: [
-        h('div', { class: 'profile-edit' }, avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 72), h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'p-photo', text: t('settings.profile.uploadPhoto') }), fileInput, profile.photo
-            ? button({
-                label: t('settings.profile.removePhoto'),
-                variant: 'ghost',
-                size: 'sm',
-                onClick: async () => {
-                  const photo = profile.photo;
-                  await updateProfile({ photo: null });
-                  toast(t('settings.profile.photoRemoved'), { action: { label: t('common.undo'), onClick: () => updateProfile({ photo }) } });
-                },
-              })
-            : null)),
-        h('span', { class: 'field__label', id: 'emoji-label', text: t('onboarding.avatar') }),
-        rovingRadios(h(
+        h(
           'div',
-          { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'emoji-label' },
-          AVATARS.map((a, i) => h('button', { type: 'button', role: 'radio', class: ['avatar-option', profile.avatar === a ? 'is-on' : ''], 'aria-checked': String(profile.avatar === a), 'aria-label': a, dataset: { fk: `p-avatar-${i}` }, text: a, onClick: () => updateProfile({ avatar: a }) })),
-        )),
+          { class: 'profile-edit' },
+          avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 72),
+          h(
+            'div',
+            { class: 'btn-row' },
+            h('label', { class: 'btn btn--soft btn--sm', for: 'p-photo', text: t('settings.profile.uploadPhoto') }),
+            fileInput,
+            profile.photo
+              ? button({
+                  label: t('settings.profile.removePhoto'),
+                  variant: 'ghost',
+                  size: 'sm',
+                  onClick: async () => {
+                    const photo = profile.photo;
+                    await updateProfile({ photo: null });
+                    toast(t('settings.profile.photoRemoved'), { action: { label: t('common.undo'), onClick: () => updateProfile({ photo }) } });
+                  },
+                })
+              : null,
+          ),
+        ),
+        h('span', { class: 'field__label', id: 'emoji-label', text: t('onboarding.avatar') }),
+        rovingRadios(
+          h(
+            'div',
+            { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'emoji-label' },
+            AVATARS.map((a, i) =>
+              h('button', {
+                type: 'button',
+                role: 'radio',
+                class: ['avatar-option', profile.avatar === a ? 'is-on' : ''],
+                'aria-checked': String(profile.avatar === a),
+                'aria-label': a,
+                dataset: { fk: `p-avatar-${i}` },
+                text: a,
+                onClick: () => updateProfile({ avatar: a }),
+              }),
+            ),
+          ),
+        ),
         h(
           'form',
           {
@@ -86,12 +118,17 @@ export function render(ctx) {
           'div',
           { class: 'list' },
           profiles.length > 1 ? listItem({ icon: 'users', title: t('settings.profile.switch'), onClick: () => lock('switch') }) : null,
-          listItem({ icon: 'user-plus', title: t('settings.profile.add'), subtitle: t('settings.profile.addDesc'), onClick: async () => {
-            const ok = await confirmDialog({ title: t('settings.profile.add'), message: t('settings.profile.addConfirm'), confirmLabel: t('common.continue') });
-            if (!ok) return;
-            lock('switch');
-            bus.emit('add-profile');
-          } }),
+          listItem({
+            icon: 'user-plus',
+            title: t('settings.profile.add'),
+            subtitle: t('settings.profile.addDesc'),
+            onClick: async () => {
+              const ok = await confirmDialog({ title: t('settings.profile.add'), message: t('settings.profile.addConfirm'), confirmLabel: t('common.continue') });
+              if (!ok) return;
+              lock('switch');
+              bus.emit('add-profile');
+            },
+          }),
           listItem({
             icon: 'delete',
             title: t('settings.profile.delete'),

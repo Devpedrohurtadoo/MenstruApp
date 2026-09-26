@@ -18,22 +18,24 @@ export function render(ctx) {
     rerender();
   };
 
-  const swatches = rovingRadios(h(
-    'div',
-    { class: 'swatches', role: 'radiogroup', 'aria-label': t('settings.appearance.accent') },
-    Object.entries(ACCENTS).map(([name, color]) =>
-      h('button', {
-        type: 'button',
-        role: 'radio',
-        class: ['swatch', prefs.accent === color ? 'is-on' : ''],
-        'aria-checked': String(prefs.accent === color),
-        'aria-label': t(`settings.appearance.accents.${name}`),
-        dataset: { fk: `accent-${name}` },
-        style: { '--swatch': color },
-        onClick: () => set({ accent: color }),
-      }),
+  const swatches = rovingRadios(
+    h(
+      'div',
+      { class: 'swatches', role: 'radiogroup', 'aria-label': t('settings.appearance.accent') },
+      Object.entries(ACCENTS).map(([name, color]) =>
+        h('button', {
+          type: 'button',
+          role: 'radio',
+          class: ['swatch', prefs.accent === color ? 'is-on' : ''],
+          'aria-checked': String(prefs.accent === color),
+          'aria-label': t(`settings.appearance.accents.${name}`),
+          dataset: { fk: `accent-${name}` },
+          style: { '--swatch': color },
+          onClick: () => set({ accent: color }),
+        }),
+      ),
     ),
-  ));
+  );
   const custom = h('input', {
     type: 'color',
     class: 'color-input',
@@ -47,24 +49,26 @@ export function render(ctx) {
   });
 
   const bg = prefs.background;
-  const bgPresets = rovingRadios(h(
-    'div',
-    { class: 'bg-presets', role: 'radiogroup', 'aria-label': t('settings.appearance.bgPresets') },
-    BACKGROUND_PRESETS.map((p) =>
-      h(
-        'button',
-        {
-          type: 'button',
-          role: 'radio',
-          class: ['bg-preset', `bg-preset--${p}`, bg.type === 'preset' && bg.preset === p ? 'is-on' : ''],
-          'aria-checked': String(bg.type === 'preset' && bg.preset === p),
-          dataset: { fk: `bg-${p}` },
-          onClick: () => set({ background: { ...bg, type: 'preset', preset: p } }),
-        },
-        h('span', { class: 'bg-preset__label', text: t(`settings.appearance.bgs.${p}`) }),
+  const bgPresets = rovingRadios(
+    h(
+      'div',
+      { class: 'bg-presets', role: 'radiogroup', 'aria-label': t('settings.appearance.bgPresets') },
+      BACKGROUND_PRESETS.map((p) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            role: 'radio',
+            class: ['bg-preset', `bg-preset--${p}`, bg.type === 'preset' && bg.preset === p ? 'is-on' : ''],
+            'aria-checked': String(bg.type === 'preset' && bg.preset === p),
+            dataset: { fk: `bg-${p}` },
+            onClick: () => set({ background: { ...bg, type: 'preset', preset: p } }),
+          },
+          h('span', { class: 'bg-preset__label', text: t(`settings.appearance.bgs.${p}`) }),
+        ),
       ),
     ),
-  ));
+  );
   const colorInput = h('input', {
     type: 'color',
     class: 'color-input',
@@ -147,7 +151,12 @@ export function render(ctx) {
         swatches,
         h('div', { class: 'inline-field' }, h('label', { for: 'accent-custom', text: t('settings.appearance.customColor') }), custom),
         report.adjusted ? notice({ level: 'info', title: t('settings.appearance.contrastTitle'), text: t('settings.appearance.contrastText', { ratio: report.ratio }) }) : null,
-        h('div', { class: 'preview' }, h('span', { class: 'preview__chip', text: t('settings.appearance.preview') }), h('a', { class: 'link', href: '#/settings/appearance', text: t('settings.appearance.previewLink') })),
+        h(
+          'div',
+          { class: 'preview' },
+          h('span', { class: 'preview__chip', text: t('settings.appearance.preview') }),
+          h('a', { class: 'link', href: '#/settings/appearance', text: t('settings.appearance.previewLink') }),
+        ),
       ],
     }),
     card({
@@ -157,7 +166,13 @@ export function render(ctx) {
         bgPresets,
         h('div', { class: 'inline-field' }, h('label', { for: 'bg-color', text: t('settings.appearance.bgColor') }), colorInput),
         bg.type === 'color' && readableBackground(bg.color, theme) !== bg.color ? notice({ level: 'info', text: t('settings.appearance.bgAdjusted') }) : null,
-        h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'bg-file', text: t('settings.appearance.bgImage') }), fileInput, bg.type === 'image' ? button({ label: t('settings.appearance.bgRemove'), variant: 'ghost', size: 'sm', onClick: () => removeImage(bg, set) }) : null),
+        h(
+          'div',
+          { class: 'btn-row' },
+          h('label', { class: 'btn btn--soft btn--sm', for: 'bg-file', text: t('settings.appearance.bgImage') }),
+          fileInput,
+          bg.type === 'image' ? button({ label: t('settings.appearance.bgRemove'), variant: 'ghost', size: 'sm', onClick: () => removeImage(bg, set) }) : null,
+        ),
         bg.type === 'image' ? h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'bg-dim', text: t('settings.appearance.bgDim') }), dim) : null,
         h('p', { class: 'muted small', text: t('settings.appearance.bgPrivacy') }),
       ],
@@ -188,8 +203,18 @@ export function render(ctx) {
       title: t('settings.appearance.accessibility'),
       icon: 'accessibility',
       children: [
-        h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'text-scale', text: t('settings.appearance.textSize', { pct: Math.round(prefs.textScale * 100) }) }), scale),
-        toggle({ label: t('settings.appearance.highContrast'), description: t('settings.appearance.highContrastDesc'), checked: prefs.contrast === 'more', onChange: (v) => set({ contrast: v ? 'more' : 'normal' }) }),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', { class: 'field__label', for: 'text-scale', text: t('settings.appearance.textSize', { pct: Math.round(prefs.textScale * 100) }) }),
+          scale,
+        ),
+        toggle({
+          label: t('settings.appearance.highContrast'),
+          description: t('settings.appearance.highContrastDesc'),
+          checked: prefs.contrast === 'more',
+          onChange: (v) => set({ contrast: v ? 'more' : 'normal' }),
+        }),
       ],
     }),
   );

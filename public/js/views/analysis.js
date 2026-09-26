@@ -22,7 +22,17 @@ export function render(ctx) {
   const blocks = [];
 
   if (!analysis.hasData && !Object.keys(data.days).length) {
-    return h('div', { class: 'view analysis' }, card({ children: emptyState({ title: t('analysis.emptyTitle'), text: t('analysis.emptyText'), action: button({ label: t('home.fullLog'), variant: 'primary', onClick: () => ctx.openLog() }) }) }));
+    return h(
+      'div',
+      { class: 'view analysis' },
+      card({
+        children: emptyState({
+          title: t('analysis.emptyTitle'),
+          text: t('analysis.emptyText'),
+          action: button({ label: t('home.fullLog'), variant: 'primary', onClick: () => ctx.openLog() }),
+        }),
+      }),
+    );
   }
 
   if (!insightsCache || insightsCache.version !== version) insightsCache = { version, value: computeInsights(analysis, data.days, { age: derived.age }) };
@@ -32,13 +42,35 @@ export function render(ctx) {
 
   // Summary tiles.
   const tiles = [
-    tile('calendar', t('analysis.avgCycle'), stats.cycle ? t('common.days', { count: Math.round(stats.cycle.mean) }) : '—', stats.cycle ? t('analysis.range', { min: stats.cycle.min, max: stats.cycle.max }) : t('analysis.needTwo')),
-    tile('droplet', t('analysis.avgPeriod'), stats.period ? t('common.days', { count: Math.round(stats.period.mean) }) : '—', stats.period ? t('analysis.basedOn', { count: stats.period.count }) : t('analysis.logWholePeriod')),
-    tile('history', t('analysis.cyclesTracked'), fmtNumber(stats.validCycleCount), insights.regularity ? t(`analysis.regularity.${insights.regularity}`) : t('analysis.regularityUnknown')),
+    tile(
+      'calendar',
+      t('analysis.avgCycle'),
+      stats.cycle ? t('common.days', { count: Math.round(stats.cycle.mean) }) : '—',
+      stats.cycle ? t('analysis.range', { min: stats.cycle.min, max: stats.cycle.max }) : t('analysis.needTwo'),
+    ),
+    tile(
+      'droplet',
+      t('analysis.avgPeriod'),
+      stats.period ? t('common.days', { count: Math.round(stats.period.mean) }) : '—',
+      stats.period ? t('analysis.basedOn', { count: stats.period.count }) : t('analysis.logWholePeriod'),
+    ),
+    tile(
+      'history',
+      t('analysis.cyclesTracked'),
+      fmtNumber(stats.validCycleCount),
+      insights.regularity ? t(`analysis.regularity.${insights.regularity}`) : t('analysis.regularityUnknown'),
+    ),
   ];
   if (flags.fertilityTracking) {
     const confirmed = analysis.cycles.filter((c) => c.ovulation?.method === 'bbt').length;
-    tiles.push(tile('thermometer', t('analysis.lutealPhase'), t('common.days', { count: stats.lutealLength }), confirmed ? t('analysis.bbtConfirmedCount', { count: confirmed }) : t('analysis.lutealDefault')));
+    tiles.push(
+      tile(
+        'thermometer',
+        t('analysis.lutealPhase'),
+        t('common.days', { count: stats.lutealLength }),
+        confirmed ? t('analysis.bbtConfirmedCount', { count: confirmed }) : t('analysis.lutealDefault'),
+      ),
+    );
   }
   blocks.push(h('div', { class: 'tiles' }, tiles));
 
@@ -82,16 +114,32 @@ export function render(ctx) {
 
   // Personal patterns.
   const patternItems = insights.patterns.map((p) =>
-    h('li', { class: 'insight' }, icon(p.kind === 'mood' ? 'brain' : 'activity', { size: 18 }), h('span', { text: t('analysis.pattern', { item: t(`${p.kind === 'mood' ? 'moods' : 'symptoms'}.${p.id}`), phase: t(`phases.${p.phase}`).toLowerCase(), pct: Math.round(p.rate * 100) }) })),
+    h(
+      'li',
+      { class: 'insight' },
+      icon(p.kind === 'mood' ? 'brain' : 'activity', { size: 18 }),
+      h('span', {
+        text: t('analysis.pattern', { item: t(`${p.kind === 'mood' ? 'moods' : 'symptoms'}.${p.id}`), phase: t(`phases.${p.phase}`).toLowerCase(), pct: Math.round(p.rate * 100) }),
+      }),
+    ),
   );
   if (insights.energy) {
-    patternItems.push(h('li', { class: 'insight' }, icon('zap', { size: 18 }), h('span', { text: t('analysis.energy', { best: t(`phases.${insights.energy.best}`).toLowerCase(), worst: t(`phases.${insights.energy.worst}`).toLowerCase() }) })));
+    patternItems.push(
+      h(
+        'li',
+        { class: 'insight' },
+        icon('zap', { size: 18 }),
+        h('span', { text: t('analysis.energy', { best: t(`phases.${insights.energy.best}`).toLowerCase(), worst: t(`phases.${insights.energy.worst}`).toLowerCase() }) }),
+      ),
+    );
   }
   blocks.push(
     card({
       title: t('analysis.patterns'),
       icon: 'sparkles',
-      children: patternItems.length ? [h('ul', { class: 'insights' }, patternItems), h('p', { class: 'muted small', text: t('analysis.patternsNote') })] : h('p', { class: 'muted', text: t('analysis.patternsEmpty') }),
+      children: patternItems.length
+        ? [h('ul', { class: 'insights' }, patternItems), h('p', { class: 'muted small', text: t('analysis.patternsNote') })]
+        : h('p', { class: 'muted', text: t('analysis.patternsEmpty') }),
     }),
   );
 
@@ -167,7 +215,21 @@ export function render(ctx) {
       card({
         title: t('analysis.bbtChart'),
         icon: 'thermometer',
-        action: bbtCycles.length > 1 ? h('select', { class: 'input input--select', 'aria-label': t('analysis.chooseCycle'), onChange: (/** @type {Event} */ e) => { bbtCycleIndex = Number(/** @type {HTMLSelectElement} */ (e.target).value); ctx.navigate('analysis', { replace: true }); } }, bbtCycles.map((c, i) => h('option', { value: i, selected: i === idx, text: fmtDate(c.start, 'medium') }))) : null,
+        action:
+          bbtCycles.length > 1
+            ? h(
+                'select',
+                {
+                  class: 'input input--select',
+                  'aria-label': t('analysis.chooseCycle'),
+                  onChange: (/** @type {Event} */ e) => {
+                    bbtCycleIndex = Number(/** @type {HTMLSelectElement} */ (e.target).value);
+                    ctx.navigate('analysis', { replace: true });
+                  },
+                },
+                bbtCycles.map((c, i) => h('option', { value: i, selected: i === idx, text: fmtDate(c.start, 'medium') })),
+              )
+            : null,
         children: [
           lineChart({
             title: t('analysis.bbtCycle', { date: fmtDate(cyc.start, 'long') }),
@@ -178,14 +240,18 @@ export function render(ctx) {
             reference: coverline,
             markers: ovIndex >= 0 ? [{ index: ovIndex, label: t('calendar.legend.ovulation') }] : [],
           }),
-          cyc.ovulation?.method === 'bbt' ? badge(t('analysis.ovulationConfirmed', { date: fmtDate(cyc.ovulation.day, 'short') }), 'good') : h('p', { class: 'muted small', text: t('analysis.bbtHowTo') }),
+          cyc.ovulation?.method === 'bbt'
+            ? badge(t('analysis.ovulationConfirmed', { date: fmtDate(cyc.ovulation.day, 'short') }), 'good')
+            : h('p', { class: 'muted small', text: t('analysis.bbtHowTo') }),
         ],
       }),
     );
   }
 
   // Weight trend.
-  const weightDays = Object.keys(data.days).filter((d) => typeof data.days[d].weight === 'number' && d >= addDays(derived.today, -180)).sort();
+  const weightDays = Object.keys(data.days)
+    .filter((d) => typeof data.days[d].weight === 'number' && d >= addDays(derived.today, -180))
+    .sort();
   if (weightDays.length >= 3) {
     const lb = settings.weightUnit === 'lb';
     blocks.push(
@@ -207,7 +273,12 @@ export function render(ctx) {
       icon: 'file-text',
       children: [
         h('p', { class: 'muted', text: t('analysis.shareText') }),
-        h('div', { class: 'btn-row' }, button({ label: t('analysis.report'), icon: 'file-down', variant: 'primary', onClick: () => ctx.navigate('report') }), ctx.state.server.share ? button({ label: t('analysis.shareLink'), icon: 'share-2', variant: 'soft', onClick: () => ctx.navigate('settings/share') }) : null),
+        h(
+          'div',
+          { class: 'btn-row' },
+          button({ label: t('analysis.report'), icon: 'file-down', variant: 'primary', onClick: () => ctx.navigate('report') }),
+          ctx.state.server.share ? button({ label: t('analysis.shareLink'), icon: 'share-2', variant: 'soft', onClick: () => ctx.navigate('settings/share') }) : null,
+        ),
       ],
     }),
   );
@@ -222,5 +293,12 @@ export function render(ctx) {
  * @param {string} sub
  */
 function tile(ic, label, value, sub) {
-  return h('div', { class: 'tile' }, h('span', { class: 'tile__icon' }, icon(ic, { size: 18 })), h('span', { class: 'tile__label', text: label }), h('span', { class: 'tile__value', text: value }), h('span', { class: 'tile__sub', text: sub }));
+  return h(
+    'div',
+    { class: 'tile' },
+    h('span', { class: 'tile__icon' }, icon(ic, { size: 18 })),
+    h('span', { class: 'tile__label', text: label }),
+    h('span', { class: 'tile__value', text: value }),
+    h('span', { class: 'tile__sub', text: sub }),
+  );
 }

@@ -78,7 +78,7 @@ async function exportPdf(share) {
 export function buildReport(data, d, o) {
   const today = d.today;
   const allDates = Object.keys(data.days).sort();
-  const from = o.months ? addDays(today, -Math.round(o.months * 30.44)) : allDates[0] ?? today;
+  const from = o.months ? addDays(today, -Math.round(o.months * 30.44)) : (allDates[0] ?? today);
   const pdf = new PdfDoc({ title: t('report.title') });
   pdf.footer = `${t('report.footer')} · ${fmtDate(today, 'long')}`;
 
@@ -138,7 +138,10 @@ export function buildReport(data, d, o) {
   if (freq.moods.length) {
     pdf.heading(t('report.moods'));
     const max = Math.max(...freq.moods.map((s) => s.count));
-    pdf.bars(freq.moods.slice(0, 8).map((s) => ({ label: t(`moods.${s.id}`), value: t('analysis.timesDays', { count: s.count }), fraction: s.count / max })), '#9b7be8');
+    pdf.bars(
+      freq.moods.slice(0, 8).map((s) => ({ label: t(`moods.${s.id}`), value: t('analysis.timesDays', { count: s.count }), fraction: s.count / max })),
+      '#9b7be8',
+    );
   }
 
   const inRange = Object.keys(data.days).filter((x) => x >= from && x <= today);
@@ -151,7 +154,14 @@ export function buildReport(data, d, o) {
   if (a.intermenstrual.length) pdf.text(t('report.intermenstrual', { count: a.intermenstrual.filter((r) => r.start >= from).length }), { gap: 6 });
   if (meds.size) {
     pdf.heading(t('report.meds'));
-    pdf.table([t('report.medName'), t('report.medDays')], Array.from(meds.entries()).sort((x, y) => y[1] - x[1]).slice(0, 15).map(([name, count]) => [name, String(count)]), [0.7, 0.3]);
+    pdf.table(
+      [t('report.medName'), t('report.medDays')],
+      Array.from(meds.entries())
+        .sort((x, y) => y[1] - x[1])
+        .slice(0, 15)
+        .map(([name, count]) => [name, String(count)]),
+      [0.7, 0.3],
+    );
   }
   if (d.settings.contraception?.method && d.settings.contraception.method !== 'none') {
     pdf.text(t('report.contraception', { method: t(`contraception.${d.settings.contraception.method}`) }), { gap: 6 });

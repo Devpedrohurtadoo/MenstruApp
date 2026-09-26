@@ -21,7 +21,7 @@ let plural = new Intl.PluralRules(tag);
 
 /** Picks the best supported language from the browser settings. */
 export function detectLanguage() {
-  const prefs = typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : [];
+  const prefs = typeof navigator !== 'undefined' ? (navigator.languages ?? [navigator.language]) : [];
   for (const p of prefs) {
     const code = String(p).toLowerCase().split('-')[0];
     if (code in DICTS) return code;
@@ -32,7 +32,7 @@ export function detectLanguage() {
 /** @param {string} code */
 export function setLanguage(code) {
   lang = code in DICTS ? code : DEFAULT_LANG;
-  const browser = typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : [];
+  const browser = typeof navigator !== 'undefined' ? (navigator.languages ?? [navigator.language]) : [];
   const regional = browser.find((l) => String(l).toLowerCase().startsWith(`${lang}-`));
   tag = regional ?? (lang === 'es' ? 'es-ES' : 'en-US');
   try {

@@ -341,8 +341,7 @@ export function analyze(days, ctx) {
 
   const cycleStats = describe(validLengths.slice(-12));
   const periodStats = describe(periodLengths.slice(-12));
-  const lutealLength =
-    lutealLengths.length >= 2 ? Math.round(median(/** @type {number[]} */ (lutealLengths.slice(-6)))) : (settings.lutealLength ?? DEFAULTS.lutealLength);
+  const lutealLength = lutealLengths.length >= 2 ? Math.round(median(/** @type {number[]} */ (lutealLengths.slice(-6)))) : (settings.lutealLength ?? DEFAULTS.lutealLength);
   // Prolonged bleeding episodes are reported, but do not make the predicted periods longer.
   const typicalLengths = periodLengths.filter((l) => l <= LIMITS.maxPeriod);
   const predictedPeriodLength = typicalLengths.length ? Math.round(median(typicalLengths.slice(-6))) : periodHint;
@@ -384,7 +383,8 @@ export function analyze(days, ctx) {
       late,
       lateDays: late ? lateDays : 0,
       ovulation,
-      phase: stale || pregnant || hormonal ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
+      phase:
+        stale || pregnant || hormonal ? null : phaseOn(today, { start: last.start, periodEnd: last.lengthKnown ? last.end : last.estimatedEnd, ovulationDay, nextStart: expected }),
     };
 
     if (!stale && !pregnant && !unscheduled && lateDays <= 7) {

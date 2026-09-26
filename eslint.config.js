@@ -7,8 +7,8 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 const HTML_SINKS = [
-  { selector: "AssignmentExpression[left.property.name=/^(innerHTML|outerHTML|srcdoc)$/]", message: 'Build DOM with h()/s() from core/dom.js; HTML strings are forbidden (XSS).' },
-  { selector: "CallExpression[callee.property.name=/^(insertAdjacentHTML|createContextualFragment|parseFromString)$/]", message: 'HTML parsing sinks are forbidden (XSS).' },
+  { selector: 'AssignmentExpression[left.property.name=/^(innerHTML|outerHTML|srcdoc)$/]', message: 'Build DOM with h()/s() from core/dom.js; HTML strings are forbidden (XSS).' },
+  { selector: 'CallExpression[callee.property.name=/^(insertAdjacentHTML|createContextualFragment|parseFromString)$/]', message: 'HTML parsing sinks are forbidden (XSS).' },
   { selector: "CallExpression[callee.object.name='document'][callee.property.name=/^(write|writeln)$/]", message: 'document.write is forbidden.' },
   { selector: "CallExpression[callee.name=/^(setTimeout|setInterval)$/][arguments.0.type='Literal']", message: 'String timers are dynamic code.' },
   { selector: "CallExpression[callee.property.name='setAttribute'][arguments.0.value=/^on/i]", message: 'Inline event handler attributes are forbidden (CSP).' },

@@ -43,7 +43,11 @@ describe('notices', () => {
     const a = analyze(days, { today: '2024-06-20', settings: {} });
     expect(computeNotices(a, days, { ...baseCtx, age: teen, today: '2024-06-20' }).map((n) => n.id)).not.toContain('irregular');
     // Born in 1991: 34 or 35 on 2026-01-10 → ask for help after 6 months.
-    const help = computeNotices(analyze({}, { today: '2026-01-10' }), {}, { ...baseCtx, mode: 'conceive', age: ageFromProfile({ birthYear: 1991 }, '2026-01-10'), modeSince: '2025-07-01', today: '2026-01-10' });
+    const help = computeNotices(
+      analyze({}, { today: '2026-01-10' }),
+      {},
+      { ...baseCtx, mode: 'conceive', age: ageFromProfile({ birthYear: 1991 }, '2026-01-10'), modeSince: '2025-07-01', today: '2026-01-10' },
+    );
     expect(help.find((n) => n.id === 'conceiveHelp')?.params).toEqual({ count: 6 });
   });
 
@@ -81,7 +85,9 @@ describe('notices', () => {
     // No cycle data at all.
     expect(at('2024-03-02', { '2024-03-01': { sex: 'unprotected' } })).toMatchObject({ params: { count: 1 } });
     // Only in avoid mode.
-    expect(computeNotices(analyze(days, { today: '2024-03-02', settings: {} }), days, { ...baseCtx, today: '2024-03-02' }).map((n) => n.id)).not.toContain('emergencyContraception');
+    expect(computeNotices(analyze(days, { today: '2024-03-02', settings: {} }), days, { ...baseCtx, today: '2024-03-02' }).map((n) => n.id)).not.toContain(
+      'emergencyContraception',
+    );
   });
 
   it('flags bleeding longer than 8 days, including episodes over 15 days and ongoing ones', () => {
@@ -97,7 +103,9 @@ describe('notices', () => {
   it('flags spotting after 12 months without a period (perimenopause)', () => {
     const periods = periodsEvery('2022-01-01', 30, 2);
     const ids = (/** @type {Record<string, any>} */ days, /** @type {Record<string, any>} */ extra = {}) =>
-      computeNotices(analyze(days, { today: '2024-03-10', settings: { mode: 'perimenopause' } }), days, { ...baseCtx, mode: 'perimenopause', today: '2024-03-10', ...extra }).map((n) => n.id);
+      computeNotices(analyze(days, { today: '2024-03-10', settings: { mode: 'perimenopause' } }), days, { ...baseCtx, mode: 'perimenopause', today: '2024-03-10', ...extra }).map(
+        (n) => n.id,
+      );
     expect(ids({ ...periods, '2024-03-08': { flow: 'spotting' } })).toContain('postmenopausalBleeding');
     expect(ids(periods)).not.toContain('postmenopausalBleeding');
     // Spotting a few months after the last period is not postmenopausal.
@@ -110,7 +118,9 @@ describe('notices', () => {
   it('flags large clots or heavy bleeding after the first week postpartum as urgent', () => {
     const notice = (/** @type {Record<string, any>} */ entry, /** @type {string} */ today) => {
       const days = { [today]: entry };
-      return computeNotices(analyze(days, { today, settings: { mode: 'postpartum' } }), days, { ...baseCtx, mode: 'postpartum', postpartumBirthDate: '2024-03-01', today }).find((n) => n.id === 'postpartumHeavyBleeding');
+      return computeNotices(analyze(days, { today, settings: { mode: 'postpartum' } }), days, { ...baseCtx, mode: 'postpartum', postpartumBirthDate: '2024-03-01', today }).find(
+        (n) => n.id === 'postpartumHeavyBleeding',
+      );
     };
     expect(notice({ flow: 'medium', clots: 'large' }, '2024-03-20')).toMatchObject({ level: 'urgent' });
     expect(notice({ flow: 'heavy' }, '2024-03-12')).toMatchObject({ level: 'urgent' });
@@ -228,7 +238,7 @@ describe('reminders', () => {
     expect(occ.some((o) => o.reminderId === 'off')).toBe(false);
   });
 
-  it('picks each day\'s tip from the life stage or the phase predicted for that day', () => {
+  it("picks each day's tip from the life stage or the phase predicted for that day", () => {
     const days = periodsEvery('2024-01-01', 28, 5);
     const a = analyze(days, { today: '2024-05-01', settings: {} });
     const flags = modeFlags({ mode: 'track' });
@@ -287,9 +297,7 @@ describe('reminders', () => {
       '2024-03-31',
       '2024-04-30',
     ]);
-    expect(repeatDates({ id: 'y', type: 'checkup', enabled: true, time: '10:00', date: '2023-06-01', repeat: 'yearly' }, '2024-01-01', '2024-12-31')).toEqual([
-      '2024-06-01',
-    ]);
+    expect(repeatDates({ id: 'y', type: 'checkup', enabled: true, time: '10:00', date: '2023-06-01', repeat: 'yearly' }, '2024-01-01', '2024-12-31')).toEqual(['2024-06-01']);
   });
 });
 
@@ -298,10 +306,7 @@ describe('streaks', () => {
     const days = { '2024-01-01': { flow: 'light' }, '2024-01-02': { moods: ['calm'] }, '2024-01-04': { flow: 'light' }, '2024-01-05': { energy: 3 } };
     expect(loggingStreak(days, '2024-01-06')).toMatchObject({ current: 2, best: 2, total: 4, loggedToday: false });
     expect(loggingStreak(days, '2024-01-07').current).toBe(0);
-    expect(newAchievements({ streak: { current: 2, best: 7, total: 9 }, completedCycles: 1, bbtConfirmed: 0 }, { firstLog: '2024-01-01' })).toEqual([
-      'streak7',
-      'firstCycle',
-    ]);
+    expect(newAchievements({ streak: { current: 2, best: 7, total: 9 }, completedCycles: 1, bbtConfirmed: 0 }, { firstLog: '2024-01-01' })).toEqual(['streak7', 'firstCycle']);
   });
 });
 
@@ -317,7 +322,14 @@ describe('modes', () => {
 describe('luna engine', () => {
   const kb = {
     intents: [
-      { id: 'cramps', topic: 'Cólicos', keywords: { colico: 3, 'dolor de regla': 4 }, answer: ['Calor local ayuda.'], article: 'dolor-menstrual', insteadIn: { pregnant: 'pregnancyPain' } },
+      {
+        id: 'cramps',
+        topic: 'Cólicos',
+        keywords: { colico: 3, 'dolor de regla': 4 },
+        answer: ['Calor local ayuda.'],
+        article: 'dolor-menstrual',
+        insteadIn: { pregnant: 'pregnancyPain' },
+      },
       { id: 'pcos', topic: 'SOP', keywords: { sop: 4, 'ovario poliquistico': 4 }, answer: ['El SOP es...'], article: 'sop' },
       { id: 'anemia', topic: 'Anemia', keywords: { 'anemi*': 4 }, answer: ['El hierro...'] },
       { id: 'products', topic: 'Productos', keywords: { compresa: 3 }, answer: ['Compresas y tampones...'] },

@@ -54,12 +54,19 @@ export async function render(ctx) {
       'a',
       { class: 'profile-head', href: '#/settings/profile' },
       avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 56),
-      h('span', { class: 'profile-head__text' }, h('strong', { text: profile.name || t('settings.profile.anonymous') }), h('span', { class: 'muted', text: t(`modes.${ctx.state.derived?.settings.mode ?? 'track'}.title`) })),
+      h(
+        'span',
+        { class: 'profile-head__text' },
+        h('strong', { text: profile.name || t('settings.profile.anonymous') }),
+        h('span', { class: 'muted', text: t(`modes.${ctx.state.derived?.settings.mode ?? 'track'}.title`) }),
+      ),
     ),
     h(
       'div',
       { class: 'list' },
-      SECTIONS.filter(([id]) => id !== 'share' || ctx.state.server.share).map(([id, ic, key]) => listItem({ icon: ic, title: t(key), subtitle: t(`settings.sections.${id}Desc`), href: `#/settings/${id}` })),
+      SECTIONS.filter(([id]) => id !== 'share' || ctx.state.server.share).map(([id, ic, key]) =>
+        listItem({ icon: ic, title: t(key), subtitle: t(`settings.sections.${id}Desc`), href: `#/settings/${id}` }),
+      ),
     ),
   );
 }

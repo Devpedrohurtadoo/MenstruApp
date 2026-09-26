@@ -11,7 +11,8 @@
   font-display: swap;
   font-weight: 100 1000;
   src: url('/assets/fonts/dm-sans-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'DM Sans';
@@ -19,7 +20,9 @@
   font-display: swap;
   font-weight: 100 1000;
   src: url('/assets/fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Playfair Display';
@@ -27,7 +30,8 @@
   font-display: swap;
   font-weight: 600;
   src: url('/assets/fonts/playfair-display-latin-600-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Playfair Display';
@@ -35,7 +39,9 @@
   font-display: swap;
   font-weight: 600;
   src: url('/assets/fonts/playfair-display-latin-ext-600-normal.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* Tokens ------------------------------------------------------------------ */
@@ -192,38 +198,29 @@ body::before {
 [data-bg='aurora'] body::before {
   background:
     radial-gradient(60% 45% at 12% 0%, color-mix(in oklab, var(--accent) 26%, transparent) 0%, transparent 70%),
-    radial-gradient(55% 40% at 95% 100%, rgb(139 92 246 / 0.18) 0%, transparent 70%),
-    var(--bg);
+    radial-gradient(55% 40% at 95% 100%, rgb(139 92 246 / 0.18) 0%, transparent 70%), var(--bg);
 }
 [data-bg='sunset'] body::before {
   background:
     radial-gradient(70% 50% at 100% 0%, rgb(247 150 110 / 0.22) 0%, transparent 70%),
-    radial-gradient(60% 45% at 0% 100%, color-mix(in oklab, var(--accent) 22%, transparent) 0%, transparent 70%),
-    var(--bg);
+    radial-gradient(60% 45% at 0% 100%, color-mix(in oklab, var(--accent) 22%, transparent) 0%, transparent 70%), var(--bg);
 }
 [data-bg='lavender'] body::before {
   background: radial-gradient(80% 60% at 50% 0%, rgb(167 139 250 / 0.24) 0%, transparent 70%), var(--bg);
 }
 [data-bg='ocean'] body::before {
   background:
-    radial-gradient(70% 50% at 0% 0%, rgb(56 189 248 / 0.18) 0%, transparent 70%),
-    radial-gradient(60% 50% at 100% 100%, rgb(45 212 191 / 0.14) 0%, transparent 70%),
-    var(--bg);
+    radial-gradient(70% 50% at 0% 0%, rgb(56 189 248 / 0.18) 0%, transparent 70%), radial-gradient(60% 50% at 100% 100%, rgb(45 212 191 / 0.14) 0%, transparent 70%), var(--bg);
 }
 [data-bg='forest'] body::before {
   background:
-    radial-gradient(70% 50% at 100% 0%, rgb(74 222 128 / 0.14) 0%, transparent 70%),
-    radial-gradient(60% 50% at 0% 100%, rgb(45 212 191 / 0.12) 0%, transparent 70%),
-    var(--bg);
+    radial-gradient(70% 50% at 100% 0%, rgb(74 222 128 / 0.14) 0%, transparent 70%), radial-gradient(60% 50% at 0% 100%, rgb(45 212 191 / 0.12) 0%, transparent 70%), var(--bg);
 }
 [data-bg='night'] body::before {
   background:
-    radial-gradient(1px 1px at 20% 30%, rgb(255 255 255 / 0.5) 50%, transparent 51%),
-    radial-gradient(1px 1px at 70% 15%, rgb(255 255 255 / 0.4) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 85% 60%, rgb(255 255 255 / 0.35) 50%, transparent 51%),
-    radial-gradient(1px 1px at 40% 80%, rgb(255 255 255 / 0.3) 50%, transparent 51%),
-    radial-gradient(80% 60% at 50% 110%, rgb(99 102 241 / 0.2) 0%, transparent 70%),
-    var(--bg);
+    radial-gradient(1px 1px at 20% 30%, rgb(255 255 255 / 0.5) 50%, transparent 51%), radial-gradient(1px 1px at 70% 15%, rgb(255 255 255 / 0.4) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 85% 60%, rgb(255 255 255 / 0.35) 50%, transparent 51%), radial-gradient(1px 1px at 40% 80%, rgb(255 255 255 / 0.3) 50%, transparent 51%),
+    radial-gradient(80% 60% at 50% 110%, rgb(99 102 241 / 0.2) 0%, transparent 70%), var(--bg);
 }
 [data-bg='blush'] body::before {
   background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 16%, var(--bg)) 0%, var(--bg) 55%, color-mix(in oklab, #f7b267 10%, var(--bg)) 100%);
@@ -573,7 +570,9 @@ hr {
   border-radius: 50%;
   background: linear-gradient(145deg, color-mix(in oklab, var(--accent) 80%, #fff), var(--accent));
   color: var(--on-accent);
-  box-shadow: 0 8px 22px color-mix(in oklab, var(--accent) 45%, transparent), 0 0 0 4px var(--bg);
+  box-shadow:
+    0 8px 22px color-mix(in oklab, var(--accent) 45%, transparent),
+    0 0 0 4px var(--bg);
   transition: transform var(--dur) var(--ease-out);
 }
 .tabbar__add:active .tabbar__add-inner {
@@ -704,7 +703,9 @@ hr {
   background: transparent;
   color: var(--text-2);
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+  transition:
+    background-color var(--dur) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .icon-btn:hover {
   background: var(--surface-2);
@@ -842,7 +843,9 @@ hr {
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  transition:
+    background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
 }
 .segmented__opt.is-on {
   background: var(--surface-raised);
@@ -905,7 +908,9 @@ hr {
   height: 24px;
   border-radius: 50%;
   background: var(--text-2);
-  transition: transform var(--dur) var(--ease-out), background-color var(--dur) var(--ease);
+  transition:
+    transform var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease);
 }
 .switch__input:checked + .switch__track {
   background: var(--accent-ui);
@@ -972,7 +977,9 @@ hr {
   background: var(--field);
   color: var(--text);
   font-size: 1rem;
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  transition:
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
 .input:focus {
   outline: none;
@@ -1367,7 +1374,9 @@ hr {
   border: 1px solid var(--border);
   box-shadow: 0 -10px 40px rgb(0 0 0 / 0.3);
   outline: none;
-  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur) var(--ease);
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur) var(--ease);
 }
 [data-theme='dark'] .modal__panel {
   background: var(--surface-solid);
@@ -1577,7 +1586,9 @@ hr {
   height: 14px;
   border-radius: 50%;
   border: 2px solid var(--border-strong);
-  transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .lock__dot.is-filled {
   background: var(--accent-ui);
@@ -1622,7 +1633,9 @@ hr {
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .keypad__key:active:not(:disabled) {
   transform: scale(0.93);
@@ -1731,7 +1744,10 @@ hr {
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  transition: border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease), background-color var(--dur) var(--ease);
+  transition:
+    border-color var(--dur) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 .mode-card:hover {
   border-color: var(--border-strong);
@@ -2052,7 +2068,9 @@ hr {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease), background-color var(--dur) var(--ease);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 .cal__day:active {
   transform: scale(0.92);
@@ -2547,7 +2565,9 @@ hr {
   border: 1px solid var(--border);
   color: var(--text);
   text-decoration: none;
-  transition: transform var(--dur-fast) var(--ease), border-color var(--dur) var(--ease);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 .cat:hover {
   border-color: var(--accent-ui);
@@ -2878,10 +2898,14 @@ hr {
   background: var(--glass);
 }
 .bg-preset--aurora {
-  background: radial-gradient(80% 70% at 10% 0%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%), radial-gradient(70% 60% at 100% 100%, rgb(139 92 246 / 0.4), transparent 70%), var(--bg);
+  background:
+    radial-gradient(80% 70% at 10% 0%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%),
+    radial-gradient(70% 60% at 100% 100%, rgb(139 92 246 / 0.4), transparent 70%), var(--bg);
 }
 .bg-preset--sunset {
-  background: radial-gradient(80% 70% at 100% 0%, rgb(247 150 110 / 0.5), transparent 70%), radial-gradient(70% 60% at 0% 100%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%), var(--bg);
+  background:
+    radial-gradient(80% 70% at 100% 0%, rgb(247 150 110 / 0.5), transparent 70%),
+    radial-gradient(70% 60% at 0% 100%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%), var(--bg);
 }
 .bg-preset--lavender {
   background: radial-gradient(90% 80% at 50% 0%, rgb(167 139 250 / 0.5), transparent 70%), var(--bg);
@@ -2893,7 +2917,9 @@ hr {
   background: radial-gradient(80% 70% at 100% 0%, rgb(74 222 128 / 0.35), transparent 70%), radial-gradient(70% 60% at 0% 100%, rgb(45 212 191 / 0.3), transparent 70%), var(--bg);
 }
 .bg-preset--night {
-  background: radial-gradient(1px 1px at 20% 30%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 70% 20%, #fff 50%, transparent 51%), radial-gradient(90% 70% at 50% 110%, rgb(99 102 241 / 0.45), transparent 70%), #0e0b1a;
+  background:
+    radial-gradient(1px 1px at 20% 30%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 70% 20%, #fff 50%, transparent 51%),
+    radial-gradient(90% 70% at 50% 110%, rgb(99 102 241 / 0.45), transparent 70%), #0e0b1a;
   color: #fff;
 }
 .bg-preset--blush {

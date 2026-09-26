@@ -85,10 +85,11 @@ export function chip(o) {
  */
 export function chipGroup(o) {
   const id = o.id ?? nextId('cg');
-  let current = o.multiple ? [...(/** @type {V[]} */ (o.value ?? []))] : (o.value ?? null);
+  let current = o.multiple ? [.../** @type {V[]} */ (o.value ?? [])] : (o.value ?? null);
   const wrap = h('div', { class: 'chips', role: 'group', 'aria-labelledby': `${id}-label` });
   const render = () => {
-    replace(wrap,
+    replace(
+      wrap,
       ...o.options.map((opt) => {
         const selected = o.multiple ? /** @type {V[]} */ (current).includes(opt.value) : current === opt.value;
         return chip({
@@ -114,12 +115,7 @@ export function chipGroup(o) {
     );
   };
   render();
-  return h(
-    'div',
-    { class: 'field' },
-    h('span', { class: ['field__label', o.hideLabel ? 'sr-only' : ''], id: `${id}-label`, text: o.label }),
-    wrap,
-  );
+  return h('div', { class: 'field' }, h('span', { class: ['field__label', o.hideLabel ? 'sr-only' : ''], id: `${id}-label`, text: o.label }), wrap);
 }
 
 /**
@@ -157,7 +153,8 @@ export function segmented(o) {
   let current = o.value;
   const group = h('div', { class: 'segmented', role: 'radiogroup', 'aria-labelledby': `${id}-label` });
   const render = () =>
-    replace(group,
+    replace(
+      group,
       ...o.options.map((opt, idx) =>
         h(
           'button',
@@ -222,7 +219,12 @@ export function toggle(o) {
     h(
       'label',
       { class: 'switch', for: id },
-      h('span', { class: 'switch__text' }, h('span', { class: 'switch__label', text: o.label }), o.description ? h('span', { class: 'switch__desc', id: `${id}-desc`, text: o.description }) : null),
+      h(
+        'span',
+        { class: 'switch__text' },
+        h('span', { class: 'switch__label', text: o.label }),
+        o.description ? h('span', { class: 'switch__desc', id: `${id}-desc`, text: o.description }) : null,
+      ),
       input,
       h('span', { class: 'switch__track', 'aria-hidden': 'true' }, h('span', { class: 'switch__thumb' })),
     ),
@@ -260,8 +262,28 @@ export function stepper(o) {
     o.onChange(value);
   };
   const start = () => (value === null ? Math.round((o.min + o.max) / 2) : value);
-  const minus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `${fk}-minus` }, 'aria-label': t('common.decrease', { label: o.label }), onClick: () => set(start() - (value === null ? 0 : step)) }, icon('minus'));
-  const plus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `${fk}-plus` }, 'aria-label': t('common.increase', { label: o.label }), onClick: () => set(start() + (value === null ? 0 : step)) }, icon('plus'));
+  const minus = h(
+    'button',
+    {
+      type: 'button',
+      class: 'icon-btn',
+      dataset: { fk: `${fk}-minus` },
+      'aria-label': t('common.decrease', { label: o.label }),
+      onClick: () => set(start() - (value === null ? 0 : step)),
+    },
+    icon('minus'),
+  );
+  const plus = h(
+    'button',
+    {
+      type: 'button',
+      class: 'icon-btn',
+      dataset: { fk: `${fk}-plus` },
+      'aria-label': t('common.increase', { label: o.label }),
+      onClick: () => set(start() + (value === null ? 0 : step)),
+    },
+    icon('plus'),
+  );
   render();
   return h(
     'div',
@@ -284,7 +306,14 @@ export function field(o) {
   o.control.setAttribute('aria-describedby', [hintId, errId].filter(Boolean).join(' '));
   const err = h('p', { class: 'field__error', id: errId, role: 'alert', hidden: !o.error, text: o.error ?? '' });
   return {
-    el: h('div', { class: 'field' }, h('label', { class: 'field__label', for: id, text: o.label }), o.control, o.hint ? h('p', { class: 'field__hint', id: hintId, text: o.hint }) : null, err),
+    el: h(
+      'div',
+      { class: 'field' },
+      h('label', { class: 'field__label', for: id, text: o.label }),
+      o.control,
+      o.hint ? h('p', { class: 'field__hint', id: hintId, text: o.hint }) : null,
+      err,
+    ),
     /** @param {string | null} msg */
     setError(msg) {
       err.textContent = msg ?? '';
@@ -304,7 +333,13 @@ export function card(o) {
     'section',
     { class: ['card', o.tone ? `card--${o.tone}` : '', o.class ?? ''] },
     o.title
-      ? h('header', { class: 'card__head' }, o.icon ? h('span', { class: 'card__icon' }, icon(o.icon, { size: 18 })) : null, h(tag, { class: 'card__title', text: o.title }), o.action ?? null)
+      ? h(
+          'header',
+          { class: 'card__head' },
+          o.icon ? h('span', { class: 'card__icon' }, icon(o.icon, { size: 18 })) : null,
+          h(tag, { class: 'card__title', text: o.title }),
+          o.action ?? null,
+        )
       : null,
     o.children,
   );
@@ -314,15 +349,20 @@ export function card(o) {
  * @param {{ title: string, text?: string, art?: Node, action?: Node | null }} o
  */
 export function emptyState(o) {
-  return h('div', { class: 'empty' }, o.art ?? blossom(), h('p', { class: 'empty__title', text: o.title }), o.text ? h('p', { class: 'empty__text', text: o.text }) : null, o.action ?? null);
+  return h(
+    'div',
+    { class: 'empty' },
+    o.art ?? blossom(),
+    h('p', { class: 'empty__title', text: o.title }),
+    o.text ? h('p', { class: 'empty__text', text: o.text }) : null,
+    o.action ?? null,
+  );
 }
 
 /** Decorative illustration used in empty states. */
 export function blossom() {
   // currentColor (set through CSS) instead of var() in presentation attributes, for Safari.
-  const petals = [0, 72, 144, 216, 288].map((deg) =>
-    s('ellipse', { cx: 60, cy: 38, rx: 13, ry: 22, transform: `rotate(${deg} 60 60)`, fill: 'currentColor', opacity: 0.35 }),
-  );
+  const petals = [0, 72, 144, 216, 288].map((deg) => s('ellipse', { cx: 60, cy: 38, rx: 13, ry: 22, transform: `rotate(${deg} 60 60)`, fill: 'currentColor', opacity: 0.35 }));
   return s(
     'svg',
     { class: 'empty__art', viewBox: '0 0 120 120', width: 96, height: 96, 'aria-hidden': 'true' },
@@ -372,7 +412,13 @@ export function notice(o) {
     'div',
     { class: ['notice', `notice--${o.level}`] },
     h('span', { class: 'notice__icon' }, icon(iconName, { size: 20 })),
-    h('div', { class: 'notice__body' }, o.title ? h('p', { class: 'notice__title', text: o.title }) : null, o.text ? h('p', { class: 'notice__text', text: o.text }) : null, o.action ?? null),
+    h(
+      'div',
+      { class: 'notice__body' },
+      o.title ? h('p', { class: 'notice__title', text: o.title }) : null,
+      o.text ? h('p', { class: 'notice__text', text: o.text }) : null,
+      o.action ?? null,
+    ),
     o.onDismiss ? iconButton({ icon: 'close', label: t('common.dismiss'), onClick: o.onDismiss, size: 16, class: 'notice__close' }) : null,
   );
 }

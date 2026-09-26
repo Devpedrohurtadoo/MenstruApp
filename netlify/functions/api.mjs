@@ -93,7 +93,10 @@ async function push(req, sub) {
     const now = Date.now();
     const items = body.items
       .map((/** @type {any} */ it) => ({ at: it?.at, payload: it?.payload }))
-      .filter((/** @type {any} */ it) => Number.isInteger(it.at) && it.at > now - 3600_000 && it.at < now + 62 * 86_400_000 && typeof it.payload === 'string' && it.payload.length <= 1500)
+      .filter(
+        (/** @type {any} */ it) =>
+          Number.isInteger(it.at) && it.at > now - 3600_000 && it.at < now + 62 * 86_400_000 && typeof it.payload === 'string' && it.payload.length <= 1500,
+      )
       .sort((/** @type {any} */ a, /** @type {any} */ b) => a.at - b.at);
     for (const it of items) {
       let parsed;
@@ -176,7 +179,13 @@ export default async function handler(req, context) {
     rateLimit(client, 'all', 120);
 
     if (area === 'health' && req.method === 'GET') {
-      return json(200, { ok: true, version: VERSION, push: Boolean(vapidConfig()), sync: process.env.MENSTRUAPP_DISABLE_SYNC !== '1', share: process.env.MENSTRUAPP_DISABLE_SHARE !== '1' });
+      return json(200, {
+        ok: true,
+        version: VERSION,
+        push: Boolean(vapidConfig()),
+        sync: process.env.MENSTRUAPP_DISABLE_SYNC !== '1',
+        share: process.env.MENSTRUAPP_DISABLE_SHARE !== '1',
+      });
     }
     if (area === 'sync' && !sub) {
       if (process.env.MENSTRUAPP_DISABLE_SYNC === '1') throw new HttpError(404, 'sync-disabled');

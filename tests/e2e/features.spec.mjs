@@ -53,7 +53,13 @@ test('encrypted backup, delete everything and restore', async ({ page }, testInf
   await page.getByRole('button', { name: /Copia de seguridad cifrada/ }).click();
   const ask = page.getByRole('dialog');
   await ask.getByLabel('Contraseña de la copia').fill('clave-de-prueba-9');
-  const [download] = await Promise.all([page.waitForEvent('download'), ask.getByRole('button', { name: /Continuar|Confirmar|Descargar/ }).last().click()]);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    ask
+      .getByRole('button', { name: /Continuar|Confirmar|Descargar/ })
+      .last()
+      .click(),
+  ]);
   const file = testInfo.outputPath('backup.json');
   await download.saveAs(file);
   const backup = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -97,7 +103,10 @@ test('encrypted backup, delete everything and restore', async ({ page }, testInf
   await page.setInputFiles('#import-file', { name: 'menstruapp-backup.json', mimeType: 'application/json', buffer: fs.readFileSync(file) });
   const pass = page.getByRole('dialog');
   await pass.getByLabel('Contraseña de la copia').fill('clave-de-prueba-9');
-  await pass.getByRole('button', { name: /Continuar|Confirmar/ }).last().click();
+  await pass
+    .getByRole('button', { name: /Continuar|Confirmar/ })
+    .last()
+    .click();
   const importDialog = page.getByRole('dialog');
   await expect(importDialog.getByText(/Días con datos en la copia/)).toBeVisible();
   await importDialog.getByRole('button', { name: 'Importar' }).click();
@@ -137,7 +146,10 @@ test('PDF report for the doctor', async ({ page }) => {
   await page.goto('/#/report');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descargar PDF' }).click()]);
   const path = await download.path();
-  const head = fs.readFileSync(/** @type {string} */ (path)).subarray(0, 8).toString();
+  const head = fs
+    .readFileSync(/** @type {string} */ (path))
+    .subarray(0, 8)
+    .toString();
   expect(head).toBe('%PDF-1.4');
   expect(download.suggestedFilename()).toMatch(/\.pdf$/);
 });

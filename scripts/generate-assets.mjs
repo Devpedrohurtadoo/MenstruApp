@@ -62,7 +62,14 @@ async function shortcutSvg(/** @type {string} */ name, size = 96) {
   const icons = (await import(path.join(PUBLIC, 'js/ui/icon-data.js'))).default;
   const nodes = /** @type {Array<[string, Record<string, string>]>} */ (icons[name]);
   if (!nodes) throw new Error(`icon ${name} not found`);
-  const inner = nodes.map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('');
+  const inner = nodes
+    .map(
+      ([tag, attrs]) =>
+        `<${tag} ${Object.entries(attrs)
+          .map(([k, v]) => `${k}="${v}"`)
+          .join(' ')}/>`,
+    )
+    .join('');
   const pad = size * 0.27;
   const k = (size - 2 * pad) / 24;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -81,9 +88,25 @@ async function renderSvg(page, svg, size, file) {
 
 // iOS launch images: CSS size × device pixel ratio (portrait).
 const SPLASH_DEVICES = [
-  [320, 568, 2], [375, 667, 2], [414, 736, 3], [375, 812, 3], [414, 896, 2], [414, 896, 3], [390, 844, 3], [428, 926, 3],
-  [393, 852, 3], [430, 932, 3], [402, 874, 3], [440, 956, 3], [744, 1133, 2], [768, 1024, 2], [810, 1080, 2], [820, 1180, 2],
-  [834, 1112, 2], [834, 1194, 2], [1024, 1366, 2],
+  [320, 568, 2],
+  [375, 667, 2],
+  [414, 736, 3],
+  [375, 812, 3],
+  [414, 896, 2],
+  [414, 896, 3],
+  [390, 844, 3],
+  [428, 926, 3],
+  [393, 852, 3],
+  [430, 932, 3],
+  [402, 874, 3],
+  [440, 956, 3],
+  [744, 1133, 2],
+  [768, 1024, 2],
+  [810, 1080, 2],
+  [820, 1180, 2],
+  [834, 1112, 2],
+  [834, 1194, 2],
+  [1024, 1366, 2],
 ];
 
 async function fontFaces() {
@@ -112,7 +135,9 @@ async function renderSplash(browser) {
     </style></head><body>${logo}<span>Menstruapp</span></body></html>`);
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: path.join(OUT_SPLASH, file), scale: 'device' });
-    links.push(`    <link rel="apple-touch-startup-image" media="screen and (device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)" href="/assets/splash/${file}" />`);
+    links.push(
+      `    <link rel="apple-touch-startup-image" media="screen and (device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)" href="/assets/splash/${file}" />`,
+    );
   }
   for (const p of pages.values()) await p.context().close();
   const indexPath = path.join(PUBLIC, 'index.html');
@@ -257,7 +282,11 @@ async function main() {
   for (const [file, size, opts] of /** @type {Array<[string, number, any]>} */ (icons)) {
     await renderSvg(page, logoSvg({ size, ...opts }), size, path.join(OUT_ICONS, file));
   }
-  for (const [file, icon] of [['shortcut-log.png', 'plus'], ['shortcut-calendar.png', 'calendar'], ['shortcut-luna.png', 'message-circle-heart']]) {
+  for (const [file, icon] of [
+    ['shortcut-log.png', 'plus'],
+    ['shortcut-calendar.png', 'calendar'],
+    ['shortcut-luna.png', 'message-circle-heart'],
+  ]) {
     await renderSvg(page, await shortcutSvg(icon), 96, path.join(OUT_ICONS, file));
   }
   await page.close();

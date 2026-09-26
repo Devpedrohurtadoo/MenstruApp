@@ -48,7 +48,10 @@ export async function fetchRemote(code) {
   const records = await C.decryptJSON(key, { iv: json.iv, ct: json.ct }, AAD);
   if (!Array.isArray(records)) throw new Error('invalid-remote');
   // Structural check here; field-level validation happens in applyRemoteRecords().
-  const shape = validate(v.array(v.object({ kind: v.enum(['day', 'doc']), key: v.string({ max: 40 }), updatedAt: v.number({ integer: true, min: 0 }) }), { max: 80_000 }), records.map((r) => ({ kind: r?.kind, key: r?.key, updatedAt: r?.updatedAt })));
+  const shape = validate(
+    v.array(v.object({ kind: v.enum(['day', 'doc']), key: v.string({ max: 40 }), updatedAt: v.number({ integer: true, min: 0 }) }), { max: 80_000 }),
+    records.map((r) => ({ kind: r?.kind, key: r?.key, updatedAt: r?.updatedAt })),
+  );
   if (!shape.ok) throw new Error('invalid-remote');
   return { version: Number(json.version) || 0, records };
 }
@@ -219,9 +222,19 @@ export function openSyncSettings() {
   const draw = () => {
     const state = store.get().data?.docs.sync;
     if (state?.enabled) {
-      replace(box,
+      replace(
+        box,
         h('p', { text: t('sync.enabledText', { date: state.lastSyncAt ? fmtDateTime(state.lastSyncAt) : '—' }) }),
-        button({ label: t('sync.now'), icon: 'refresh-cw', variant: 'primary', full: true, onClick: async () => { await syncNow(); draw(); } }),
+        button({
+          label: t('sync.now'),
+          icon: 'refresh-cw',
+          variant: 'primary',
+          full: true,
+          onClick: async () => {
+            await syncNow();
+            draw();
+          },
+        }),
         button({
           label: t('sync.showCode'),
           icon: 'key-round',
@@ -249,9 +262,14 @@ export function openSyncSettings() {
     }
     const consent = h('input', { type: 'checkbox', id: 'sync-consent' });
     const codeInput = h('input', { class: 'input input--code', id: 'sync-code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: false, maxLength: 80 });
-    replace(box,
+    replace(
+      box,
       h('p', { text: t('sync.intro') }),
-      h('ul', { class: 'bullets' }, ['what1', 'what2', 'what3'].map((k) => h('li', { text: t(`sync.${k}`) }))),
+      h(
+        'ul',
+        { class: 'bullets' },
+        ['what1', 'what2', 'what3'].map((k) => h('li', { text: t(`sync.${k}`) })),
+      ),
       h('label', { class: 'check', for: 'sync-consent' }, consent, h('span', { text: t('sync.consent') })),
       button({
         label: t('sync.enable'),
@@ -318,8 +336,22 @@ function showCode(code) {
       h(
         'div',
         { class: 'btn-row' },
-        button({ label: t('common.copy'), icon: 'copy', variant: 'soft', onClick: () => navigator.clipboard.writeText(grouped).then(() => toast(t('common.copied'), { type: 'success' }), () => toast(t('common.copyFailed'), { type: 'error' })) }),
-        button({ label: t('common.download'), icon: 'download', variant: 'soft', onClick: () => downloadBlob(new Blob([`${t('sync.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), `${t('files.syncCode')}.txt`) }),
+        button({
+          label: t('common.copy'),
+          icon: 'copy',
+          variant: 'soft',
+          onClick: () =>
+            navigator.clipboard.writeText(grouped).then(
+              () => toast(t('common.copied'), { type: 'success' }),
+              () => toast(t('common.copyFailed'), { type: 'error' }),
+            ),
+        }),
+        button({
+          label: t('common.download'),
+          icon: 'download',
+          variant: 'soft',
+          onClick: () => downloadBlob(new Blob([`${t('sync.fileHeader')}\n\n${grouped}\n`], { type: 'text/plain' }), `${t('files.syncCode')}.txt`),
+        }),
       ),
       notice({ level: 'consult', title: t('sync.codeWarningTitle'), text: t('sync.codeWarning') }),
     ),

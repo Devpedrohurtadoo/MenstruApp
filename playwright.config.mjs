@@ -25,9 +25,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     launchOptions: executablePath ? { executablePath } : {},
   },
-  projects: [
-    { name: 'mobile', use: { ...devices['Pixel 7'], launchOptions: executablePath ? { executablePath } : {} } },
-  ],
+  projects: [{ name: 'mobile', use: { ...devices['Pixel 7'], launchOptions: executablePath ? { executablePath } : {} } }],
   webServer: {
     command: `node scripts/serve.mjs --port ${PORT}`,
     url: `http://localhost:${PORT}/api/health`,

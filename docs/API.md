@@ -17,32 +17,32 @@ Convenciones:
 
 ## Sincronización
 
-| Método | Ruta | Cuerpo | Respuesta |
-| --- | --- | --- | --- |
-| GET | `/api/sync` | — | `200 { iv, ct, version }` · `404` si no existe |
-| PUT | `/api/sync` | `{ iv, ct, baseVersion }` (≤ 5,5 MB) | `200 { version }` · `409 { error: "conflict", version }` si `baseVersion` no es la actual |
-| DELETE | `/api/sync` | — | `204` |
+| Método | Ruta        | Cuerpo                               | Respuesta                                                                                 |
+| ------ | ----------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| GET    | `/api/sync` | —                                    | `200 { iv, ct, version }` · `404` si no existe                                            |
+| PUT    | `/api/sync` | `{ iv, ct, baseVersion }` (≤ 5,5 MB) | `200 { version }` · `409 { error: "conflict", version }` si `baseVersion` no es la actual |
+| DELETE | `/api/sync` | —                                    | `204`                                                                                     |
 
 El token se deriva con HKDF del código de sincronización (256 bits); la clave de cifrado se deriva por separado del mismo código, así que el token no permite descifrar. El cliente descarga, fusiona registro a registro (gana el `updatedAt` más reciente, incluidas las lápidas de borrado) y sube con la versión leída; ante `409` repite el ciclo.
 
 ## Recordatorios push
 
-| Método | Ruta | Cuerpo | Respuesta |
-| --- | --- | --- | --- |
-| GET | `/api/push/key` | — | `200 { publicKey }` (VAPID) · `404` si push no está configurado |
-| PUT | `/api/push/subscription` | `{ subscription: { endpoint, keys: { p256dh, auth } } }` | `204` · `400 invalid-endpoint` si el servicio push no está en la lista blanca |
-| PUT | `/api/push/schedule` | `{ items: [{ at, payload }] }` (≤ 200; `at` en ms dentro de [ahora − 1 h, ahora + 62 d]; `payload` = JSON de `{ iv, ct }`) | `204` · `404` si el dispositivo no está registrado |
-| DELETE | `/api/push` | — | `204` |
+| Método | Ruta                     | Cuerpo                                                                                                                     | Respuesta                                                                     |
+| ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/api/push/key`          | —                                                                                                                          | `200 { publicKey }` (VAPID) · `404` si push no está configurado               |
+| PUT    | `/api/push/subscription` | `{ subscription: { endpoint, keys: { p256dh, auth } } }`                                                                   | `204` · `400 invalid-endpoint` si el servicio push no está en la lista blanca |
+| PUT    | `/api/push/schedule`     | `{ items: [{ at, payload }] }` (≤ 200; `at` en ms dentro de [ahora − 1 h, ahora + 62 d]; `payload` = JSON de `{ iv, ct }`) | `204` · `404` si el dispositivo no está registrado                            |
+| DELETE | `/api/push`              | —                                                                                                                          | `204`                                                                         |
 
 `push-dispatch` envía como máximo los 3 avisos más recientes vencidos por dispositivo (descarta los de más de 3 h), marca el progreso con `sentUntil`, reintenta en las siguientes ejecuciones los avisos que fallaron por un error transitorio del servicio push (hasta que caducan a las 3 h, sin repetir los ya enviados) y elimina suscripciones que el servicio push declara inexistentes (404/410). Si hay más dispositivos de los que caben en una ejecución, la siguiente continúa donde se quedó (cursor persistente), así que todos se atienden. Servicios admitidos: FCM, Mozilla autopush, Apple Web Push y WNS (solo HTTPS, puerto 443, sin credenciales, sin `%` ni `\` en el host); se guarda y se usa la forma canónica de la URL, para que la validación y el envío interpreten el mismo host.
 
 ## Enlaces para compartir
 
-| Método | Ruta | Cuerpo | Respuesta |
-| --- | --- | --- | --- |
-| POST | `/api/share` | `{ id, iv, ct, expiresAt, deleteToken }` (`id` 16–64 base64url; `expiresAt` ≤ 30 días) | `201 { id, expiresAt }` · `409 exists` |
-| GET | `/api/share/:id` | — | `200 { iv, ct, expiresAt }` · `404` · `410 expired` (y se borra) |
-| DELETE | `/api/share/:id` | `Authorization: Bearer <deleteToken>` | `204` · `403` si el token no coincide |
+| Método | Ruta             | Cuerpo                                                                                 | Respuesta                                                        |
+| ------ | ---------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/api/share`     | `{ id, iv, ct, expiresAt, deleteToken }` (`id` 16–64 base64url; `expiresAt` ≤ 30 días) | `201 { id, expiresAt }` · `409 exists`                           |
+| GET    | `/api/share/:id` | —                                                                                      | `200 { iv, ct, expiresAt }` · `404` · `410 expired` (y se borra) |
+| DELETE | `/api/share/:id` | `Authorization: Bearer <deleteToken>`                                                  | `204` · `403` si el token no coincide                            |
 
 El enlace tiene la forma `https://<sitio>/share.html#<id>.<clave>`: el fragmento `#…` nunca se envía al servidor. La página `share.html` descarga el texto cifrado, lo descifra en el navegador (AAD `menstruapp-share-v1:<id>`) y borra el fragmento de la barra de direcciones.
 

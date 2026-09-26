@@ -144,7 +144,10 @@ test('health data is encrypted at rest (never plaintext in IndexedDB or localSto
         });
         chunks.push(
           JSON.stringify(all, (_k, v) => {
-            if (v instanceof ArrayBuffer || ArrayBuffer.isView(v)) return Array.from(new Uint8Array(v instanceof ArrayBuffer ? v : v.buffer)).map((b) => String.fromCharCode(b)).join('');
+            if (v instanceof ArrayBuffer || ArrayBuffer.isView(v))
+              return Array.from(new Uint8Array(v instanceof ArrayBuffer ? v : v.buffer))
+                .map((b) => String.fromCharCode(b))
+                .join('');
             return v;
           }),
         );
@@ -166,6 +169,10 @@ test('camouflage calculator hides the app and requires unlocking to return', asy
   await expect(page.locator('.calc')).toBeVisible();
   await expect(page.locator('.tabbar')).toHaveCount(0);
   // It is a working calculator.
-  for (const k of ['7', '×', '6', '=']) await page.locator('.calc__key', { hasText: new RegExp(`^${k}$`) }).first().click();
+  for (const k of ['7', '×', '6', '='])
+    await page
+      .locator('.calc__key', { hasText: new RegExp(`^${k}$`) })
+      .first()
+      .click();
   await expect(page.locator('.calc__display')).toHaveText('42');
 });

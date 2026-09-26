@@ -11,6 +11,7 @@
     "vapid": "node scripts/vapid.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:unit": "vitest run",

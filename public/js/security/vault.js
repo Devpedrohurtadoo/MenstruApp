@@ -235,9 +235,6 @@ export function removeLock(vault, type) {
  */
 export async function deriveProfileKeys(master) {
   const base = await C.hkdfBase(master);
-  const [encKey, idKey] = await Promise.all([
-    C.deriveAesKey(base, 'menstruapp:records:v1'),
-    C.deriveHmacKey(base, 'menstruapp:record-ids:v1'),
-  ]);
+  const [encKey, idKey] = await Promise.all([C.deriveAesKey(base, 'menstruapp:records:v1'), C.deriveHmacKey(base, 'menstruapp:record-ids:v1')]);
   return { encKey, idKey };
 }

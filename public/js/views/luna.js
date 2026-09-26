@@ -42,7 +42,17 @@ function contextual() {
   const { flags } = d;
   /** Why the fertile days are not shown (the mode, a hormonal method or the user's choice). */
   const fertilityHidden = () =>
-    flags.fertility ? null : [t(flags.fertilityHidden === 'hormonal' ? 'luna.ctx.fertilityHiddenHormonal' : flags.fertilityHidden === 'mode' ? 'luna.ctx.fertilityHiddenMode' : 'luna.ctx.fertilityHidden')];
+    flags.fertility
+      ? null
+      : [
+          t(
+            flags.fertilityHidden === 'hormonal'
+              ? 'luna.ctx.fertilityHiddenHormonal'
+              : flags.fertilityHidden === 'mode'
+                ? 'luna.ctx.fertilityHiddenMode'
+                : 'luna.ctx.fertilityHidden',
+          ),
+        ];
   return {
     nextPeriod: () => {
       if (flags.pregnancy) return [t('luna.ctx.pregnantNoPeriod')];
@@ -51,7 +61,11 @@ function contextual() {
       if (cur?.late) return [t(flags.withdrawalBleeds ? 'notices.lateWithdrawal.title' : 'luna.ctx.late', { count: cur.lateDays })];
       if (!pred) return noData();
       return [
-        t(flags.withdrawalBleeds ? 'luna.ctx.nextBleed' : 'luna.ctx.nextPeriod', { date: fmtDate(pred.nextPeriodStart, 'long'), from: fmtDate(pred.window[0], 'short'), to: fmtDate(pred.window[1], 'short') }),
+        t(flags.withdrawalBleeds ? 'luna.ctx.nextBleed' : 'luna.ctx.nextPeriod', {
+          date: fmtDate(pred.nextPeriodStart, 'long'),
+          from: fmtDate(pred.window[0], 'short'),
+          to: fmtDate(pred.window[1], 'short'),
+        }),
         t(`luna.ctx.confidence.${pred.confidence}`),
       ];
     },
@@ -75,13 +89,19 @@ function contextual() {
     },
     cycleDay: () => {
       if (!cur || cur.stale) return noData();
-      return [t('luna.ctx.cycleDay', { day: cur.cycleDay, phase: cur.phase ? t(`phases.${cur.phase}`).toLowerCase() : '—' }), cur.phase ? t(`luna.ctx.phaseInfo.${cur.phase}`) : ''].filter(Boolean);
+      return [
+        t('luna.ctx.cycleDay', { day: cur.cycleDay, phase: cur.phase ? t(`phases.${cur.phase}`).toLowerCase() : '—' }),
+        cur.phase ? t(`luna.ctx.phaseInfo.${cur.phase}`) : '',
+      ].filter(Boolean);
     },
     cycleNormal: () => {
       const s = d.analysis.stats.cycle;
       if (!s || s.count < 2) return [t('luna.ctx.needMoreCycles')];
       const inRange = s.min >= 24 && s.max <= 38;
-      return [t('luna.ctx.cycleStats', { mean: Math.round(s.mean), min: s.min, max: s.max, count: s.count }), t(inRange && s.range <= 9 ? 'luna.ctx.cycleTypical' : 'luna.ctx.cycleCheck')];
+      return [
+        t('luna.ctx.cycleStats', { mean: Math.round(s.mean), min: s.min, max: s.max, count: s.count }),
+        t(inRange && s.range <= 9 ? 'luna.ctx.cycleTypical' : 'luna.ctx.cycleCheck'),
+      ];
     },
     periodLength: () => {
       const s = d.analysis.stats.period;
@@ -136,7 +156,13 @@ function messageNode(m, lib) {
       h('span', { class: 'sr-only', text: m.from === 'luna' ? t('luna.lunaSays') : t('luna.youSaid') }),
       m.text.map((p) => h('p', { text: p })),
       m.article ? linkToArticle(lib, m.article) : null,
-      m.related?.length ? h('div', { class: 'chips' }, m.related.map((label) => actionChip(label))) : null,
+      m.related?.length
+        ? h(
+            'div',
+            { class: 'chips' },
+            m.related.map((label) => actionChip(label)),
+          )
+        : null,
       h('span', { class: 'msg__time', text: fmtTime(m.at) }),
     ),
   );
@@ -153,7 +179,9 @@ function addMessage(m) {
   const view = mounted;
   if (!view || !view.list.isConnected) return; // the next render draws it
   view.list.insertBefore(messageNode(m, view.lib), view.typing);
-  requestAnimationFrame(() => /** @type {HTMLElement | null} */ (view.typing.previousElementSibling)?.scrollIntoView({ block: 'end', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
+  requestAnimationFrame(() =>
+    /** @type {HTMLElement | null} */ (view.typing.previousElementSibling)?.scrollIntoView({ block: 'end', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }),
+  );
 }
 
 /** @param {boolean} on */
@@ -236,7 +264,11 @@ export async function render(ctx) {
     { class: 'view chat' },
     h('p', { class: 'chat__privacy' }, icon('lock', { size: 14 }), h('span', { text: t('luna.privacy') })),
     list,
-    h('div', { class: 'chat__suggestions chips' }, suggestions.map((label) => actionChip(label))),
+    h(
+      'div',
+      { class: 'chat__suggestions chips' },
+      suggestions.map((label) => actionChip(label)),
+    ),
     form,
     h(
       'div',
@@ -258,7 +290,13 @@ export async function render(ctx) {
         size: 'sm',
         onClick: () => {
           const previous = messages;
-          const redraw = () => mounted?.list.isConnected && replace(mounted.list, messages.map((m) => messageNode(m, lib)), mounted.typing);
+          const redraw = () =>
+            mounted?.list.isConnected &&
+            replace(
+              mounted.list,
+              messages.map((m) => messageNode(m, lib)),
+              mounted.typing,
+            );
           messages = [welcome()];
           redraw();
           toast(t('luna.cleared'), {

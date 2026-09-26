@@ -31,13 +31,19 @@ export async function cleanup(opts = {}) {
     const { name, prefix, expired } = plan[i];
     const deadline = clock() + (started + TIME_BUDGET_MS - clock()) / (plan.length - i);
     const store = openStore(name);
-    await sweep(store, prefix, 'meta/cleanup', () => clock() < deadline, async (key) => {
-      const e = await store.get(key);
-      if (e && expired(e.data)) {
-        await store.delete(key);
-        counts[name]++;
-      }
-    });
+    await sweep(
+      store,
+      prefix,
+      'meta/cleanup',
+      () => clock() < deadline,
+      async (key) => {
+        const e = await store.get(key);
+        if (e && expired(e.data)) {
+          await store.delete(key);
+          counts[name]++;
+        }
+      },
+    );
   }
   return counts;
 }

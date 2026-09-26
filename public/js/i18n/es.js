@@ -95,7 +95,11 @@ export default {
     countdown: { one: 'Podrás volver a probar en 1 segundo.', other: 'Podrás volver a probar en {count} segundos.' },
     tooManyAttempts: 'Demasiados intentos fallidos. Espera un momento antes de volver a probar.',
     wrongPin: { zero: 'PIN incorrecto', one: 'PIN incorrecto. Te queda 1 intento antes de una espera.', other: 'PIN incorrecto. Te quedan {count} intentos antes de una espera.' },
-    wrongPassphrase: { zero: 'Contraseña incorrecta', one: 'Contraseña incorrecta. Te queda 1 intento antes de una espera.', other: 'Contraseña incorrecta. Te quedan {count} intentos antes de una espera.' },
+    wrongPassphrase: {
+      zero: 'Contraseña incorrecta',
+      one: 'Contraseña incorrecta. Te queda 1 intento antes de una espera.',
+      other: 'Contraseña incorrecta. Te quedan {count} intentos antes de una espera.',
+    },
     wrongRecovery: 'El código de recuperación no es correcto',
     wrongGeneric: 'No coincide. Inténtalo de nuevo.',
     unlockError: 'No se pudo desbloquear. Inténtalo de nuevo.',
@@ -108,7 +112,8 @@ export default {
     backToPin: 'Volver',
     noRecovery: 'No tengo el código',
     resetTitle: '¿Borrar este perfil?',
-    resetMessage: 'Sin tu PIN, contraseña o código de recuperación nadie puede leer estos datos, ni siquiera nosotras. La única opción es borrar el perfil y empezar de cero. Los demás perfiles no se verán afectados.',
+    resetMessage:
+      'Sin tu PIN, contraseña o código de recuperación nadie puede leer estos datos, ni siquiera nosotras. La única opción es borrar el perfil y empezar de cero. Los demás perfiles no se verán afectados.',
     resetConfirm: 'Borrar perfil',
     resetDone: 'Perfil borrado.',
     noLockProfile: 'Este perfil no tiene bloqueo.',
@@ -143,7 +148,8 @@ export default {
 
   recovery: {
     title: 'Tu código de recuperación',
-    explain: 'Si olvidas tu PIN o contraseña, este código es la única forma de recuperar tus datos. Guárdalo fuera del móvil: en un gestor de contraseñas, en papel o en un lugar seguro.',
+    explain:
+      'Si olvidas tu PIN o contraseña, este código es la única forma de recuperar tus datos. Guárdalo fuera del móvil: en un gestor de contraseñas, en papel o en un lugar seguro.',
     codeLabel: 'Código de recuperación',
     fileHeader: 'Código de recuperación de Menstruapp. Guárdalo en un lugar seguro y no lo compartas con nadie.',
     warning: 'No lo guardamos en ningún servidor: si lo pierdes y olvidas tu PIN, no podremos recuperar tus datos.',
@@ -399,7 +405,10 @@ export default {
     },
     irregular: {
       title: 'Tus ciclos varían bastante',
-      text: { one: 'Tus últimos ciclos varían 1 día entre sí.', other: 'Tus últimos ciclos varían hasta {count} días entre sí. Algo de variación es normal; si se mantiene por encima de 7–9 días, coméntalo en tu próxima revisión.' },
+      text: {
+        one: 'Tus últimos ciclos varían 1 día entre sí.',
+        other: 'Tus últimos ciclos varían hasta {count} días entre sí. Algo de variación es normal; si se mantiene por encima de 7–9 días, coméntalo en tu próxima revisión.',
+      },
     },
     shortCycles: {
       title: 'Ciclos cortos',
@@ -423,14 +432,19 @@ export default {
     },
     conceiveHelp: {
       title: { one: 'Tras 1 mes buscando embarazo', other: 'Tras {count} meses buscando embarazo' },
-      text: { one: 'Si llevas 1 mes o más buscando embarazo con relaciones regulares sin protección, puedes pedir una valoración de fertilidad.', other: 'Si llevas {count} meses o más buscando embarazo con relaciones regulares sin protección, se recomienda pedir una valoración de fertilidad (antes si tus ciclos son muy irregulares o tienes antecedentes conocidos).' },
+      text: {
+        one: 'Si llevas 1 mes o más buscando embarazo con relaciones regulares sin protección, puedes pedir una valoración de fertilidad.',
+        other:
+          'Si llevas {count} meses o más buscando embarazo con relaciones regulares sin protección, se recomienda pedir una valoración de fertilidad (antes si tus ciclos son muy irregulares o tienes antecedentes conocidos).',
+      },
     },
     emergencyContraception: {
       title: 'Relación sin protección',
       text: {
         zero: 'Hoy registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
         one: 'Ayer registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
-        other: 'Hace {count} días registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
+        other:
+          'Hace {count} días registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
       },
     },
   },
@@ -785,7 +799,10 @@ export default {
     bbtConfirmedCount: { one: 'Confirmada por temperatura en 1 ciclo', other: 'Confirmada por temperatura en {count} ciclos' },
     lutealDefault: 'Valor estimado (14 días)',
     cycleChart: 'Duración de tus ciclos',
-    cycleChartSummary: { one: 'Gráfico de 1 ciclo. Media: {avg} días. Rango típico sombreado: de {min} a {max} días.', other: 'Gráfico de {count} ciclos. Media: {avg} días. Rango típico sombreado: de {min} a {max} días.' },
+    cycleChartSummary: {
+      one: 'Gráfico de 1 ciclo. Media: {avg} días. Rango típico sombreado: de {min} a {max} días.',
+      other: 'Gráfico de {count} ciclos. Media: {avg} días. Rango típico sombreado: de {min} a {max} días.',
+    },
     bandNote: 'La banda sombreada marca el rango habitual en personas adultas ({min}–{max} días).',
     periodChart: 'Duración de tus reglas',
     periodChartSummary: { one: 'Gráfico de 1 regla. Media: {avg} días.', other: 'Gráfico de {count} reglas. Media: {avg} días.' },
@@ -899,9 +916,12 @@ export default {
       pregnantNoPeriod: 'Estás en modo embarazo, así que no calculo la regla. ¿Quieres saber de cuántas semanas estás?',
       late: { one: 'Tu regla lleva 1 día de retraso según tus registros.', other: 'Tu regla lleva {count} días de retraso según tus registros.' },
       nextPeriod: 'Según tus registros, tu próxima regla llegaría hacia el {date} (probablemente entre el {from} y el {to}).',
-      nextBleed: 'Según tus registros, tu próximo sangrado por privación llegaría hacia el {date} (probablemente entre el {from} y el {to}). Con la anticoncepción hormonal no hay una regla natural ni ovulación.',
-      predictionsHiddenPostpartum: 'Tras el parto no calculo la próxima regla hasta que vuelva. Cuando te venga, márcalo en Ajustes → Modo de uso y empezaré a predecirla. Recuerda que puedes quedarte embarazada antes de la primera regla.',
-      predictionsHiddenHormonal: 'Con tu método (minipíldora, píldora continua, inyección, implante o DIU hormonal) los sangrados suelen ser irregulares o desaparecer, así que no predigo fechas. Si un sangrado te preocupa, consúltalo.',
+      nextBleed:
+        'Según tus registros, tu próximo sangrado por privación llegaría hacia el {date} (probablemente entre el {from} y el {to}). Con la anticoncepción hormonal no hay una regla natural ni ovulación.',
+      predictionsHiddenPostpartum:
+        'Tras el parto no calculo la próxima regla hasta que vuelva. Cuando te venga, márcalo en Ajustes → Modo de uso y empezaré a predecirla. Recuerda que puedes quedarte embarazada antes de la primera regla.',
+      predictionsHiddenHormonal:
+        'Con tu método (minipíldora, píldora continua, inyección, implante o DIU hormonal) los sangrados suelen ser irregulares o desaparecer, así que no predigo fechas. Si un sangrado te preocupa, consúltalo.',
       confidence: {
         high: 'Tus ciclos son regulares, así que la predicción es bastante fiable.',
         medium: 'La predicción es razonable, pero puede variar unos días.',
@@ -909,7 +929,8 @@ export default {
       },
       fertilityHidden: 'Has elegido no mostrar la fertilidad. Puedes activarla en Ajustes → Modo de uso.',
       fertilityHiddenMode: 'En este modo no calculo los días fértiles.',
-      fertilityHiddenHormonal: 'Con tu método hormonal no hay una ovulación natural que predecir, así que no muestro días fértiles. Tu protección depende de usar el método correctamente.',
+      fertilityHiddenHormonal:
+        'Con tu método hormonal no hay una ovulación natural que predecir, así que no muestro días fértiles. Tu protección depende de usar el método correctamente.',
       fertile: {
         high: 'Hoy estás en tus días de fertilidad más alta según la estimación.',
         medium: 'Hoy estás en tu ventana fértil (fertilidad media).',
@@ -929,7 +950,10 @@ export default {
         luteal: 'En la fase lútea predomina la progesterona: puede haber hinchazón, más hambre o síntomas premenstruales al final.',
       },
       needMoreCycles: 'Necesito al menos 2 ciclos completos registrados para valorar tu ciclo.',
-      cycleStats: { one: 'Tu ciclo medio es de {mean} días (entre {min} y {max}), según 1 ciclo.', other: 'Tu ciclo medio es de {mean} días (entre {min} y {max}), según {count} ciclos.' },
+      cycleStats: {
+        one: 'Tu ciclo medio es de {mean} días (entre {min} y {max}), según 1 ciclo.',
+        other: 'Tu ciclo medio es de {mean} días (entre {min} y {max}), según {count} ciclos.',
+      },
       cycleTypical: 'Está dentro del rango habitual en personas adultas (24–38 días, con variaciones de hasta 7–9 días).',
       cycleCheck: 'Parte de tus ciclos se sale del rango habitual (24–38 días). No tiene por qué ser un problema, pero si se repite coméntalo con un profesional.',
       needPeriodLogs: 'Registra todos los días de tu regla para que pueda calcular cuánto dura.',
@@ -938,8 +962,12 @@ export default {
       periodLong: 'Alguna de tus reglas ha durado más de 8 días: conviene comentarlo con un profesional.',
       notPregnantMode: 'No tienes activado el modo embarazo. Si lo estás, actívalo en Ajustes → Modo de uso.',
       dueDate: 'Tu fecha probable de parto es el {date}.',
-      lateTest: { one: 'Tu regla lleva 1 día de retraso: un test de orina ya es fiable desde hoy.', other: 'Tu regla lleva {count} días de retraso: un test de embarazo de orina ya es fiable.' },
-      pregnancyChance: 'Solo hay posibilidad de embarazo si hubo relaciones sin protección (o falló el método) en tus días fértiles. Un test de orina es fiable desde el primer día de retraso.',
+      lateTest: {
+        one: 'Tu regla lleva 1 día de retraso: un test de orina ya es fiable desde hoy.',
+        other: 'Tu regla lleva {count} días de retraso: un test de embarazo de orina ya es fiable.',
+      },
+      pregnancyChance:
+        'Solo hay posibilidad de embarazo si hubo relaciones sin protección (o falló el método) en tus días fértiles. Un test de orina es fiable desde el primer día de retraso.',
     },
   },
 
@@ -1100,7 +1128,10 @@ export default {
       photoError: 'No se pudo usar esa imagen. Prueba con otra (JPG o PNG).',
       yearInvalid: 'Introduce un año válido.',
       profiles: 'Perfiles en este dispositivo',
-      profilesText: { one: 'Hay 1 perfil. Cada perfil tiene su propio bloqueo y sus datos cifrados por separado.', other: 'Hay {count} perfiles. Cada uno tiene su propio bloqueo y sus datos cifrados por separado.' },
+      profilesText: {
+        one: 'Hay 1 perfil. Cada perfil tiene su propio bloqueo y sus datos cifrados por separado.',
+        other: 'Hay {count} perfiles. Cada uno tiene su propio bloqueo y sus datos cifrados por separado.',
+      },
       switch: 'Cambiar de perfil',
       add: 'Añadir perfil',
       addDesc: 'Ideal si comparts el dispositivo (por ejemplo, madre e hija).',
@@ -1134,11 +1165,13 @@ export default {
       nextMode: '¿Cómo quieres seguir usando la app?',
       congrats: '¡Enhorabuena! Te acompañamos en el posparto.',
       lossTitle: 'Lo sentimos mucho',
-      lossText: 'Perder un embarazo es muy duro y tus sentimientos son válidos. Tómate el tiempo que necesites. Si te sientes desbordada, pide apoyo a tu entorno o a un profesional.',
+      lossText:
+        'Perder un embarazo es muy duro y tus sentimientos son válidos. Tómate el tiempo que necesites. Si te sientes desbordada, pide apoyo a tu entorno o a un profesional.',
       postpartum: 'Tu posparto',
       periodReturnedDesc: 'Cuando vuelva tu regla, actívalo para recuperar las predicciones.',
       lamTitle: 'Lactancia y fertilidad',
-      lamText: 'La lactancia exclusiva protege del embarazo solo si tu bebé tiene menos de 6 meses, toma solo pecho día y noche y no te ha vuelto la regla (método MELA). Si no se cumple todo, usa otro método.',
+      lamText:
+        'La lactancia exclusiva protege del embarazo solo si tu bebé tiene menos de 6 meses, toma solo pecho día y noche y no te ha vuelto la regla (método MELA). Si no se cumple todo, usa otro método.',
       contraception: 'Tu método anticonceptivo',
       startDate: {
         pill: 'Primer día del blíster actual',
@@ -1385,11 +1418,13 @@ export default {
       usage: 'Espacio usado',
       usageText: '{used} MB usados de {total} GB disponibles',
       iosTitle: 'En iPhone, instala la app',
-      iosText: 'Safari puede borrar los datos de webs que no usas en unas semanas. Instalada en la pantalla de inicio, tus datos están a salvo. Aun así, haz copias de seguridad de vez en cuando.',
+      iosText:
+        'Safari puede borrar los datos de webs que no usas en unas semanas. Instalada en la pantalla de inicio, tus datos están a salvo. Aun así, haz copias de seguridad de vez en cuando.',
       unreadableTitle: { one: '1 registro no se pudo leer', other: '{count} registros no se pudieron leer' },
       unreadableText: 'Puede deberse a un fallo al guardar. El resto de tus datos está bien. Si tienes una copia de seguridad, puedes restaurarla combinando.',
       delete: 'Borrar datos',
-      deleteText: 'Se borrarán todos los perfiles, registros y ajustes de este dispositivo, y en el servidor la copia sincronizada y los enlaces del perfil abierto (los de otros perfiles caducan solos). No se puede deshacer.',
+      deleteText:
+        'Se borrarán todos los perfiles, registros y ajustes de este dispositivo, y en el servidor la copia sincronizada y los enlaces del perfil abierto (los de otros perfiles caducan solos). No se puede deshacer.',
       deleteAll: 'Borrar todo',
       deleteAllText: 'Elimina todos los perfiles y datos de Menstruapp de este dispositivo.',
       exportReauth: 'Confirma tu identidad para guardar una copia de tus datos en un archivo.',
@@ -1409,7 +1444,8 @@ export default {
     },
     about: {
       version: 'Versión {version}',
-      mission: 'Menstruapp nace para que cualquier persona que menstrúa entienda su cuerpo con información fiable y sin renunciar a su privacidad. Sin anuncios, sin cuentas y sin vender datos.',
+      mission:
+        'Menstruapp nace para que cualquier persona que menstrúa entienda su cuerpo con información fiable y sin renunciar a su privacidad. Sin anuncios, sin cuentas y sin vender datos.',
       checkUpdates: 'Buscar actualizaciones',
       upToDate: 'Tienes la última versión.',
     },
@@ -1624,7 +1660,10 @@ export default {
     licensesIntro: 'Menstruapp usa estos recursos de código abierto. Gracias a sus autoras y autores.',
     updated: 'Última actualización: septiembre de 2026',
     privacy: [
-      ['Resumen', ['Tus datos de salud se guardan cifrados en tu dispositivo. No tenemos cuentas de usuario, no usamos rastreadores ni publicidad y nunca vendemos ni compartimos datos.']],
+      [
+        'Resumen',
+        ['Tus datos de salud se guardan cifrados en tu dispositivo. No tenemos cuentas de usuario, no usamos rastreadores ni publicidad y nunca vendemos ni compartimos datos.'],
+      ],
       [
         'Qué datos se tratan y dónde',
         [
@@ -1650,7 +1689,12 @@ export default {
           'Si consideras que no se respetan tus derechos, puedes reclamar ante la autoridad de protección de datos de tu país (en España, la AEPD).',
         ],
       ],
-      ['Menores', ['Si eres menor de 14 años (o la edad que fije tu país), usa la app con conocimiento de tu madre, padre o tutor. La app funciona sin cuentas y no recoge datos para identificarte.']],
+      [
+        'Menores',
+        [
+          'Si eres menor de 14 años (o la edad que fije tu país), usa la app con conocimiento de tu madre, padre o tutor. La app funciona sin cuentas y no recoge datos para identificarte.',
+        ],
+      ],
       ['Cambios', ['Si cambiamos esta política te lo mostraremos en la app. Nunca reduciremos tu privacidad sin tu consentimiento.']],
     ],
     terms: [
@@ -1662,9 +1706,20 @@ export default {
           'Ante síntomas que te preocupen o una urgencia, contacta con un profesional sanitario o con el 112.',
         ],
       ],
-      ['Tu responsabilidad', ['Protege tu dispositivo y guarda tu código de recuperación. Si pierdes el bloqueo y el código, tus datos no se pueden recuperar: es el precio de que nadie más pueda leerlos.']],
-      ['Disponibilidad', ['La app funciona sin conexión. Las funciones opcionales con servidor se ofrecen tal cual y pueden cambiar o interrumpirse; tus datos locales no se verán afectados.']],
-      ['Propiedad intelectual', ['El contenido educativo puede consultarse libremente para uso personal. Las marcas y recursos de terceros pertenecen a sus titulares (ver Licencias).']],
+      [
+        'Tu responsabilidad',
+        [
+          'Protege tu dispositivo y guarda tu código de recuperación. Si pierdes el bloqueo y el código, tus datos no se pueden recuperar: es el precio de que nadie más pueda leerlos.',
+        ],
+      ],
+      [
+        'Disponibilidad',
+        ['La app funciona sin conexión. Las funciones opcionales con servidor se ofrecen tal cual y pueden cambiar o interrumpirse; tus datos locales no se verán afectados.'],
+      ],
+      [
+        'Propiedad intelectual',
+        ['El contenido educativo puede consultarse libremente para uso personal. Las marcas y recursos de terceros pertenecen a sus titulares (ver Licencias).'],
+      ],
     ],
   },
 };

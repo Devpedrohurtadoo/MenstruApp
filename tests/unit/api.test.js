@@ -185,7 +185,16 @@ describe('/api/push', () => {
     const now = Date.now();
     const a = JSON.stringify({ ...blob, ct: 'QQ==' });
     const b = JSON.stringify({ ...blob, ct: 'Qg==' });
-    await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [{ at: now + 1000, payload: a }, { at: now + 2000, payload: b }] } });
+    await call('/api/push/schedule', {
+      method: 'PUT',
+      token: TOKEN,
+      body: {
+        items: [
+          { at: now + 1000, payload: a },
+          { at: now + 2000, payload: b },
+        ],
+      },
+    });
     outage.failures = 1; // the first send (a) fails, the second (b) goes out
     expect(await dispatch({ now: now + 3000 })).toMatchObject({ sent: 1, failed: 1 });
     expect(sent.map((x) => x.payload)).toEqual([b]);
@@ -211,7 +220,13 @@ describe('/api/push', () => {
     const seen = new Set();
     for (let run = 0; run < 4; run++) {
       let budget = 2; // each run only has time for two devices
-      await sweep(store, 'd/', 'meta/test', () => budget-- > 0, async (key) => void seen.add(key));
+      await sweep(
+        store,
+        'd/',
+        'meta/test',
+        () => budget-- > 0,
+        async (key) => void seen.add(key),
+      );
     }
     expect([...seen].sort()).toEqual(['d/a', 'd/b', 'd/c', 'd/d', 'd/e', 'd/f', 'd/g']);
     // The cursor lives outside the swept prefix.
@@ -225,7 +240,9 @@ describe('/api/push', () => {
   });
 
   it('registers devices, stores encrypted schedules and sends due reminders', async () => {
-    expect((await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription: { ...subscription, endpoint: 'https://evil.example/x' } } })).status).toBe(400);
+    expect((await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription: { ...subscription, endpoint: 'https://evil.example/x' } } })).status).toBe(
+      400,
+    );
     expect((await call('/api/push/schedule', { method: 'PUT', token: TOKEN, body: { items: [] } })).status).toBe(404);
     expect((await call('/api/push/subscription', { method: 'PUT', token: TOKEN, body: { subscription } })).status).toBe(204);
     const now = Date.now();

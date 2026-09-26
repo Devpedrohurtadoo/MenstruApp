@@ -107,7 +107,8 @@ export default {
     backToPin: 'Back',
     noRecovery: "I don't have the code",
     resetTitle: 'Delete this profile?',
-    resetMessage: 'Without your PIN, passphrase or recovery code nobody can read this data — not even us. The only option is to delete the profile and start again. Other profiles are not affected.',
+    resetMessage:
+      'Without your PIN, passphrase or recovery code nobody can read this data — not even us. The only option is to delete the profile and start again. Other profiles are not affected.',
     resetConfirm: 'Delete profile',
     resetDone: 'Profile deleted.',
     noLockProfile: "This profile isn't locked.",
@@ -163,7 +164,7 @@ export default {
     disclaimer: "Menstruapp doesn't replace medical advice. If a symptom worries you, talk to a healthcare professional.",
     start: 'Get started',
     legacyTitle: { one: 'We found 1 logged day from an earlier version', other: 'We found {count} logged days from an earlier version' },
-    legacyText: "You can bring them into your new encrypted profile. The old, unprotected copy will then be deleted.",
+    legacyText: 'You can bring them into your new encrypted profile. The old, unprotected copy will then be deleted.',
     legacyImport: 'Import my previous data',
     modeTitle: 'What would you like to use Menstruapp for?',
     modeLead: "We'll adapt the screens and tips. You can change it at any time.",
@@ -398,7 +399,10 @@ export default {
     },
     irregular: {
       title: 'Your cycles vary quite a lot',
-      text: { one: 'Your recent cycles vary by 1 day.', other: 'Your recent cycles vary by up to {count} days. Some variation is normal; if it stays above 7–9 days, mention it at your next check-up.' },
+      text: {
+        one: 'Your recent cycles vary by 1 day.',
+        other: 'Your recent cycles vary by up to {count} days. Some variation is normal; if it stays above 7–9 days, mention it at your next check-up.',
+      },
     },
     shortCycles: {
       title: 'Short cycles',
@@ -422,14 +426,19 @@ export default {
     },
     conceiveHelp: {
       title: { one: 'After 1 month trying to conceive', other: 'After {count} months trying to conceive' },
-      text: { one: "If you've been trying for 1 month or more with regular unprotected sex, you can ask for a fertility assessment.", other: "If you've been trying for {count} months or more with regular unprotected sex, it's recommended to ask for a fertility assessment (sooner if your cycles are very irregular or you have known risk factors)." },
+      text: {
+        one: "If you've been trying for 1 month or more with regular unprotected sex, you can ask for a fertility assessment.",
+        other:
+          "If you've been trying for {count} months or more with regular unprotected sex, it's recommended to ask for a fertility assessment (sooner if your cycles are very irregular or you have known risk factors).",
+      },
     },
     emergencyContraception: {
       title: 'Unprotected sex',
       text: {
         zero: "Today you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
         one: "Yesterday you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
-        other: "{count} days ago you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
+        other:
+          "{count} days ago you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
       },
     },
   },
@@ -472,7 +481,7 @@ export default {
       'Take folic acid as advised by your healthcare professional, especially in the first trimester.',
       'Avoid alcohol and tobacco: there is no safe amount during pregnancy.',
       'Nausea often improves with small, frequent meals and dry foods.',
-      "If you have bleeding, strong pain, a severe headache or reduced baby movements, get help without waiting.",
+      'If you have bleeding, strong pain, a severe headache or reduced baby movements, get help without waiting.',
       'Sleeping on your side from the third trimester is more comfortable and recommended.',
     ],
     postpartum: [
@@ -549,7 +558,7 @@ export default {
     cycleLength: { one: '1-day cycle', other: '{count}-day cycle' },
     periodLength: { one: '1-day period', other: '{count}-day period' },
     excluded: {
-      gap: "Not enough logs (not counted in averages)",
+      gap: 'Not enough logs (not counted in averages)',
       pregnancy: 'Pregnancy (not counted in averages)',
     },
     bbtConfirmed: 'Ovulation confirmed by temperature',
@@ -784,7 +793,10 @@ export default {
     bbtConfirmedCount: { one: 'Confirmed by temperature in 1 cycle', other: 'Confirmed by temperature in {count} cycles' },
     lutealDefault: 'Estimated value (14 days)',
     cycleChart: 'Your cycle lengths',
-    cycleChartSummary: { one: 'Chart of 1 cycle. Average: {avg} days. Typical range shaded: {min} to {max} days.', other: 'Chart of {count} cycles. Average: {avg} days. Typical range shaded: {min} to {max} days.' },
+    cycleChartSummary: {
+      one: 'Chart of 1 cycle. Average: {avg} days. Typical range shaded: {min} to {max} days.',
+      other: 'Chart of {count} cycles. Average: {avg} days. Typical range shaded: {min} to {max} days.',
+    },
     bandNote: 'The shaded band shows the usual adult range ({min}–{max} days).',
     periodChart: 'Your period lengths',
     periodChartSummary: { one: 'Chart of 1 period. Average: {avg} days.', other: 'Chart of {count} periods. Average: {avg} days.' },
@@ -898,9 +910,12 @@ export default {
       pregnantNoPeriod: "You're in pregnancy mode, so I don't calculate periods. Would you like to know how many weeks you are?",
       late: { one: 'According to your logs, your period is 1 day late.', other: 'According to your logs, your period is {count} days late.' },
       nextPeriod: 'According to your logs, your next period should start around {date} (probably between {from} and {to}).',
-      nextBleed: "According to your logs, your next withdrawal bleed should start around {date} (probably between {from} and {to}). With hormonal contraception there's no natural period or ovulation.",
-      predictionsHiddenPostpartum: "After giving birth I don't calculate your next period until it comes back. When it does, mark it in Settings → Usage mode and I'll start predicting it. Remember you can get pregnant before your first period.",
-      predictionsHiddenHormonal: "With your method (progestogen-only pill, continuous pill, injection, implant or hormonal IUD) bleeding is often irregular or stops, so I don't predict dates. If any bleeding worries you, get it checked.",
+      nextBleed:
+        "According to your logs, your next withdrawal bleed should start around {date} (probably between {from} and {to}). With hormonal contraception there's no natural period or ovulation.",
+      predictionsHiddenPostpartum:
+        "After giving birth I don't calculate your next period until it comes back. When it does, mark it in Settings → Usage mode and I'll start predicting it. Remember you can get pregnant before your first period.",
+      predictionsHiddenHormonal:
+        "With your method (progestogen-only pill, continuous pill, injection, implant or hormonal IUD) bleeding is often irregular or stops, so I don't predict dates. If any bleeding worries you, get it checked.",
       confidence: {
         high: 'Your cycles are regular, so the prediction is fairly reliable.',
         medium: 'The prediction is reasonable, but it may vary by a few days.',
@@ -908,7 +923,8 @@ export default {
       },
       fertilityHidden: "You've chosen not to show fertility. You can turn it on in Settings → Usage mode.",
       fertilityHiddenMode: "In this mode I don't calculate fertile days.",
-      fertilityHiddenHormonal: "With your hormonal method there's no natural ovulation to predict, so I don't show fertile days. Your protection depends on using your method correctly.",
+      fertilityHiddenHormonal:
+        "With your hormonal method there's no natural ovulation to predict, so I don't show fertile days. Your protection depends on using your method correctly.",
       fertile: {
         high: "Today you're in your highest-fertility days according to the estimate.",
         medium: "Today you're in your fertile window (medium fertility).",
@@ -928,7 +944,10 @@ export default {
         luteal: 'In the luteal phase progesterone dominates: you may notice bloating, more hunger or premenstrual symptoms towards the end.',
       },
       needMoreCycles: 'I need at least 2 complete logged cycles to assess your cycle.',
-      cycleStats: { one: 'Your average cycle is {mean} days (between {min} and {max}), based on 1 cycle.', other: 'Your average cycle is {mean} days (between {min} and {max}), based on {count} cycles.' },
+      cycleStats: {
+        one: 'Your average cycle is {mean} days (between {min} and {max}), based on 1 cycle.',
+        other: 'Your average cycle is {mean} days (between {min} and {max}), based on {count} cycles.',
+      },
       cycleTypical: "That's within the usual adult range (24–38 days, varying by up to 7–9 days).",
       cycleCheck: "Some of your cycles fall outside the usual range (24–38 days). It isn't necessarily a problem, but if it keeps happening, mention it to a professional.",
       needPeriodLogs: 'Log every day of your period so I can work out how long it lasts.',
@@ -937,8 +956,12 @@ export default {
       periodLong: "One of your periods has lasted more than 8 days: it's worth mentioning to a professional.",
       notPregnantMode: "Pregnancy mode isn't on. If you're pregnant, turn it on in Settings → Usage mode.",
       dueDate: 'Your due date is {date}.',
-      lateTest: { one: 'Your period is 1 day late: a urine test is already reliable from today.', other: 'Your period is {count} days late: a urine pregnancy test is already reliable.' },
-      pregnancyChance: 'Pregnancy is only possible if you had unprotected sex (or your method failed) on your fertile days. A urine test is reliable from the first day your period is late.',
+      lateTest: {
+        one: 'Your period is 1 day late: a urine test is already reliable from today.',
+        other: 'Your period is {count} days late: a urine pregnancy test is already reliable.',
+      },
+      pregnancyChance:
+        'Pregnancy is only possible if you had unprotected sex (or your method failed) on your fertile days. A urine test is reliable from the first day your period is late.',
     },
   },
 
@@ -991,7 +1014,7 @@ export default {
       stats: { one: '1 contraction · average length {duration} s · interval {interval} min', other: '{count} contractions · average length {duration} s · every {interval} min' },
       pattern: 'Active labour pattern',
       patternText: 'Your contractions look regular and frequent (every 5 minutes or less, lasting 1 minute, for 1 hour). Contact your maternity unit as you were advised.',
-      note: "If your waters break, or you have bleeding, a fever or fewer movements, go in without waiting for a contraction pattern.",
+      note: 'If your waters break, or you have bleeding, a fever or fewer movements, go in without waiting for a contraction pattern.',
       clear: 'Clear history',
       clearText: "All timed contractions will be deleted. This can't be undone.",
     },
@@ -1099,7 +1122,10 @@ export default {
       photoError: "Couldn't use that image. Try another one (JPG or PNG).",
       yearInvalid: 'Enter a valid year.',
       profiles: 'Profiles on this device',
-      profilesText: { one: 'There is 1 profile. Each profile has its own lock and separately encrypted data.', other: 'There are {count} profiles. Each one has its own lock and separately encrypted data.' },
+      profilesText: {
+        one: 'There is 1 profile. Each profile has its own lock and separately encrypted data.',
+        other: 'There are {count} profiles. Each one has its own lock and separately encrypted data.',
+      },
       switch: 'Switch profile',
       add: 'Add profile',
       addDesc: 'Handy if you share the device (for example, mother and daughter).',
@@ -1122,7 +1148,7 @@ export default {
       dueDate: 'Due date: {date}',
       editPregnancy: 'Correct dates',
       endPregnancy: 'End pregnancy',
-      endIntro: "Tell us how it ended so we can adapt the app. You can change it later.",
+      endIntro: 'Tell us how it ended so we can adapt the app. You can change it later.',
       outcome: 'How did it end?',
       outcomes: {
         birth: 'Birth',
@@ -1133,11 +1159,13 @@ export default {
       nextMode: 'How would you like to keep using the app?',
       congrats: "Congratulations! We'll be with you through the postpartum period.",
       lossTitle: "We're so sorry",
-      lossText: 'Losing a pregnancy is very hard and your feelings are valid. Take all the time you need. If you feel overwhelmed, reach out to people close to you or a professional.',
+      lossText:
+        'Losing a pregnancy is very hard and your feelings are valid. Take all the time you need. If you feel overwhelmed, reach out to people close to you or a professional.',
       postpartum: 'Your postpartum',
       periodReturnedDesc: 'When your period comes back, turn this on to get predictions again.',
       lamTitle: 'Breastfeeding and fertility',
-      lamText: "Exclusive breastfeeding only protects against pregnancy if your baby is under 6 months, feeds only on breast milk day and night, and your period hasn't returned (LAM). If any of these isn't true, use another method.",
+      lamText:
+        "Exclusive breastfeeding only protects against pregnancy if your baby is under 6 months, feeds only on breast milk day and night, and your period hasn't returned (LAM). If any of these isn't true, use another method.",
       contraception: 'Your contraceptive method',
       startDate: {
         pill: 'First day of your current pack',
@@ -1388,7 +1416,8 @@ export default {
       unreadableTitle: { one: "1 record couldn't be read", other: "{count} records couldn't be read" },
       unreadableText: 'This may be due to a saving error. The rest of your data is fine. If you have a backup, you can restore it using merge.',
       delete: 'Delete data',
-      deleteText: "All profiles, logs and settings on this device will be deleted, plus the open profile's synced copy and share links on the server (other profiles' expire on their own). This can't be undone.",
+      deleteText:
+        "All profiles, logs and settings on this device will be deleted, plus the open profile's synced copy and share links on the server (other profiles' expire on their own). This can't be undone.",
       deleteAll: 'Delete everything',
       deleteAllText: 'Removes all Menstruapp profiles and data from this device.',
       exportReauth: 'Confirm your identity to save a copy of your data to a file.',
@@ -1404,11 +1433,12 @@ export default {
       weekStart: 'Week starts on',
       monday: 'Monday',
       sunday: 'Sunday',
-      more: "More languages are coming soon. Menstruapp is ready to be translated.",
+      more: 'More languages are coming soon. Menstruapp is ready to be translated.',
     },
     about: {
       version: 'Version {version}',
-      mission: 'Menstruapp exists so that anyone who menstruates can understand their body with reliable information without giving up their privacy. No ads, no accounts, no selling data.',
+      mission:
+        'Menstruapp exists so that anyone who menstruates can understand their body with reliable information without giving up their privacy. No ads, no accounts, no selling data.',
       checkUpdates: 'Check for updates',
       upToDate: "You're on the latest version.",
     },
@@ -1649,7 +1679,12 @@ export default {
           'If you believe your rights are not respected, you can complain to the data protection authority in your country.',
         ],
       ],
-      ['Minors', ['If you are under 14 (or the age set in your country), use the app with the knowledge of a parent or guardian. The app works without accounts and collects no data to identify you.']],
+      [
+        'Minors',
+        [
+          'If you are under 14 (or the age set in your country), use the app with the knowledge of a parent or guardian. The app works without accounts and collects no data to identify you.',
+        ],
+      ],
       ['Changes', ["If we change this policy we'll show it in the app. We'll never reduce your privacy without your consent."]],
     ],
     terms: [
@@ -1661,7 +1696,12 @@ export default {
           'If a symptom worries you or in an emergency, contact a healthcare professional or emergency services.',
         ],
       ],
-      ['Your responsibility', ["Protect your device and keep your recovery code. If you lose both your lock and the code, your data can't be recovered: that's the price of nobody else being able to read it."]],
+      [
+        'Your responsibility',
+        [
+          "Protect your device and keep your recovery code. If you lose both your lock and the code, your data can't be recovered: that's the price of nobody else being able to read it.",
+        ],
+      ],
       ['Availability', ['The app works offline. Optional server features are provided as is and may change or stop; your local data will not be affected.']],
       ['Intellectual property', ['Educational content may be freely consulted for personal use. Third-party trademarks and resources belong to their owners (see Licences).']],
     ],

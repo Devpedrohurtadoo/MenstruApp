@@ -235,8 +235,7 @@ export function computeInsights(a, days, opts = {}) {
 
   // Same cycles and threshold as the "irregular" notice, so the label never contradicts it.
   const variation = recentVariation(a);
-  const regularity =
-    variation.lengths.length >= 3 ? (variation.range <= 3 ? 'veryRegular' : variation.range <= normalVariation(opts.age) ? 'regular' : 'variable') : null;
+  const regularity = variation.lengths.length >= 3 ? (variation.range <= 3 ? 'veryRegular' : variation.range <= normalVariation(opts.age) ? 'regular' : 'variable') : null;
 
   // Symptom × phase frequency table for the analysis view.
   const phaseOrder = ['menstrual', 'follicular', 'ovulatory', 'luteal'].filter((p) => phaseDays[p]);

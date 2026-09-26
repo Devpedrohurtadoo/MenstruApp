@@ -4,7 +4,21 @@ import path from 'node:path';
 import es from '../../public/js/i18n/es.js';
 import en from '../../public/js/i18n/en.js';
 import {
-  MODES, FLOW, FLOW_COLORS, CLOTS, MUCUS, LH, PREGNANCY_TEST, SEX, LIBIDO, EXERCISE, MOODS, SYMPTOM_IDS, SYMPTOM_GROUPS, SYMPTOMS, CONTRACEPTION,
+  MODES,
+  FLOW,
+  FLOW_COLORS,
+  CLOTS,
+  MUCUS,
+  LH,
+  PREGNANCY_TEST,
+  SEX,
+  LIBIDO,
+  EXERCISE,
+  MOODS,
+  SYMPTOM_IDS,
+  SYMPTOM_GROUPS,
+  SYMPTOMS,
+  CONTRACEPTION,
 } from '../../public/js/domain/catalog.js';
 import { REMINDER_TYPES } from '../../public/js/data/schema.js';
 import { ACHIEVEMENTS } from '../../public/js/domain/streaks.js';
@@ -174,7 +188,10 @@ describe('i18n coverage of the source code', () => {
     each('settings.reminders.repeat', ['none', 'daily', 'weekly', 'monthly', 'yearly']);
     each('settings.data.importErrors', ['invalid', 'needsPassword', 'wrongPassword', 'tooLarge']);
     each('settings.security.protection', ['p1', 'p2', 'p3', 'p4', 'p5']);
-    each('settings.sections', ['profile', 'mode', 'cycle', 'reminders', 'appearance', 'privacy', 'data', 'share', 'language', 'about'].flatMap((s) => [s, `${s}Desc`]));
+    each(
+      'settings.sections',
+      ['profile', 'mode', 'cycle', 'reminders', 'appearance', 'privacy', 'data', 'share', 'language', 'about'].flatMap((s) => [s, `${s}Desc`]),
+    );
     each('share', ['how1', 'how2', 'how3']);
     each('share.scopes', ['predictions', 'cycles', 'symptoms', 'notes']);
     each('sync', ['what1', 'what2', 'what3']);

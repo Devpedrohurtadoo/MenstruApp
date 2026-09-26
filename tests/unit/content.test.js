@@ -62,7 +62,11 @@ describe('learning library', () => {
         for (const r of a.related ?? []) expect(articleIds.has(r), `${a.id} related ${r}`).toBe(true);
         for (const b of a.body) expect(Boolean(b.h || b.p || b.ul?.length), a.id).toBe(true);
       }
-      for (const c of lib.categories) expect(lib.articles.some((a) => a.category === c.id), c.id).toBe(true);
+      for (const c of lib.categories)
+        expect(
+          lib.articles.some((a) => a.category === c.id),
+          c.id,
+        ).toBe(true);
       expect(lib.glossary.length).toBeGreaterThan(20);
       expect(lib.faq.length).toBeGreaterThan(8);
       for (const level of ['urgent', 'soon', 'routine']) expect(lib.consult[level].length).toBeGreaterThan(3);
@@ -166,7 +170,7 @@ describe('Luna red flags (real knowledge bases)', () => {
     ['es', 'mi pareja no me pega pero me da miedo', 'violence'],
     ['en', "I'm soaking a pad every hour", 'heavyBleeding'],
     ['en', 'I soaked through two pads in an hour', 'heavyBleeding'],
-    ["en", "I'm bleeding a lot and I feel dizzy", 'heavyBleeding'],
+    ['en', "I'm bleeding a lot and I feel dizzy", 'heavyBleeding'],
     ['en', "I've never bled this much and I feel dizzy", 'heavyBleeding'],
     ['en', "I don't know what to do I'm bleeding so much", 'heavyBleeding'],
     ['en', 'the pain is excruciating', 'severePain'],
@@ -214,7 +218,7 @@ describe('Luna red flags (real knowledge bases)', () => {
     ['en', "I haven't fainted but I feel tired"],
     ['en', 'Could I be pregnant if I am spotting?'],
     ['en', 'I want to get pregnant and I have spotting between periods'],
-    ["en", "I'm pregnant and my gums are bleeding"],
+    ['en', "I'm pregnant and my gums are bleeding"],
     ['en', 'How often should I change my tampon?'],
     ['en', "I don't have a fever, can I use a tampon?"],
   ];
@@ -254,7 +258,10 @@ describe('Luna red flags (real knowledge bases)', () => {
 
   it('knows the user is pregnant from her mode and never suggests anti-inflammatories then', () => {
     const cramps = { es: lunaEs.intents.find((i) => i.id === 'cramps'), en: lunaEn.intents.find((i) => i.id === 'cramps') };
-    for (const [lang, message] of [['es', 'Estoy sangrando y me duele mucho la tripa'], ['en', "I'm bleeding and have bad cramps"]]) {
+    for (const [lang, message] of [
+      ['es', 'Estoy sangrando y me duele mucho la tripa'],
+      ['en', "I'm bleeding and have bad cramps"],
+    ]) {
       const l = /** @type {'es' | 'en'} */ (lang);
       const plain = LUNA[l].reply(message);
       expect(plain.urgent, message).toBe(false);

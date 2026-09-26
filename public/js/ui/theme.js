@@ -14,7 +14,13 @@ export function hexToRgb(hex) {
 
 /** @param {{ r: number, g: number, b: number }} c */
 function toHex({ r, g, b }) {
-  return `#${[r, g, b].map((x) => Math.round(Math.min(255, Math.max(0, x))).toString(16).padStart(2, '0')).join('')}`;
+  return `#${[r, g, b]
+    .map((x) =>
+      Math.round(Math.min(255, Math.max(0, x)))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
 }
 
 /** WCAG relative luminance. @param {string} hex */
@@ -281,9 +287,7 @@ export async function prepareBackgroundImage(file) {
   if (!ctx) throw new Error('canvas');
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('encode'))), 'image/jpeg', 0.82),
-  );
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('encode'))), 'image/jpeg', 0.82));
 }
 
 /**

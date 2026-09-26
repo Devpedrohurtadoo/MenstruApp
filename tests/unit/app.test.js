@@ -15,7 +15,22 @@ Object.assign(globalThis, {
 });
 
 const app = await import('../../public/js/app.js');
-const { store, createProfile, unlock, beginRecovery, lock, lockoutStatus, saveDoc, saveDay, updateSettings, localRecords, applyRemoteRecords, sessionGuard, SessionChangedError, daysAgo } = app;
+const {
+  store,
+  createProfile,
+  unlock,
+  beginRecovery,
+  lock,
+  lockoutStatus,
+  saveDoc,
+  saveDay,
+  updateSettings,
+  localRecords,
+  applyRemoteRecords,
+  sessionGuard,
+  SessionChangedError,
+  daysAgo,
+} = app;
 const { MAX_ATTEMPTS } = await import('../../public/js/security/lockout.js');
 const { mergeRecords } = await import('../../public/js/pwa/sync.js');
 const { buildShareSnapshot } = await import('../../public/js/pwa/share.js');
@@ -152,7 +167,14 @@ describe('what the app tells the cycle engine', () => {
 describe('reminder texts', () => {
   it('say when a titled reminder falls, and nothing of it in discreet mode', async () => {
     const { renderText } = await import('../../public/js/pwa/notifications.js');
-    const at = (/** @type {string} */ shownOn, /** @type {string} */ title) => ({ key: 'k', reminderId: 'r', type: 'appointment', at: 0, date: shownOn, params: { title, date: '2026-03-02' } });
+    const at = (/** @type {string} */ shownOn, /** @type {string} */ title) => ({
+      key: 'k',
+      reminderId: 'r',
+      type: 'appointment',
+      at: 0,
+      date: shownOn,
+      params: { title, date: '2026-03-02' },
+    });
     expect(renderText(at('2026-03-02', 'Dentista'), false).body).toBe('Dentista · hoy');
     expect(renderText(at('2026-03-01', 'Dentista'), false).body).toBe('Dentista · mañana');
     expect(renderText(at('2026-02-26', 'Dentista'), false).body).toBe('Dentista · el 2 de marzo');
@@ -163,7 +185,8 @@ describe('reminder texts', () => {
   it('bring the tip of the day for the topic of that day', async () => {
     const { renderText } = await import('../../public/js/pwa/notifications.js');
     const { raw } = await import('../../public/js/core/i18n.js');
-    const tip = (/** @type {string} */ topic, /** @type {boolean} */ discreet) => renderText({ key: 'k', reminderId: 'daily_tip', type: 'daily_tip', at: 0, date: '2026-03-02', params: { topic } }, discreet);
+    const tip = (/** @type {string} */ topic, /** @type {boolean} */ discreet) =>
+      renderText({ key: 'k', reminderId: 'daily_tip', type: 'daily_tip', at: 0, date: '2026-03-02', params: { topic } }, discreet);
     expect(raw('tips.menstrual')).toContain(tip('menstrual', false).body);
     expect(raw('tips.pregnancy')).toContain(tip('pregnancy', false).body);
     expect(tip('menstrual', false).title).toBe('Consejo del día 🌙');

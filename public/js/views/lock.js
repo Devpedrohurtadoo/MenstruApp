@@ -199,7 +199,21 @@ export async function renderLock(root, opts) {
         ),
         errorEl,
         countdownEl,
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.backToPin'), onClick: () => { recoveryMode = false; errorMessage = ''; render(); } }), h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile })),
+        h(
+          'div',
+          { class: 'lock__links' },
+          h('button', {
+            type: 'button',
+            class: 'link-btn',
+            text: t('lock.backToPin'),
+            onClick: () => {
+              recoveryMode = false;
+              errorMessage = '';
+              render();
+            },
+          }),
+          h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile }),
+        ),
       ];
     } else if (!info.needsSecret) {
       body = [
@@ -221,12 +235,35 @@ export async function renderLock(root, opts) {
           { class: ['keypad', status.locked || busy ? 'is-disabled' : ''], role: 'group', 'aria-label': t('lock.keypad') },
           keys.map((k) => {
             if (!k) return h('span', { class: 'keypad__blank' });
-            if (k === 'back') return h('button', { type: 'button', class: 'keypad__key keypad__key--action', 'aria-label': t('lock.deleteDigit'), disabled: status.locked || busy, onClick: () => press('back') }, icon('arrow-left', { size: 22 }));
-            if (k === 'bio') return h('button', { type: 'button', class: 'keypad__key keypad__key--action', 'aria-label': t('lock.useBiometric'), disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) }, icon('fingerprint', { size: 24 }));
+            if (k === 'back')
+              return h(
+                'button',
+                { type: 'button', class: 'keypad__key keypad__key--action', 'aria-label': t('lock.deleteDigit'), disabled: status.locked || busy, onClick: () => press('back') },
+                icon('arrow-left', { size: 22 }),
+              );
+            if (k === 'bio')
+              return h(
+                'button',
+                { type: 'button', class: 'keypad__key keypad__key--action', 'aria-label': t('lock.useBiometric'), disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) },
+                icon('fingerprint', { size: 24 }),
+              );
             return h('button', { type: 'button', class: 'keypad__key', disabled: status.locked || busy, onClick: () => press(k), text: fmtNumber(Number(k)) });
           }),
         ),
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPin'), onClick: () => { recoveryMode = true; errorMessage = ''; render(); } })),
+        h(
+          'div',
+          { class: 'lock__links' },
+          h('button', {
+            type: 'button',
+            class: 'link-btn',
+            text: t('lock.forgotPin'),
+            onClick: () => {
+              recoveryMode = true;
+              errorMessage = '';
+              render();
+            },
+          }),
+        ),
       ];
     } else {
       const input = h('input', { type: 'password', class: 'input', id: 'pass-input', autocomplete: 'current-password', maxLength: 256 });
@@ -245,10 +282,25 @@ export async function renderLock(root, opts) {
           input,
           button({ label: busy ? t('lock.checking') : t('lock.unlock'), variant: 'primary', type: 'submit', full: true, busy, disabled: status.locked }),
         ),
-        info.hasBiometric ? button({ label: t('lock.useBiometric'), icon: 'fingerprint', variant: 'ghost', full: true, disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) }) : null,
+        info.hasBiometric
+          ? button({ label: t('lock.useBiometric'), icon: 'fingerprint', variant: 'ghost', full: true, disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) })
+          : null,
         errorEl,
         countdownEl,
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPassphrase'), onClick: () => { recoveryMode = true; errorMessage = ''; render(); } })),
+        h(
+          'div',
+          { class: 'lock__links' },
+          h('button', {
+            type: 'button',
+            class: 'link-btn',
+            text: t('lock.forgotPassphrase'),
+            onClick: () => {
+              recoveryMode = true;
+              errorMessage = '';
+              render();
+            },
+          }),
+        ),
       ];
     }
 

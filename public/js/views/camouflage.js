@@ -89,7 +89,8 @@ export function renderCalculator(root, onExit) {
     const n = Number(display);
     screen.textContent = Number.isFinite(n) && display !== '-' && !display.endsWith('.') ? fmtNumber(n, { maximumFractionDigits: 8 }) : display;
   };
-  const compute = (/** @type {number} */ a, /** @type {number} */ b, /** @type {string} */ o) => (o === '+' ? a + b : o === '−' ? a - b : o === '×' ? a * b : b === 0 ? NaN : a / b);
+  const compute = (/** @type {number} */ a, /** @type {number} */ b, /** @type {string} */ o) =>
+    o === '+' ? a + b : o === '−' ? a - b : o === '×' ? a * b : b === 0 ? NaN : a / b;
   const press = async (/** @type {string} */ k) => {
     if (/^\d$/.test(k)) {
       display = fresh || display === '0' ? k : (display + k).slice(0, 12);

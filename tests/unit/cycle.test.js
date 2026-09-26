@@ -110,7 +110,10 @@ describe('pregnancies and the bleeding after them', () => {
     expect(a.cycles[2].excluded).toBe('pregnancy');
     expect(a.stats.validCycleCount).toBe(2);
     // Bleeding during the pregnancy is not a period.
-    const bled = analyze({ ...days, '2024-04-02': { flow: 'light' }, '2024-04-03': { flow: 'light' } }, { today: '2024-05-01', settings: { mode: 'pregnant' }, excludeRanges: [['2024-02-26', '2024-05-01']] });
+    const bled = analyze(
+      { ...days, '2024-04-02': { flow: 'light' }, '2024-04-03': { flow: 'light' } },
+      { today: '2024-05-01', settings: { mode: 'pregnant' }, excludeRanges: [['2024-02-26', '2024-05-01']] },
+    );
     expect(bled.periods).toHaveLength(3);
   });
 
@@ -136,7 +139,10 @@ describe('pregnancies and the bleeding after them', () => {
   it('builds the ranges of an active pregnancy and of past ones', () => {
     const past = { history: [{ from: '2023-01-10', to: '2023-03-01' }], endedOn: '2023-03-01', outcome: 'loss' };
     expect(pregnancyExclusions(past, { lmp: '2024-02-01' }, {}, '2024-04-01')).toEqual({
-      excludeRanges: [['2023-01-10', '2023-03-01'], ['2024-02-01', '2024-04-01']],
+      excludeRanges: [
+        ['2023-01-10', '2023-03-01'],
+        ['2024-02-01', '2024-04-01'],
+      ],
       nonMenstrual: [['2023-03-01', '2023-03-15']],
     });
     // An impossible LMP in the future is ignored.

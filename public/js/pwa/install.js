@@ -12,7 +12,11 @@ import { store } from '../app.js';
 let deferred = null;
 
 export function isStandalone() {
-  return window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: window-controls-overlay)').matches || /** @type {any} */ (navigator).standalone === true;
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.matchMedia?.('(display-mode: window-controls-overlay)').matches ||
+    /** @type {any} */ (navigator).standalone === true
+  );
 }
 
 export function isIOS() {
@@ -56,7 +60,10 @@ export function installCard(o = {}) {
       icon: 'smartphone',
       action: dismiss,
       class: 'install-card',
-      children: [h('p', { class: 'muted', text: t('install.benefits') }), button({ label: t('install.button'), icon: 'download', variant: 'primary', full: true, onClick: () => promptInstall() })],
+      children: [
+        h('p', { class: 'muted', text: t('install.benefits') }),
+        button({ label: t('install.button'), icon: 'download', variant: 'primary', full: true, onClick: () => promptInstall() }),
+      ],
     });
   }
   if (inst.ios) {

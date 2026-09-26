@@ -200,9 +200,7 @@ const FOCUSABLE =
 
 /** @param {Element} container @returns {HTMLElement[]} */
 export function focusables(container) {
-  return /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll(FOCUSABLE))).filter(
-    (el) => !el.hasAttribute('inert') && el.getClientRects().length > 0,
-  );
+  return /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll(FOCUSABLE))).filter((el) => !el.hasAttribute('inert') && el.getClientRects().length > 0);
 }
 
 /**

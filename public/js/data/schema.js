@@ -155,10 +155,10 @@ export const pregnancySchema = v.object({
   startedAt: v.number({ integer: true, min: 0 }),
   endedOn: v.date(opt),
   outcome: v.enum(PREGNANCY_OUTCOMES, opt),
-  kicks: v.array(
-    v.object({ start: v.number({ integer: true, min: 0 }), end: v.number({ integer: true, min: 0 }), count: v.number({ integer: true, min: 0, max: 200 }) }),
-    { optional: true, max: 1000 },
-  ),
+  kicks: v.array(v.object({ start: v.number({ integer: true, min: 0 }), end: v.number({ integer: true, min: 0 }), count: v.number({ integer: true, min: 0, max: 200 }) }), {
+    optional: true,
+    max: 1000,
+  }),
   contractions: v.array(v.object({ start: v.number({ integer: true, min: 0 }), end: v.number({ integer: true, min: 0 }) }), {
     optional: true,
     max: 2000,

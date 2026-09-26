@@ -4,20 +4,20 @@ Menstruapp sigue el principio de **privacidad por diseño y por defecto** (art. 
 
 ## Inventario de datos
 
-| Dato | Dónde | Cifrado | Retención |
-| --- | --- | --- | --- |
-| Registros diarios (regla, síntomas, ánimo, temperatura, relaciones, notas…) | IndexedDB del navegador | Sí, AES-256-GCM por registro; ids opacos (HMAC) | Hasta que la usuaria los borre |
-| Ajustes del ciclo, modo, embarazo, recordatorios, logros, foto de perfil | IndexedDB | Sí | Hasta que se borren |
-| Bóveda (sal, iteraciones, clave maestra envuelta) | IndexedDB | La clave maestra va envuelta con el PIN/contraseña | Mientras exista el perfil |
-| Lista de perfiles (apodo, emoji) | IndexedDB | No (se muestra en la pantalla de bloqueo; se puede ocultar en pantalla) | Mientras exista el perfil |
-| Preferencias visuales (idioma, tema, color, fondo, tamaño de texto) | `localStorage` | No (no contienen datos de salud) | Hasta «Borrar todo» |
-| Imagen de fondo elegida | IndexedDB | No (preferencia visual previa al desbloqueo) | Hasta que se quite |
-| Textos de los próximos recordatorios | IndexedDB | Sí, con una clave del dispositivo no extraíble (tienen que poder mostrarse con la app bloqueada) | Se regeneran continuamente |
-| Hora de los próximos recordatorios y lista de los ya mostrados | IndexedDB | No; identificadores opacos que no dicen de qué trata cada aviso | Se regeneran continuamente |
-| Conversaciones con Luna | Solo en memoria | — | Se borran al bloquear |
-| **Servidor (opcional)** sincronización | Netlify Blobs | Sí, clave derivada del código de sincronización que solo tiene la usuaria | Se borra al desactivarla, con «Borrar todo» o tras 400 días sin uso |
-| **Servidor (opcional)** recordatorios push | Netlify Blobs | Texto cifrado en el dispositivo; se guardan la suscripción push y la hora de cada aviso | Se borra al desactivarlo; limpieza tras 90 días sin actividad |
-| **Servidor (opcional)** enlaces compartidos | Netlify Blobs | Sí, la clave solo está en el enlace | Máximo 30 días; revocables |
+| Dato                                                                        | Dónde                   | Cifrado                                                                                          | Retención                                                           |
+| --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Registros diarios (regla, síntomas, ánimo, temperatura, relaciones, notas…) | IndexedDB del navegador | Sí, AES-256-GCM por registro; ids opacos (HMAC)                                                  | Hasta que la usuaria los borre                                      |
+| Ajustes del ciclo, modo, embarazo, recordatorios, logros, foto de perfil    | IndexedDB               | Sí                                                                                               | Hasta que se borren                                                 |
+| Bóveda (sal, iteraciones, clave maestra envuelta)                           | IndexedDB               | La clave maestra va envuelta con el PIN/contraseña                                               | Mientras exista el perfil                                           |
+| Lista de perfiles (apodo, emoji)                                            | IndexedDB               | No (se muestra en la pantalla de bloqueo; se puede ocultar en pantalla)                          | Mientras exista el perfil                                           |
+| Preferencias visuales (idioma, tema, color, fondo, tamaño de texto)         | `localStorage`          | No (no contienen datos de salud)                                                                 | Hasta «Borrar todo»                                                 |
+| Imagen de fondo elegida                                                     | IndexedDB               | No (preferencia visual previa al desbloqueo)                                                     | Hasta que se quite                                                  |
+| Textos de los próximos recordatorios                                        | IndexedDB               | Sí, con una clave del dispositivo no extraíble (tienen que poder mostrarse con la app bloqueada) | Se regeneran continuamente                                          |
+| Hora de los próximos recordatorios y lista de los ya mostrados              | IndexedDB               | No; identificadores opacos que no dicen de qué trata cada aviso                                  | Se regeneran continuamente                                          |
+| Conversaciones con Luna                                                     | Solo en memoria         | —                                                                                                | Se borran al bloquear                                               |
+| **Servidor (opcional)** sincronización                                      | Netlify Blobs           | Sí, clave derivada del código de sincronización que solo tiene la usuaria                        | Se borra al desactivarla, con «Borrar todo» o tras 400 días sin uso |
+| **Servidor (opcional)** recordatorios push                                  | Netlify Blobs           | Texto cifrado en el dispositivo; se guardan la suscripción push y la hora de cada aviso          | Se borra al desactivarlo; limpieza tras 90 días sin actividad       |
+| **Servidor (opcional)** enlaces compartidos                                 | Netlify Blobs           | Sí, la clave solo está en el enlace                                                              | Máximo 30 días; revocables                                          |
 
 **No existen**: cuentas, correos, contraseñas en servidor, analíticas, publicidad, huellas del navegador, geolocalización, contactos, ni peticiones a terceros.
 

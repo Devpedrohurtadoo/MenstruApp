@@ -10,10 +10,7 @@
     prefs = {};
   }
   const systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-  root.setAttribute(
-    'data-theme',
-    prefs.theme === 'light' || prefs.theme === 'dark' ? prefs.theme : systemLight ? 'light' : 'dark',
-  );
+  root.setAttribute('data-theme', prefs.theme === 'light' || prefs.theme === 'dark' ? prefs.theme : systemLight ? 'light' : 'dark');
   if (prefs.motion === 'reduce' || prefs.motion === 'full') root.setAttribute('data-motion', prefs.motion);
   if (prefs.contrast === 'more') root.setAttribute('data-contrast', 'more');
   if (prefs.lang === 'es' || prefs.lang === 'en') root.setAttribute('lang', prefs.lang);

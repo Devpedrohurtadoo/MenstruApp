@@ -74,13 +74,31 @@ async function main() {
         h(
           'table',
           { class: 'table' },
-          h('thead', null, h('tr', null, h('th', { scope: 'col', text: t('report.start') }), h('th', { scope: 'col', text: t('report.cycleLength') }), h('th', { scope: 'col', text: t('report.periodLength') }))),
+          h(
+            'thead',
+            null,
+            h(
+              'tr',
+              null,
+              h('th', { scope: 'col', text: t('report.start') }),
+              h('th', { scope: 'col', text: t('report.cycleLength') }),
+              h('th', { scope: 'col', text: t('report.periodLength') }),
+            ),
+          ),
           h(
             'tbody',
             null,
-            snap.cycles.slice(-12).map((/** @type {any} */ c) =>
-              h('tr', null, h('td', { text: typeof c.start === 'string' ? fmtDate(c.start, 'medium') : '—' }), h('td', { text: c.length ? t('common.days', { count: Number(c.length) }) : t('report.ongoing') }), h('td', { text: c.periodLength ? t('common.days', { count: Number(c.periodLength) }) : '—' })),
-            ),
+            snap.cycles
+              .slice(-12)
+              .map((/** @type {any} */ c) =>
+                h(
+                  'tr',
+                  null,
+                  h('td', { text: typeof c.start === 'string' ? fmtDate(c.start, 'medium') : '—' }),
+                  h('td', { text: c.length ? t('common.days', { count: Number(c.length) }) : t('report.ongoing') }),
+                  h('td', { text: c.periodLength ? t('common.days', { count: Number(c.periodLength) }) : '—' }),
+                ),
+              ),
           ),
         ),
       ),
@@ -92,7 +110,13 @@ async function main() {
         'section',
         { class: 'card' },
         h('h2', { class: 'card__title' }, icon('activity', { size: 18 }), ` ${t('shareView.symptoms')}`),
-        h('ul', { class: 'bullets' }, snap.symptoms.slice(0, 12).map((/** @type {any} */ s) => h('li', { text: `${t(`symptoms.${String(s.id)}`)} — ${t('analysis.timesDays', { count: Number(s.count) || 0 })}` }))),
+        h(
+          'ul',
+          { class: 'bullets' },
+          snap.symptoms
+            .slice(0, 12)
+            .map((/** @type {any} */ s) => h('li', { text: `${t(`symptoms.${String(s.id)}`)} — ${t('analysis.timesDays', { count: Number(s.count) || 0 })}` })),
+        ),
       ),
     );
   }

@@ -69,7 +69,6 @@ export const DEFAULT_PREFS = Object.freeze({
   backupNudgeAt: 0,
 });
 
-
 /** @returns {Prefs} */
 export function loadPrefs() {
   try {

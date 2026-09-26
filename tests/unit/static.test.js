@@ -55,7 +55,10 @@ describe('service worker', () => {
   });
 
   it('preloads exactly the static module graph of each page (run `npm run stamp`)', async () => {
-    for (const [page, entry] of [['index.html', 'js/main.js'], ['share.html', 'js/share/view.js']]) {
+    for (const [page, entry] of [
+      ['index.html', 'js/main.js'],
+      ['share.html', 'js/share/view.js'],
+    ]) {
       const preloads = await staticImports(entry);
       expect(preloads.length).toBeGreaterThan(3);
       expect(read(page), page).toContain(renderPreloads(preloads));
@@ -133,11 +136,7 @@ describe('web app manifest', () => {
   });
 
   it('references images that exist with the declared sizes', () => {
-    const images = [
-      ...manifest.icons,
-      ...manifest.screenshots,
-      ...manifest.shortcuts.flatMap((/** @type {any} */ s) => s.icons),
-    ];
+    const images = [...manifest.icons, ...manifest.screenshots, ...manifest.shortcuts.flatMap((/** @type {any} */ s) => s.icons)];
     for (const img of images) expect(pngSize(img.src), img.src).toBe(img.sizes);
   });
 });
@@ -175,7 +174,14 @@ describe('PDF writer', () => {
     const doc = new PdfDoc({ title: 'Informe (prueba) — ñandú' });
     doc.heading('Resumen');
     for (let i = 0; i < 120; i++) doc.text(`Línea ${i} con acentos: áéíóú ü ç € (paréntesis) \\ barra`);
-    doc.table(['A', 'B'], [['1', '2'], ['3', '4']], [0.5, 0.5]);
+    doc.table(
+      ['A', 'B'],
+      [
+        ['1', '2'],
+        ['3', '4'],
+      ],
+      [0.5, 0.5],
+    );
     const bytes = new Uint8Array(await doc.toBlob().arrayBuffer());
     const text = Buffer.from(bytes).toString('latin1');
     expect(text.startsWith('%PDF-1.4')).toBe(true);

@@ -39,7 +39,12 @@ export function render(ctx) {
           d.pregnancy.issue ? notice({ level: 'info', title: t(`pregnancy.invalid.${d.pregnancy.issue}`), text: t('pregnancy.invalid.text') }) : null,
           h('p', { text: t('pregnancy.weeks', { weeks: d.pregnancy.weeks, days: d.pregnancy.days }) }),
           h('p', { class: 'muted', text: t('settings.mode.dueDate', { date: fmtDate(d.pregnancy.dueDate, 'long') }) }),
-          h('div', { class: 'btn-row' }, button({ label: t('settings.mode.editPregnancy'), icon: 'edit', variant: 'soft', onClick: () => pregnancyDialog() }), button({ label: t('settings.mode.endPregnancy'), variant: 'ghost', onClick: () => endPregnancyDialog() })),
+          h(
+            'div',
+            { class: 'btn-row' },
+            button({ label: t('settings.mode.editPregnancy'), icon: 'edit', variant: 'soft', onClick: () => pregnancyDialog() }),
+            button({ label: t('settings.mode.endPregnancy'), variant: 'ghost', onClick: () => endPregnancyDialog() }),
+          ),
         ],
       }),
     );
@@ -57,7 +62,11 @@ export function render(ctx) {
               class: 'mode-card',
               onClick: async () => {
                 if (m === 'pregnant') return pregnancyDialog();
-                const ok = await confirmDialog({ title: t('settings.mode.confirmTitle', { mode: t(`modes.${m}.title`) }), message: t('settings.mode.confirmText'), confirmLabel: t('common.change') });
+                const ok = await confirmDialog({
+                  title: t('settings.mode.confirmTitle', { mode: t(`modes.${m}.title`) }),
+                  message: t('settings.mode.confirmText'),
+                  confirmLabel: t('common.change'),
+                });
                 if (!ok) return;
                 /** @type {Record<string, any>} */
                 const patch = { mode: m };
@@ -84,8 +93,19 @@ export function render(ctx) {
         icon: 'heart-handshake',
         children: [
           dateField('pp-birth', t('onboarding.birthDate'), pp.birthDate, (v) => updateSettings({ postpartum: { ...pp, birthDate: v } }), { min: addDays(todayISO(), -730) }),
-          chipGroup({ label: t('onboarding.breastfeeding'), options: ['exclusive', 'partial', 'no'].map((v) => ({ value: v, label: t(`onboarding.bf.${v}`) })), value: pp.breastfeeding, allowNone: false, onChange: (v) => updateSettings({ postpartum: { ...pp, breastfeeding: v } }) }),
-          toggle({ label: t('onboarding.periodReturned'), description: t('settings.mode.periodReturnedDesc'), checked: pp.periodReturned, onChange: (v) => updateSettings({ postpartum: { ...pp, periodReturned: v } }) }),
+          chipGroup({
+            label: t('onboarding.breastfeeding'),
+            options: ['exclusive', 'partial', 'no'].map((v) => ({ value: v, label: t(`onboarding.bf.${v}`) })),
+            value: pp.breastfeeding,
+            allowNone: false,
+            onChange: (v) => updateSettings({ postpartum: { ...pp, breastfeeding: v } }),
+          }),
+          toggle({
+            label: t('onboarding.periodReturned'),
+            description: t('settings.mode.periodReturnedDesc'),
+            checked: pp.periodReturned,
+            onChange: (v) => updateSettings({ postpartum: { ...pp, periodReturned: v } }),
+          }),
           pp.breastfeeding === 'exclusive' ? notice({ level: 'info', title: t('settings.mode.lamTitle'), text: t('settings.mode.lamText') }) : null,
         ],
       }),
@@ -98,7 +118,12 @@ export function render(ctx) {
       card({
         title: t('modes.perimenopause.title'),
         icon: 'leaf',
-        children: toggle({ label: t('onboarding.overAYear'), description: t('onboarding.overAYearDesc'), checked: overAYear, onChange: (v) => updateSettings({ menopause: { overAYear: v } }) }),
+        children: toggle({
+          label: t('onboarding.overAYear'),
+          description: t('onboarding.overAYearDesc'),
+          checked: overAYear,
+          onChange: (v) => updateSettings({ menopause: { overAYear: v } }),
+        }),
       }),
     );
   }
@@ -123,10 +148,22 @@ export function render(ctx) {
             },
           }),
           c.method === 'pill_combined'
-            ? chipGroup({ label: t('onboarding.pillRegimen'), options: ['21_7', '24_4', '28', 'continuous'].map((v) => ({ value: v, label: t(`contraception.regimen.${v}`) })), value: c.pillRegimen ?? '21_7', allowNone: false, onChange: (v) => updateSettings({ contraception: { ...c, pillRegimen: v } }) })
+            ? chipGroup({
+                label: t('onboarding.pillRegimen'),
+                options: ['21_7', '24_4', '28', 'continuous'].map((v) => ({ value: v, label: t(`contraception.regimen.${v}`) })),
+                value: c.pillRegimen ?? '21_7',
+                allowNone: false,
+                onChange: (v) => updateSettings({ contraception: { ...c, pillRegimen: v } }),
+              })
             : null,
           ['pill_combined', 'pill_progestin', 'patch', 'ring', 'injection', 'iud_hormonal', 'iud_copper', 'implant'].includes(c.method)
-            ? dateField('c-start', t(`settings.mode.startDate.${c.method.startsWith('pill') ? 'pill' : c.method}`), c.startDate ?? null, (v) => updateSettings({ contraception: { ...c, startDate: v } }), { min: addDays(todayISO(), -3650) })
+            ? dateField(
+                'c-start',
+                t(`settings.mode.startDate.${c.method.startsWith('pill') ? 'pill' : c.method}`),
+                c.startDate ?? null,
+                (v) => updateSettings({ contraception: { ...c, startDate: v } }),
+                { min: addDays(todayISO(), -3650) },
+              )
             : null,
           h('a', { class: 'link', href: '#/learn/article/metodos-anticonceptivos', text: t('settings.mode.compareMethods') }),
         ],
@@ -140,7 +177,12 @@ export function render(ctx) {
         title: t('settings.mode.fertilityInAvoid'),
         icon: 'egg',
         children: [
-          toggle({ label: t('settings.mode.showFertility'), description: t('settings.mode.showFertilityDesc'), checked: Boolean(settings.features.fertilityInAvoid), onChange: (v) => updateSettings({ features: { ...settings.features, fertilityInAvoid: v } }) }),
+          toggle({
+            label: t('settings.mode.showFertility'),
+            description: t('settings.mode.showFertilityDesc'),
+            checked: Boolean(settings.features.fertilityInAvoid),
+            onChange: (v) => updateSettings({ features: { ...settings.features, fertilityInAvoid: v } }),
+          }),
           notice({ level: 'info', title: t('onboarding.notContraceptionTitle'), text: t('onboarding.notContraception') }),
         ],
       }),
@@ -201,7 +243,8 @@ function pregnancyDialog() {
   let date = preg?.active ? preg.date : null;
   const box = h('div', { class: 'stack' });
   const draw = () => {
-    replace(box,
+    replace(
+      box,
       segmented({
         label: t('onboarding.pregBasis'),
         options: [
@@ -216,7 +259,13 @@ function pregnancyDialog() {
           draw();
         },
       }),
-      dateField('preg-date-s', t(`onboarding.pregDateLabel.${basis}`), date, (v) => (date = v), pregnancyDateRange(/** @type {'lmp' | 'due' | 'conception'} */ (basis), todayISO())),
+      dateField(
+        'preg-date-s',
+        t(`onboarding.pregDateLabel.${basis}`),
+        date,
+        (v) => (date = v),
+        pregnancyDateRange(/** @type {'lmp' | 'due' | 'conception'} */ (basis), todayISO()),
+      ),
       button({
         label: t('common.save'),
         variant: 'primary',
@@ -243,7 +292,8 @@ function endPregnancyDialog() {
   let breastfeeding = /** @type {'exclusive' | 'partial' | 'no'} */ ('exclusive');
   const box = h('div', { class: 'stack' });
   const draw = () => {
-    replace(box,
+    replace(
+      box,
       h('p', { class: 'muted', text: t('settings.mode.endIntro') }),
       chipGroup({
         label: t('settings.mode.outcome'),
@@ -260,13 +310,32 @@ function endPregnancyDialog() {
           draw();
         },
       }),
-      outcome === 'loss' ? notice({ level: 'info', title: t('settings.mode.lossTitle'), text: t('settings.mode.lossText'), action: h('a', { class: 'link', href: '#/learn/article/perdida-gestacional', text: t('common.learnMore') }) }) : null,
+      outcome === 'loss'
+        ? notice({
+            level: 'info',
+            title: t('settings.mode.lossTitle'),
+            text: t('settings.mode.lossText'),
+            action: h('a', { class: 'link', href: '#/learn/article/perdida-gestacional', text: t('common.learnMore') }),
+          })
+        : null,
       outcome ? dateField('end-date', t('settings.mode.endDate'), date, (v) => (date = v), { min: addDays(todayISO(), -365) }) : null,
       outcome === 'birth'
-        ? chipGroup({ label: t('onboarding.breastfeeding'), options: ['exclusive', 'partial', 'no'].map((v) => ({ value: v, label: t(`onboarding.bf.${v}`) })), value: breastfeeding, allowNone: false, onChange: (v) => (breastfeeding = v) })
+        ? chipGroup({
+            label: t('onboarding.breastfeeding'),
+            options: ['exclusive', 'partial', 'no'].map((v) => ({ value: v, label: t(`onboarding.bf.${v}`) })),
+            value: breastfeeding,
+            allowNone: false,
+            onChange: (v) => (breastfeeding = v),
+          })
         : null,
       outcome && outcome !== 'birth'
-        ? chipGroup({ label: t('settings.mode.nextMode'), options: ['track', 'conceive', 'avoid', 'postpartum'].map((m) => ({ value: m, label: t(`modes.${m}.title`) })), value: nextMode, allowNone: false, onChange: (v) => (nextMode = v) })
+        ? chipGroup({
+            label: t('settings.mode.nextMode'),
+            options: ['track', 'conceive', 'avoid', 'postpartum'].map((m) => ({ value: m, label: t(`modes.${m}.title`) })),
+            value: nextMode,
+            allowNone: false,
+            onChange: (v) => (nextMode = v),
+          })
         : null,
       outcome
         ? button({

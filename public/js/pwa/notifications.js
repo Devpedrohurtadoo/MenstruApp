@@ -82,7 +82,8 @@ export function renderText(o, discreet) {
   // When a dated reminder falls, from the day it is shown: "today", "tomorrow" or "on 3 Oct".
   if (typeof raw.date === 'string' && isISODate(raw.date)) {
     const lead = diffDays(o.date, raw.date);
-    params.when = lead === 0 ? t('notifications.when.today') : lead === 1 ? t('notifications.when.tomorrow') : t('notifications.when.onDate', { date: fmtDate(raw.date, 'dayMonth') });
+    params.when =
+      lead === 0 ? t('notifications.when.today') : lead === 1 ? t('notifications.when.tomorrow') : t('notifications.when.onDate', { date: fmtDate(raw.date, 'dayMonth') });
   }
   const title = t(`notifications.${o.type}.title`, params);
   let body = t(`notifications.${o.type}.body`, params);
@@ -164,7 +165,11 @@ export async function clearLocalReminders() {
 
 export async function testNotification() {
   const discreet = Boolean(store.get().derived?.settings.security.discreetNotifications);
-  await show(discreet ? t('notifications.discreetTitle') : t('notifications.test.title'), discreet ? t('notifications.discreetBody') : t('notifications.test.body'), 'menstruapp-test');
+  await show(
+    discreet ? t('notifications.discreetTitle') : t('notifications.test.title'),
+    discreet ? t('notifications.discreetBody') : t('notifications.test.body'),
+    'menstruapp-test',
+  );
 }
 
 async function registerPeriodicSync() {

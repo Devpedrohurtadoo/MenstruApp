@@ -12,23 +12,23 @@
 
 ## Funcionalidades
 
-| Área | Qué incluye |
-| --- | --- |
-| **Modos de uso** | Seguir el ciclo · Buscar embarazo · Evitar embarazo · Embarazo · Posparto · Perimenopausia. Cada modo adapta pantallas, síntomas, avisos y recordatorios. |
-| **Hoy** | Anillo del ciclo (día, fase, fertilidad, regla prevista), registro rápido de ánimo/síntomas, «Me ha venido la regla», próximos eventos, consejo del día, rachas y logros, tarjeta de anticonceptivo diario. |
-| **Registro diario** | Flujo, color, coágulos, 38 síntomas con intensidad (incluye señales de alarma), 12 estados de ánimo, energía, libido, temperatura basal, moco cervical, test LH y de embarazo, relaciones, anticonceptivo y medicación, sueño, agua, ejercicio, peso y notas. |
-| **Calendario** | Regla registrada/estimada/prevista, ventana fértil por niveles, ovulación estimada o confirmada, premenstrual, modo «Editar regla», navegación por teclado, historial de ciclos. |
-| **Predicción** | Motor propio: media ponderada con descarte de atípicos, margen de incertidumbre, nivel de confianza, fase lútea aprendida, confirmación de ovulación por temperatura (regla 3 sobre 6) y LH, rangos FIGO y adolescentes, pausas por embarazo. |
-| **Avisos de salud** | Retrasos, amenorrea, ciclos cortos/largos/irregulares, sangrado abundante o prolongado, sangrado entre reglas, sangrado en el embarazo o tras la menopausia, señales de alarma, anticoncepción de urgencia. Tono informativo, nunca alarmista. |
-| **Análisis** | Estadísticas, gráficos accesibles (con tabla de datos), patrones personales por fase, síntomas frecuentes, temperatura basal por ciclo, peso. |
-| **Luna** | Asistente que responde **en el dispositivo** (sin IA externa): ~55 temas, preguntas personales con tus datos («¿cuándo me viene?», «¿estoy fértil?»), y detección de urgencias, crisis y violencia con teléfonos de ayuda. |
-| **Aprende** | 38 artículos revisados, glosario, FAQ, guía «Cuándo consultar» y ayuda de la app. |
-| **Embarazo y posparto** | Semanas y fecha probable de parto, nota semanal (sem. 4–42), contador de movimientos, cronómetro de contracciones, fin de embarazo con acompañamiento en pérdidas, lactancia y método MELA. |
-| **Recordatorios** | Regla próxima/retrasada, ventana fértil, ovulación, registro diario, temperatura, píldora (respeta descansos), parche, anillo, inyección, citas, revisiones, copias. Notificaciones **discretas** opcionales. |
-| **Personalización** | Tema claro/oscuro/auto, 8 colores + color libre con ajuste automático de contraste, 8 fondos, color sólido o **tu propia imagen**, partículas, movimiento reducido, tamaño de texto, alto contraste. |
-| **Privacidad** | Varios perfiles por dispositivo, PIN/contraseña/biometría, código de recuperación, bloqueo automático y al salir, **pantalla segura** (calculadora funcional), modo invitada, nombres ocultos. |
-| **Tus datos** | Copia cifrada, JSON, CSV, informe PDF para la consulta, importación desde otras apps (CSV) y Apple Salud, borrado total. |
-| **Opcional con servidor** | Sincronización cifrada de extremo a extremo entre dispositivos, recordatorios push con la app cerrada (contenido cifrado) y enlaces temporales de solo lectura para tu profesional. |
+| Área                      | Qué incluye                                                                                                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Modos de uso**          | Seguir el ciclo · Buscar embarazo · Evitar embarazo · Embarazo · Posparto · Perimenopausia. Cada modo adapta pantallas, síntomas, avisos y recordatorios.                                                                                                     |
+| **Hoy**                   | Anillo del ciclo (día, fase, fertilidad, regla prevista), registro rápido de ánimo/síntomas, «Me ha venido la regla», próximos eventos, consejo del día, rachas y logros, tarjeta de anticonceptivo diario.                                                   |
+| **Registro diario**       | Flujo, color, coágulos, 38 síntomas con intensidad (incluye señales de alarma), 12 estados de ánimo, energía, libido, temperatura basal, moco cervical, test LH y de embarazo, relaciones, anticonceptivo y medicación, sueño, agua, ejercicio, peso y notas. |
+| **Calendario**            | Regla registrada/estimada/prevista, ventana fértil por niveles, ovulación estimada o confirmada, premenstrual, modo «Editar regla», navegación por teclado, historial de ciclos.                                                                              |
+| **Predicción**            | Motor propio: media ponderada con descarte de atípicos, margen de incertidumbre, nivel de confianza, fase lútea aprendida, confirmación de ovulación por temperatura (regla 3 sobre 6) y LH, rangos FIGO y adolescentes, pausas por embarazo.                 |
+| **Avisos de salud**       | Retrasos, amenorrea, ciclos cortos/largos/irregulares, sangrado abundante o prolongado, sangrado entre reglas, sangrado en el embarazo o tras la menopausia, señales de alarma, anticoncepción de urgencia. Tono informativo, nunca alarmista.                |
+| **Análisis**              | Estadísticas, gráficos accesibles (con tabla de datos), patrones personales por fase, síntomas frecuentes, temperatura basal por ciclo, peso.                                                                                                                 |
+| **Luna**                  | Asistente que responde **en el dispositivo** (sin IA externa): ~55 temas, preguntas personales con tus datos («¿cuándo me viene?», «¿estoy fértil?»), y detección de urgencias, crisis y violencia con teléfonos de ayuda.                                    |
+| **Aprende**               | 38 artículos revisados, glosario, FAQ, guía «Cuándo consultar» y ayuda de la app.                                                                                                                                                                             |
+| **Embarazo y posparto**   | Semanas y fecha probable de parto, nota semanal (sem. 4–42), contador de movimientos, cronómetro de contracciones, fin de embarazo con acompañamiento en pérdidas, lactancia y método MELA.                                                                   |
+| **Recordatorios**         | Regla próxima/retrasada, ventana fértil, ovulación, registro diario, temperatura, píldora (respeta descansos), parche, anillo, inyección, citas, revisiones, copias. Notificaciones **discretas** opcionales.                                                 |
+| **Personalización**       | Tema claro/oscuro/auto, 8 colores + color libre con ajuste automático de contraste, 8 fondos, color sólido o **tu propia imagen**, partículas, movimiento reducido, tamaño de texto, alto contraste.                                                          |
+| **Privacidad**            | Varios perfiles por dispositivo, PIN/contraseña/biometría, código de recuperación, bloqueo automático y al salir, **pantalla segura** (calculadora funcional), modo invitada, nombres ocultos.                                                                |
+| **Tus datos**             | Copia cifrada, JSON, CSV, informe PDF para la consulta, importación desde otras apps (CSV) y Apple Salud, borrado total.                                                                                                                                      |
+| **Opcional con servidor** | Sincronización cifrada de extremo a extremo entre dispositivos, recordatorios push con la app cerrada (contenido cifrado) y enlaces temporales de solo lectura para tu profesional.                                                                           |
 
 ## Privacidad y seguridad (resumen)
 
@@ -68,10 +68,10 @@ npm run verify         # todo lo anterior
 1. Sube este repositorio a GitHub/GitLab/Bitbucket.
 2. En Netlify: **Add new site → Import an existing project** y elige el repositorio.
 3. Netlify lee `netlify.toml` automáticamente:
-   - *Build command*: `npm run build` · *Publish directory*: `public` · *Functions*: `netlify/functions`.
+   - _Build command_: `npm run build` · _Publish directory_: `public` · _Functions_: `netlify/functions`.
 4. (Opcional) Recordatorios con la app cerrada: genera claves con `npm run vapid` y añádelas en **Site configuration → Environment variables** (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). Ver [.env.example](.env.example).
 5. **Deploy**. Cada push crea un despliegue; si un test falla, el despliegue se detiene (no se publica nada roto).
-6. Los *Deploy Previews* de cada pull request permiten probar cambios en el móvil antes de publicarlos.
+6. Los _Deploy Previews_ de cada pull request permiten probar cambios en el móvil antes de publicarlos.
 
 La sincronización y los enlaces para compartir funcionan sin configuración (usan Netlify Blobs). Las funciones programadas (`push-dispatch` cada 5 minutos y `cleanup` diaria) se activan solas.
 
@@ -95,8 +95,8 @@ Netlify sirve HTTPS automáticamente (necesario para PWA, cifrado y notificacion
 
 ## Instalar en el móvil
 
-- **Android (Chrome, Edge, Samsung Internet)**: abre la web → botón **Instalar** de la tarjeta de inicio, o menú ⋮ → *Instalar aplicación*.
-- **iPhone/iPad (Safari)**: botón **Compartir** → *Añadir a pantalla de inicio*. En iOS 16.4+ las notificaciones funcionan con la app instalada.
+- **Android (Chrome, Edge, Samsung Internet)**: abre la web → botón **Instalar** de la tarjeta de inicio, o menú ⋮ → _Instalar aplicación_.
+- **iPhone/iPad (Safari)**: botón **Compartir** → _Añadir a pantalla de inicio_. En iOS 16.4+ las notificaciones funcionan con la app instalada.
 - **Escritorio**: icono de instalar en la barra de direcciones.
 
 Incluye iconos adaptativos (maskable y monocromo), accesos directos (Registrar hoy, Calendario, Luna), pantallas de carga para iPhone/iPad y capturas para la ficha de instalación.

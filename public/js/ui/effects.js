@@ -131,7 +131,15 @@ export function celebrate() {
   const parts = Array.from({ length: 70 }, () => {
     const angle = Math.random() * Math.PI * 2;
     const speed = 3 + Math.random() * 6;
-    return { x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 3, r: 3 + Math.random() * 4, rot: Math.random() * 6, c: palette[Math.floor(Math.random() * palette.length)] };
+    return {
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      r: 3 + Math.random() * 4,
+      rot: Math.random() * 6,
+      c: palette[Math.floor(Math.random() * palette.length)],
+    };
   });
   const start = performance.now();
   const frame = (/** @type {number} */ now) => {

@@ -64,7 +64,11 @@ export function render(ctx) {
       'aria-labelledby': 'cal-month',
       onKeydown: (/** @type {KeyboardEvent} */ e) => onGridKey(e, month, ctx),
     },
-    h('div', { class: 'cal__row cal__weekdays', role: 'row' }, labels.map((l, i) => h('span', { role: 'columnheader', class: 'cal__weekday', 'aria-label': longLabels[i], text: l }))),
+    h(
+      'div',
+      { class: 'cal__row cal__weekdays', role: 'row' },
+      labels.map((l, i) => h('span', { role: 'columnheader', class: 'cal__weekday', 'aria-label': longLabels[i], text: l })),
+    ),
     rows,
   );
   // Roving tabindex: exactly one focusable day.
@@ -75,7 +79,9 @@ export function render(ctx) {
   const toolbar = h(
     'div',
     { class: 'cal__toolbar' },
-    month !== monthKey(today) ? button({ label: t('calendar.today'), icon: 'calendar-check', variant: 'ghost', size: 'sm', onClick: () => ctx.navigate('calendar', { replace: true }) }) : h('span'),
+    month !== monthKey(today)
+      ? button({ label: t('calendar.today'), icon: 'calendar-check', variant: 'ghost', size: 'sm', onClick: () => ctx.navigate('calendar', { replace: true }) })
+      : h('span'),
     button({
       label: editMode ? t('calendar.doneEditing') : t('calendar.editPeriod'),
       icon: editMode ? 'check' : 'droplet',
@@ -201,7 +207,7 @@ function onGridKey(e, month, ctx) {
   const grid = target.closest('.cal__grid');
   const cell = /** @type {HTMLElement | null} */ (grid?.querySelector(`[data-date="${next}"]`));
   if (cell) {
-    grid?.querySelectorAll('.cal__day').forEach((c) => (/** @type {HTMLElement} */ (c).tabIndex = -1));
+    grid?.querySelectorAll('.cal__day').forEach((c) => c.setAttribute('tabindex', '-1'));
     cell.tabIndex = 0;
     cell.focus();
   } else {
@@ -222,7 +228,9 @@ function legend(flags) {
   return h(
     'ul',
     { class: 'legend', 'aria-label': t('calendar.legend.title') },
-    items.map(([cls, key]) => h('li', { class: 'legend__item' }, h('span', { class: ['legend__swatch', `legend__swatch--${cls}`], 'aria-hidden': 'true' }), h('span', { text: t(key) }))),
+    items.map(([cls, key]) =>
+      h('li', { class: 'legend__item' }, h('span', { class: ['legend__swatch', `legend__swatch--${cls}`], 'aria-hidden': 'true' }), h('span', { text: t(key) })),
+    ),
   );
 }
 
@@ -250,7 +258,9 @@ function history(d) {
                 : h('span', { text: t('calendar.cycleLength', { count: /** @type {number} */ (c.length) }) }),
               c.periodLength ? h('span', { class: 'muted', text: ` · ${t('calendar.periodLength', { count: c.periodLength })}` }) : null,
               c.excluded ? h('span', { class: 'muted small', text: ` · ${t(`calendar.excluded.${c.excluded}`)}` }) : null,
-              c.ovulation?.method === 'bbt' ? h('span', { class: 'cycle-list__ov', title: t('calendar.bbtConfirmed') }, icon('thermometer', { size: 14, label: t('calendar.bbtConfirmed') })) : null,
+              c.ovulation?.method === 'bbt'
+                ? h('span', { class: 'cycle-list__ov', title: t('calendar.bbtConfirmed') }, icon('thermometer', { size: 14, label: t('calendar.bbtConfirmed') }))
+                : null,
             ),
           ),
         ),

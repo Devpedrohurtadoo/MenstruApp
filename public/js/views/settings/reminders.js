@@ -29,14 +29,46 @@ export async function render(ctx) {
     status === 'denied'
       ? notice({ level: 'consult', title: t('settings.reminders.deniedTitle'), text: t('settings.reminders.deniedText') })
       : status === 'default'
-        ? notice({ level: 'info', title: t('settings.reminders.permissionTitle'), text: t('settings.reminders.permissionText'), action: button({ label: t('settings.reminders.allow'), variant: 'primary', size: 'sm', onClick: async () => { await requestNotificationPermission(); ctx.navigate('settings/reminders', { replace: true }); } }) })
+        ? notice({
+            level: 'info',
+            title: t('settings.reminders.permissionTitle'),
+            text: t('settings.reminders.permissionText'),
+            action: button({
+              label: t('settings.reminders.allow'),
+              variant: 'primary',
+              size: 'sm',
+              onClick: async () => {
+                await requestNotificationPermission();
+                ctx.navigate('settings/reminders', { replace: true });
+              },
+            }),
+          })
         : status === 'unsupported'
           ? notice({ level: 'info', title: t('settings.reminders.unsupportedTitle'), text: t('settings.reminders.unsupportedText') })
           : null,
     card({
       title: t('settings.reminders.delivery'),
       icon: 'bell',
-      children: [h('p', { class: 'muted', text: t(`settings.reminders.deliveryModes.${delivery.mode}`) }), delivery.canEnablePush ? button({ label: t('settings.reminders.enablePush'), icon: 'cloud', variant: 'soft', onClick: () => import('../../pwa/push.js').then((m) => m.enablePush()).then(() => ctx.navigate('settings/reminders', { replace: true })) }) : null, delivery.pushEnabled ? button({ label: t('settings.reminders.disablePush'), variant: 'ghost', size: 'sm', onClick: () => import('../../pwa/push.js').then((m) => m.disablePush()).then(() => ctx.navigate('settings/reminders', { replace: true })) }) : null, status === 'granted' ? button({ label: t('settings.reminders.test'), icon: 'bell', variant: 'ghost', size: 'sm', onClick: () => testNotification() }) : null],
+      children: [
+        h('p', { class: 'muted', text: t(`settings.reminders.deliveryModes.${delivery.mode}`) }),
+        delivery.canEnablePush
+          ? button({
+              label: t('settings.reminders.enablePush'),
+              icon: 'cloud',
+              variant: 'soft',
+              onClick: () => import('../../pwa/push.js').then((m) => m.enablePush()).then(() => ctx.navigate('settings/reminders', { replace: true })),
+            })
+          : null,
+        delivery.pushEnabled
+          ? button({
+              label: t('settings.reminders.disablePush'),
+              variant: 'ghost',
+              size: 'sm',
+              onClick: () => import('../../pwa/push.js').then((m) => m.disablePush()).then(() => ctx.navigate('settings/reminders', { replace: true })),
+            })
+          : null,
+        status === 'granted' ? button({ label: t('settings.reminders.test'), icon: 'bell', variant: 'ghost', size: 'sm', onClick: () => testNotification() }) : null,
+      ],
     }),
     card({
       title: t('settings.reminders.list'),
@@ -45,14 +77,46 @@ export async function render(ctx) {
         h(
           'div',
           { class: 'reminder-row' },
-          toggle({ label: t(`reminders.types.${r.type}.title`), description: t(`reminders.types.${r.type}.desc`), checked: r.enabled, onChange: (v) => update(r.id, { enabled: v }) }),
+          toggle({
+            label: t(`reminders.types.${r.type}.title`),
+            description: t(`reminders.types.${r.type}.desc`),
+            checked: r.enabled,
+            onChange: (v) => update(r.id, { enabled: v }),
+          }),
           h(
             'div',
             { class: 'reminder-row__opts' },
             h('label', { class: 'sr-only', for: `rt-${r.id}`, text: t('settings.reminders.timeFor', { name: t(`reminders.types.${r.type}.title`) }) }),
-            h('input', { type: 'time', class: 'input input--short', id: `rt-${r.id}`, dataset: { fk: `rt-${r.id}` }, value: r.time, onChange: (/** @type {Event} */ e) => { const v = /** @type {HTMLInputElement} */ (e.target).value; if (isTime(v)) update(r.id, { time: v }); } }),
+            h('input', {
+              type: 'time',
+              class: 'input input--short',
+              id: `rt-${r.id}`,
+              dataset: { fk: `rt-${r.id}` },
+              value: r.time,
+              onChange: (/** @type {Event} */ e) => {
+                const v = /** @type {HTMLInputElement} */ (e.target).value;
+                if (isTime(v)) update(r.id, { time: v });
+              },
+            }),
             r.type === 'period_soon' || r.type === 'period_late' || r.type === 'injection'
-              ? h('label', { class: 'inline-field' }, h('span', { text: t(r.type === 'period_late' ? 'settings.reminders.daysAfter' : 'settings.reminders.daysBefore') }), h('input', { type: 'number', class: 'input input--tiny', dataset: { fk: `rd-${r.id}` }, 'aria-label': t('settings.reminders.daysFor', { name: t(`reminders.types.${r.type}.title`) }), min: r.type === 'period_late' ? 1 : 0, max: 14, value: r.daysBefore ?? 2, onChange: (/** @type {Event} */ e) => { const n = Number(/** @type {HTMLInputElement} */ (e.target).value); if (Number.isInteger(n) && n >= 0 && n <= 14) update(r.id, { daysBefore: n }); } }))
+              ? h(
+                  'label',
+                  { class: 'inline-field' },
+                  h('span', { text: t(r.type === 'period_late' ? 'settings.reminders.daysAfter' : 'settings.reminders.daysBefore') }),
+                  h('input', {
+                    type: 'number',
+                    class: 'input input--tiny',
+                    dataset: { fk: `rd-${r.id}` },
+                    'aria-label': t('settings.reminders.daysFor', { name: t(`reminders.types.${r.type}.title`) }),
+                    min: r.type === 'period_late' ? 1 : 0,
+                    max: 14,
+                    value: r.daysBefore ?? 2,
+                    onChange: (/** @type {Event} */ e) => {
+                      const n = Number(/** @type {HTMLInputElement} */ (e.target).value);
+                      if (Number.isInteger(n) && n >= 0 && n <= 14) update(r.id, { daysBefore: n });
+                    },
+                  }),
+                )
               : null,
           ),
         ),
@@ -71,15 +135,31 @@ export async function render(ctx) {
                   'li',
                   null,
                   icon(r.type === 'appointment' ? 'stethoscope' : 'bell', { size: 18 }),
-                  h('span', { class: 'dated-list__text' }, h('strong', { text: r.title || t(`reminders.types.${r.type}.title`) }), h('span', { class: 'muted small', text: `${r.date ? fmtDate(r.date, 'medium') : t('settings.reminders.every')} · ${fmtTime(localTimestamp(todayISO(), r.time))} · ${t(`settings.reminders.repeat.${r.repeat ?? 'none'}`)}` })),
+                  h(
+                    'span',
+                    { class: 'dated-list__text' },
+                    h('strong', { text: r.title || t(`reminders.types.${r.type}.title`) }),
+                    h('span', {
+                      class: 'muted small',
+                      text: `${r.date ? fmtDate(r.date, 'medium') : t('settings.reminders.every')} · ${fmtTime(localTimestamp(todayISO(), r.time))} · ${t(`settings.reminders.repeat.${r.repeat ?? 'none'}`)}`,
+                    }),
+                  ),
                   // Each row's controls say which reminder they act on.
-                  toggle({ label: t('common.enabled'), ariaLabel: t('settings.reminders.enableNamed', { title: r.title || t(`reminders.types.${r.type}.title`) }), fk: `rc-on-${r.id}`, checked: r.enabled, onChange: (v) => update(r.id, { enabled: v }) }),
+                  toggle({
+                    label: t('common.enabled'),
+                    ariaLabel: t('settings.reminders.enableNamed', { title: r.title || t(`reminders.types.${r.type}.title`) }),
+                    fk: `rc-on-${r.id}`,
+                    checked: r.enabled,
+                    onChange: (v) => update(r.id, { enabled: v }),
+                  }),
                   iconButton({
                     icon: 'delete',
                     label: t('settings.reminders.deleteNamed', { title: r.title || t(`reminders.types.${r.type}.title`) }),
                     onClick: async () => {
                       await saveReminders(items.filter((x) => x.id !== r.id));
-                      toast(t('settings.reminders.deleted'), { action: { label: t('common.undo'), onClick: () => saveReminders([...(ctx.state.data?.docs.reminders?.items ?? []).filter((x) => x.id !== r.id), r]) } });
+                      toast(t('settings.reminders.deleted'), {
+                        action: { label: t('common.undo'), onClick: () => saveReminders([...(ctx.state.data?.docs.reminders?.items ?? []).filter((x) => x.id !== r.id), r]) },
+                      });
                     },
                   }),
                 ),
@@ -110,12 +190,34 @@ function addDialog(items) {
         const date = dateInput.value;
         if (!isISODate(date) || !isTime(timeInput.value)) return toast(t('settings.reminders.invalid'), { type: 'error' });
         const lead = Math.min(14, Math.max(0, Number(leadInput.value) || 0));
-        await saveReminders([...items, { id: uid().slice(0, 16), type: /** @type {any} */ (type), enabled: true, title: titleInput.value.trim() || undefined, date, time: timeInput.value, daysBefore: lead, repeat: /** @type {any} */ (repeat) }]);
+        await saveReminders([
+          ...items,
+          {
+            id: uid().slice(0, 16),
+            type: /** @type {any} */ (type),
+            enabled: true,
+            title: titleInput.value.trim() || undefined,
+            date,
+            time: timeInput.value,
+            daysBefore: lead,
+            repeat: /** @type {any} */ (repeat),
+          },
+        ]);
         modal.close();
         toast(t('settings.reminders.added'), { type: 'success' });
       },
     },
-    chipGroup({ label: t('settings.reminders.kind'), options: [{ value: 'appointment', label: t('reminders.types.appointment.title') }, { value: 'checkup', label: t('reminders.types.checkup.title') }, { value: 'custom', label: t('reminders.types.custom.title') }], value: type, allowNone: false, onChange: (v) => (type = v) }),
+    chipGroup({
+      label: t('settings.reminders.kind'),
+      options: [
+        { value: 'appointment', label: t('reminders.types.appointment.title') },
+        { value: 'checkup', label: t('reminders.types.checkup.title') },
+        { value: 'custom', label: t('reminders.types.custom.title') },
+      ],
+      value: type,
+      allowNone: false,
+      onChange: (v) => (type = v),
+    }),
     h('label', { class: 'field__label', for: 'rem-title', text: t('settings.reminders.titleLabel') }),
     titleInput,
     h('label', { class: 'field__label', for: 'rem-date', text: t('settings.reminders.date') }),
@@ -124,7 +226,13 @@ function addDialog(items) {
     timeInput,
     h('label', { class: 'field__label', for: 'rem-lead', text: t('settings.reminders.leadDays') }),
     leadInput,
-    chipGroup({ label: t('settings.reminders.repeatLabel'), options: ['none', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: t(`settings.reminders.repeat.${v}`) })), value: repeat, allowNone: false, onChange: (v) => (repeat = v) }),
+    chipGroup({
+      label: t('settings.reminders.repeatLabel'),
+      options: ['none', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: t(`settings.reminders.repeat.${v}`) })),
+      value: repeat,
+      allowNone: false,
+      onChange: (v) => (repeat = v),
+    }),
     button({ label: t('common.add'), variant: 'primary', type: 'submit', full: true }),
   );
   const modal = openModal({ title: t('settings.reminders.add'), content, variant: 'dialog' });
