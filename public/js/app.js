@@ -26,7 +26,7 @@ import { registerBiometric, unlockWithBiometric, forgetCredential } from './secu
 import { analyze } from './domain/cycle.js';
 import { computeNotices } from './domain/insights.js';
 import { modeFlags } from './domain/modes.js';
-import { pregnancyInfo } from './domain/pregnancy.js';
+import { pregnancyInfo, pregnancyExclusions } from './domain/pregnancy.js';
 import { loggingStreak, newAchievements } from './domain/streaks.js';
 import { defaultReminders } from './domain/reminders.js';
 
@@ -99,6 +99,9 @@ export async function initApp() {
   const profiles = /** @type {ProfileMeta[]} */ ((await get(db, 'meta', 'profiles')) ?? []);
   store.set({ db, profiles });
   scheduleMidnightRefresh();
+  document.addEventListener('visibilitychange', checkDayChange);
+  addEventListener('pageshow', checkDayChange);
+  addEventListener('focus', checkDayChange);
   return { hasProfiles: profiles.length > 0 };
 }
 
@@ -129,11 +132,10 @@ export function computeDerived(data) {
   settings.features = { ...defaultSettings().features, ...(data.docs.settings?.features ?? {}) };
   settings.security = { ...defaultSettings().security, ...(data.docs.settings?.security ?? {}) };
   const preg = data.docs.pregnancy;
-  /** @type {Array<[string, string]>} */
-  const ranges = (preg?.history ?? []).map((/** @type {{ from: string, to: string }} */ r) => [r.from, r.to]);
   const pregnancy = preg?.active ? pregnancyInfo(preg, today) : null;
-  if (pregnancy) ranges.push([pregnancy.lmp, today]);
-  const analysis = analyze(data.days, { today, settings, excludeRanges: ranges });
+  // Pregnancies never form cycles, and lochia after a birth (or bleeding after a loss) is no period.
+  const { excludeRanges, nonMenstrual } = pregnancyExclusions(preg, pregnancy, settings, today);
+  const analysis = analyze(data.days, { today, settings, excludeRanges, nonMenstrual });
   const flags = modeFlags(settings);
   const profile = data.docs.profile ?? {};
   const age = ageFromProfile(profile, today);
@@ -144,6 +146,7 @@ export function computeDerived(data) {
     experience: settings.experience,
     modeSince: settings.modeSince ?? null,
     postpartumBirthDate: settings.postpartum?.birthDate ?? null,
+    postmenopausal: Boolean(settings.menopause?.overAYear),
   });
   const streak = loggingStreak(data.days, today);
   return { today, settings, profile, flags, analysis, notices, streak, pregnancy, age };
@@ -153,6 +156,18 @@ function refresh() {
   const { data, version } = store.get();
   if (!data) return;
   store.set({ derived: computeDerived(data), version: version + 1 });
+}
+
+/**
+ * Timers do not run while the phone sleeps or the app is in the background, so the date is
+ * checked again whenever the app comes back: "today" (and "my period started today") must never
+ * be yesterday.
+ */
+function checkDayChange() {
+  const derived = store.get().derived;
+  if (document.visibilityState !== 'visible' || !derived || derived.today === todayISO()) return;
+  refresh();
+  bus.emit('day-changed');
 }
 
 function scheduleMidnightRefresh() {

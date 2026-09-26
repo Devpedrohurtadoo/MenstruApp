@@ -39,19 +39,26 @@ function contextual() {
   if (!d) return {};
   const pred = d.analysis.prediction;
   const cur = d.analysis.current;
+  const { flags } = d;
+  /** Why the fertile days are not shown (the mode, a hormonal method or the user's choice). */
+  const fertilityHidden = () =>
+    flags.fertility ? null : [t(flags.fertilityHidden === 'hormonal' ? 'luna.ctx.fertilityHiddenHormonal' : flags.fertilityHidden === 'mode' ? 'luna.ctx.fertilityHiddenMode' : 'luna.ctx.fertilityHidden')];
   return {
     nextPeriod: () => {
-      if (d.flags.pregnancy) return [t('luna.ctx.pregnantNoPeriod')];
-      if (cur?.late) return [t('luna.ctx.late', { count: cur.lateDays })];
+      if (flags.pregnancy) return [t('luna.ctx.pregnantNoPeriod')];
+      if (flags.predictionsHidden === 'postpartum') return [t('luna.ctx.predictionsHiddenPostpartum')];
+      if (flags.predictionsHidden === 'hormonal') return [t('luna.ctx.predictionsHiddenHormonal')];
+      if (cur?.late) return [t(flags.withdrawalBleeds ? 'notices.lateWithdrawal.title' : 'luna.ctx.late', { count: cur.lateDays })];
       if (!pred) return noData();
       return [
-        t('luna.ctx.nextPeriod', { date: fmtDate(pred.nextPeriodStart, 'long'), from: fmtDate(pred.window[0], 'short'), to: fmtDate(pred.window[1], 'short') }),
+        t(flags.withdrawalBleeds ? 'luna.ctx.nextBleed' : 'luna.ctx.nextPeriod', { date: fmtDate(pred.nextPeriodStart, 'long'), from: fmtDate(pred.window[0], 'short'), to: fmtDate(pred.window[1], 'short') }),
         t(`luna.ctx.confidence.${pred.confidence}`),
       ];
     },
     fertileNow: () => {
+      const hidden = fertilityHidden();
+      if (hidden) return hidden;
       if (!pred) return noData();
-      if (!d.flags.fertility) return [t('luna.ctx.fertilityHidden')];
       const level = fertilityLevel(diffDays(pred.ovulationDay, d.today));
       return [
         level ? t(`luna.ctx.fertile.${level}`) : t('luna.ctx.fertile.none'),
@@ -60,8 +67,11 @@ function contextual() {
       ];
     },
     ovulation: () => {
+      const hidden = fertilityHidden();
+      if (hidden) return hidden;
       if (!pred) return noData();
-      return [t(pred.ovulationMethod === 'estimate' ? 'luna.ctx.ovulationEstimated' : 'luna.ctx.ovulationConfirmed', { date: fmtDate(pred.ovulationDay, 'long') })];
+      const key = pred.ovulationMethod === 'bbt' ? 'luna.ctx.ovulationBbt' : pred.ovulationMethod === 'lh' ? 'luna.ctx.ovulationLh' : 'luna.ctx.ovulationEstimated';
+      return [t(key, { date: fmtDate(pred.ovulationDay, 'long') }), t('luna.ctx.notContraception')];
     },
     cycleDay: () => {
       if (!cur || cur.stale) return noData();
@@ -158,7 +168,15 @@ async function ask(text) {
   addMessage({ from: 'user', text: [q], at: Date.now() });
   setTyping(true);
   const luna = await engine();
-  const reply = luna.reply(q, { contextual: contextual(), name: store.get().derived?.profile.name ?? '' });
+  const d = store.get().derived;
+  // The mode matters: bleeding or strong pain means something else in pregnancy or after a birth.
+  const birthDate = d?.flags.postpartum ? d.settings.postpartum?.birthDate : null;
+  const reply = luna.reply(q, {
+    contextual: contextual(),
+    name: d?.profile.name ?? '',
+    mode: d?.flags.mode,
+    postpartumWeeks: d && birthDate ? Math.floor(diffDays(birthDate, d.today) / 7) : null,
+  });
   await new Promise((r) => setTimeout(r, prefersReducedMotion() ? 150 : 450 + Math.random() * 400));
   setTyping(false);
   const related = [...(reply.related ?? []), ...(reply.followUps ?? [])]

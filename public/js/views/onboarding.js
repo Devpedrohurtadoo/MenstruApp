@@ -14,6 +14,7 @@ import { readLegacyData, clearLegacyData } from '../data/legacy.js';
 import { secretProblem } from '../security/vault.js';
 import { biometricsLikelyAvailable } from '../security/webauthn.js';
 import { MODES, CONTRACEPTION } from '../domain/catalog.js';
+import { pregnancyDateRange } from '../domain/pregnancy.js';
 import { brandMark } from './brand.js';
 import { showRecoveryCode } from './security-flows.js';
 import { privacyPolicy } from './legal.js';
@@ -202,7 +203,7 @@ export function renderOnboarding(root, opts) {
             },
           }),
           h('label', { class: 'field__label', for: 'preg-date', text: t(`onboarding.pregDateLabel.${s.pregBasis}`) }),
-          dateInput('preg-date', s.pregDate, (v) => (s.pregDate = v), s.pregBasis === 'due' ? { min: todayISO(), max: addDays(todayISO(), 300) } : { min: addDays(todayISO(), -300) }),
+          dateInput('preg-date', s.pregDate, (v) => (s.pregDate = v), pregnancyDateRange(s.pregBasis, todayISO())),
         );
       } else if (mode === 'postpartum') {
         body.push(
@@ -264,13 +265,18 @@ export function renderOnboarding(root, opts) {
           );
           if (s.method.startsWith('pill')) {
             body.push(
-              chipGroup({
-                label: t('onboarding.pillRegimen'),
-                options: ['21_7', '24_4', '28', 'continuous'].map((v) => ({ value: v, label: t(`contraception.regimen.${v}`) })),
-                value: s.pillRegimen,
-                allowNone: false,
-                onChange: (v) => (s.pillRegimen = v),
-              }),
+              // Only the combined pill has a pill-free week; the minipill is taken every day.
+              ...(s.method === 'pill_combined'
+                ? [
+                    chipGroup({
+                      label: t('onboarding.pillRegimen'),
+                      options: ['21_7', '24_4', '28', 'continuous'].map((v) => ({ value: v, label: t(`contraception.regimen.${v}`) })),
+                      value: s.pillRegimen,
+                      allowNone: false,
+                      onChange: (v) => (s.pillRegimen = v),
+                    }),
+                  ]
+                : []),
               h('label', { class: 'field__label', for: 'pack-start', text: t('onboarding.packStart') }),
               dateInput('pack-start', s.packStart, (v) => (s.packStart = v ?? todayISO()), { min: addDays(todayISO(), -60) }),
               h('label', { class: 'field__label', for: 'pill-time', text: t('onboarding.pillTime') }),
@@ -452,8 +458,9 @@ export function renderOnboarding(root, opts) {
         ...(s.importLegacy && legacy ? legacy.settings : {}),
       };
       if (s.method !== 'none' && (mode === 'avoid' || mode === 'track')) {
-        settings.contraception = { method: s.method, startDate: s.method.startsWith('pill') ? s.packStart : null, pillRegimen: s.pillRegimen, time: s.pillTime };
+        settings.contraception = { method: s.method, startDate: s.method.startsWith('pill') ? s.packStart : null, ...(s.method === 'pill_combined' ? { pillRegimen: s.pillRegimen } : {}), time: s.pillTime };
       }
+      if (mode === 'perimenopause' && s.overAYear) settings.menopause = { overAYear: true };
       if (mode === 'postpartum' && s.birthDate) settings.postpartum = { birthDate: s.birthDate, breastfeeding: s.breastfeeding, periodReturned: s.periodReturned };
       const reminders = Object.entries(s.reminders)
         .filter(([id, on]) => on && (id !== 'pill' || s.method.startsWith('pill')))

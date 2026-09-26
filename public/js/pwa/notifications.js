@@ -7,7 +7,7 @@
 // Notification texts become neutral when "discreet notifications" is enabled.
 
 import { t, fmtDate } from '../core/i18n.js';
-import { isISODate } from '../core/dates.js';
+import { isISODate, diffDays } from '../core/dates.js';
 import { get, put, clearStore, putMany } from '../data/idb.js';
 import { generateAesKey, encryptJSON, toB64Url } from '../security/crypto.js';
 import { store } from '../app.js';
@@ -77,11 +77,16 @@ export function renderText(o, discreet) {
     if (typeof v === 'string' && isISODate(v)) params[k] = fmtDate(v, 'dayMonth');
     else if (typeof v === 'string' || typeof v === 'number') params[k] = v;
   }
+  // When a dated reminder falls, from the day it is shown: "today", "tomorrow" or "on 3 Oct".
+  if (typeof raw.date === 'string' && isISODate(raw.date)) {
+    const lead = diffDays(o.date, raw.date);
+    params.when = lead === 0 ? t('notifications.when.today') : lead === 1 ? t('notifications.when.tomorrow') : t('notifications.when.onDate', { date: fmtDate(raw.date, 'dayMonth') });
+  }
   const title = t(`notifications.${o.type}.title`, params);
   let body = t(`notifications.${o.type}.body`, params);
   if ((o.type === 'pill' || o.type === 'patch' || o.type === 'ring') && raw.action) body = t(`notifications.actions.${raw.action}`);
   if ((o.type === 'appointment' || o.type === 'custom' || o.type === 'checkup' || o.type === 'backup') && raw.title) {
-    body = t('notifications.titledBody', { title: String(raw.title).slice(0, 80), date: String(params.date ?? '') });
+    body = t('notifications.titledBody', { title: String(raw.title).slice(0, 80), when: String(params.when ?? '') });
   }
   return { title, body };
 }

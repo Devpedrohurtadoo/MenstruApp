@@ -87,6 +87,8 @@ export const settingsSchema = v.object({
     },
     opt,
   ),
+  /** Perimenopause: no period for over a year, as stated by the user (any bleeding is then checked). */
+  menopause: v.object({ overAYear: v.boolean() }, opt),
   features: v.object(
     {
       streaks: v.boolean(),

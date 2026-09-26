@@ -37,6 +37,17 @@ export function pregnancyExclusions(preg, active, settings, today) {
 export const MAX_GESTATION_DAYS = 44 * 7;
 
 /**
+ * Dates that describe an ongoing pregnancy (0 to 44 weeks today), for the date pickers.
+ * @param {'lmp' | 'due' | 'conception'} basis
+ * @param {string} today
+ */
+export function pregnancyDateRange(basis, today) {
+  if (basis === 'due') return { min: addDays(today, PREGNANCY_DAYS - MAX_GESTATION_DAYS), max: addDays(today, PREGNANCY_DAYS) };
+  if (basis === 'conception') return { min: addDays(today, 14 - MAX_GESTATION_DAYS), max: today };
+  return { min: addDays(today, -MAX_GESTATION_DAYS), max: today };
+}
+
+/**
  * @param {{ basis: 'lmp' | 'due' | 'conception', date: string }} preg
  * @param {string} today
  */

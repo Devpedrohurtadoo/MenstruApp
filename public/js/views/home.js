@@ -143,16 +143,19 @@ function cycleCard(d, data, ctx) {
     });
   }
 
-  const inPeriod = cur.inPeriod && BLEEDING.has(data.days[today]?.flow ?? '') ? true : cur.inPeriod;
+  // The cycle engine decides what is a period (lochia or pregnancy bleeding is not).
+  const inPeriod = cur.inPeriod;
+  // Combined pill, patch or ring with a break: the bleed is a withdrawal bleed, not a period.
+  const bleed = flags.withdrawalBleeds;
   const periodLength = pred?.periodLength ?? settings.periodLength ?? 5;
   const cycleLength = pred?.cycleLength ?? settings.cycleLength ?? 28;
   const ovDay = pred ? diffDays(cur.start, pred.ovulationDay) + 1 : null;
   /** @type {string} */
   let headline;
   if (cur.late) headline = t('home.late', { count: cur.lateDays });
-  else if (inPeriod) headline = t('home.periodDay', { day: diffDays(cur.start, today) + 1 });
-  else if (pred && pred.daysUntilPeriod === 0) headline = t('home.periodToday');
-  else if (pred) headline = t('home.periodIn', { count: pred.daysUntilPeriod });
+  else if (inPeriod) headline = t(bleed ? 'home.bleedDay' : 'home.periodDay', { day: diffDays(cur.start, today) + 1 });
+  else if (pred && pred.daysUntilPeriod === 0) headline = t(bleed ? 'home.bleedToday' : 'home.periodToday');
+  else if (pred) headline = t(bleed ? 'home.bleedIn' : 'home.periodIn', { count: pred.daysUntilPeriod });
   else headline = t('home.cycleDayOnly', { day: cur.cycleDay });
 
   const fert = pred && flags.fertility ? fertilityLevel(diffDays(pred.ovulationDay, today)) : null;
@@ -181,7 +184,7 @@ function cycleCard(d, data, ctx) {
         'p',
         { class: 'hero__line' },
         icon('calendar', { size: 16 }),
-        h('span', { text: t('home.nextPeriod', { date: fmtDate(pred.nextPeriodStart, 'short'), margin: pred.margin }) }),
+        h('span', { text: t(bleed ? 'home.nextBleed' : 'home.nextPeriod', { date: fmtDate(pred.nextPeriodStart, 'short'), margin: pred.margin }) }),
         badge(t(`confidence.${pred.confidence}`), pred.confidence === 'high' ? 'good' : pred.confidence === 'medium' ? 'neutral' : 'warn'),
       ),
     );
@@ -200,11 +203,12 @@ function cycleCard(d, data, ctx) {
     if (flags.lowConfidence) details.push(h('p', { class: 'muted small', text: t('home.lowConfidence') }));
     if (flags.fertility && flags.contraceptionDisclaimer) details.push(h('p', { class: 'muted small', text: t('home.notContraception') }));
   }
+  if (flags.predictionsHidden === 'hormonal') details.push(h('p', { class: 'muted small', text: t('home.hormonalNoPredictions') }));
 
   const actions = [];
   if (inPeriod) {
     actions.push(
-      h('p', { class: 'hero__ask', text: t('home.stillBleeding') }),
+      h('p', { class: 'hero__ask', text: t(bleed ? 'home.stillBleedingBleed' : 'home.stillBleeding') }),
       h(
         'div',
         { class: 'chips chips--center' },
@@ -220,7 +224,7 @@ function cycleCard(d, data, ctx) {
       ),
     );
   } else {
-    actions.push(button({ label: t('home.periodStarted'), icon: 'droplet', variant: 'primary', full: true, fk: 'period-start', onClick: () => startPeriod(today) }));
+    actions.push(button({ label: t(bleed ? 'home.bleedStarted' : 'home.periodStarted'), icon: 'droplet', variant: 'primary', full: true, fk: 'period-start', onClick: () => startPeriod(today) }));
   }
 
   return card({ class: 'hero', children: [ring, h('div', { class: 'hero__details' }, details), h('div', { class: 'hero__actions' }, actions)] });
@@ -316,7 +320,7 @@ function upcoming(d) {
   if (d.flags.fertility && pred.fertileStart > today) events.push({ date: pred.fertileStart, label: t('home.events.fertile'), ic: 'sprout' });
   if (d.flags.fertility && pred.ovulationDay >= today) events.push({ date: pred.ovulationDay, label: t('home.events.ovulation'), ic: 'egg' });
   if (pred.pmsStart > today) events.push({ date: pred.pmsStart, label: t('home.events.pms'), ic: 'waves' });
-  if (pred.nextPeriodStart >= today) events.push({ date: pred.nextPeriodStart, label: t('home.events.period'), ic: 'droplet' });
+  if (pred.nextPeriodStart >= today) events.push({ date: pred.nextPeriodStart, label: t(d.flags.withdrawalBleeds ? 'home.events.withdrawalBleed' : 'home.events.period'), ic: 'droplet' });
   events.sort((a, b) => (a.date < b.date ? -1 : 1));
   if (!events.length) return null;
   return card({
@@ -362,6 +366,10 @@ function pregnancyCard(d, ctx) {
   return card({
     class: 'hero',
     children: [
+      // A due date or LMP that cannot describe an ongoing pregnancy (future, or over 44 weeks).
+      p.issue
+        ? notice({ level: 'info', title: t(`pregnancy.invalid.${p.issue}`), text: t('pregnancy.invalid.text'), action: h('a', { class: 'btn btn--soft btn--sm', href: '#/settings/mode', text: t('pregnancy.invalid.action') }) })
+        : null,
       h('div', { class: 'preg' }, icon('baby', { size: 32 }), h('p', { class: 'preg__weeks', text: t('pregnancy.weeks', { weeks: p.weeks, days: p.days }) }), h('p', { class: 'muted', text: t('pregnancy.trimester', { n: p.trimester }) })),
       progressBar(p.progress, t('pregnancy.progress')),
       h('p', { class: 'hero__line' }, icon('calendar-check', { size: 16 }), h('span', { text: p.overdue ? t('pregnancy.overdue', { count: -p.daysToDue }) : t('pregnancy.dueIn', { date: fmtDate(p.dueDate, 'long'), count: p.daysToDue }) })),

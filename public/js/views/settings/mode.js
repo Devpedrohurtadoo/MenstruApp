@@ -8,6 +8,7 @@ import { openModal, confirmDialog } from '../../ui/modal.js';
 import { updateSettings, store, startPregnancy, endPregnancy, saveReminders } from '../../app.js';
 import { MODES, CONTRACEPTION } from '../../domain/catalog.js';
 import { defaultReminders } from '../../domain/reminders.js';
+import { pregnancyDateRange } from '../../domain/pregnancy.js';
 
 const MODE_ICONS = { track: 'calendar', conceive: 'sprout', avoid: 'shield', pregnant: 'baby', postpartum: 'heart-handshake', perimenopause: 'leaf' };
 
@@ -35,6 +36,7 @@ export function render(ctx) {
         title: t('settings.mode.pregnancy'),
         icon: 'baby',
         children: [
+          d.pregnancy.issue ? notice({ level: 'info', title: t(`pregnancy.invalid.${d.pregnancy.issue}`), text: t('pregnancy.invalid.text') }) : null,
           h('p', { text: t('pregnancy.weeks', { weeks: d.pregnancy.weeks, days: d.pregnancy.days }) }),
           h('p', { class: 'muted', text: t('settings.mode.dueDate', { date: fmtDate(d.pregnancy.dueDate, 'long') }) }),
           h('div', { class: 'btn-row' }, button({ label: t('settings.mode.editPregnancy'), icon: 'edit', variant: 'soft', onClick: () => pregnancyDialog() }), button({ label: t('settings.mode.endPregnancy'), variant: 'ghost', onClick: () => endPregnancyDialog() })),
@@ -90,6 +92,17 @@ export function render(ctx) {
     );
   }
 
+  if (settings.mode === 'perimenopause') {
+    const overAYear = Boolean(settings.menopause?.overAYear);
+    blocks.push(
+      card({
+        title: t('modes.perimenopause.title'),
+        icon: 'leaf',
+        children: toggle({ label: t('onboarding.overAYear'), description: t('onboarding.overAYearDesc'), checked: overAYear, onChange: (v) => updateSettings({ menopause: { overAYear: v } }) }),
+      }),
+    );
+  }
+
   if (settings.mode === 'avoid' || settings.mode === 'track' || settings.mode === 'postpartum') {
     const c = settings.contraception ?? { method: 'none' };
     blocks.push(
@@ -103,11 +116,13 @@ export function render(ctx) {
             value: c.method,
             allowNone: false,
             onChange: async (v) => {
-              await updateSettings({ contraception: { ...c, method: v } });
+              // The pill-free week only exists for the combined pill: other methods keep no regimen.
+              const { pillRegimen, ...rest } = c;
+              await updateSettings({ contraception: v === 'pill_combined' ? { ...rest, method: v, pillRegimen: pillRegimen ?? '21_7' } : { ...rest, method: v } });
               await ensureMethodReminder(v);
             },
           }),
-          c.method?.startsWith('pill')
+          c.method === 'pill_combined'
             ? chipGroup({ label: t('onboarding.pillRegimen'), options: ['21_7', '24_4', '28', 'continuous'].map((v) => ({ value: v, label: t(`contraception.regimen.${v}`) })), value: c.pillRegimen ?? '21_7', allowNone: false, onChange: (v) => updateSettings({ contraception: { ...c, pillRegimen: v } }) })
             : null,
           ['pill_combined', 'pill_progestin', 'patch', 'ring', 'injection', 'iud_hormonal', 'iud_copper', 'implant'].includes(c.method)
@@ -201,7 +216,7 @@ function pregnancyDialog() {
           draw();
         },
       }),
-      dateField('preg-date-s', t(`onboarding.pregDateLabel.${basis}`), date, (v) => (date = v), basis === 'due' ? { min: todayISO(), max: addDays(todayISO(), 300) } : { min: addDays(todayISO(), -300) }),
+      dateField('preg-date-s', t(`onboarding.pregDateLabel.${basis}`), date, (v) => (date = v), pregnancyDateRange(/** @type {'lmp' | 'due' | 'conception'} */ (basis), todayISO())),
       button({
         label: t('common.save'),
         variant: 'primary',

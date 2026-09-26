@@ -189,6 +189,9 @@ export async function render(ctx) {
   return h(
     'div',
     { class: 'view pregnancy' },
+    p.issue
+      ? notice({ level: 'info', title: t(`pregnancy.invalid.${p.issue}`), text: t('pregnancy.invalid.text'), action: h('a', { class: 'btn btn--soft btn--sm', href: '#/settings/mode', text: t('pregnancy.invalid.action') }) })
+      : null,
     h('p', { class: 'lead', text: `${t('pregnancy.weeks', { weeks: p.weeks, days: p.days })} · ${t('pregnancy.trimester', { n: p.trimester })}` }),
     weekCard,
     p.weeks >= 24 ? kickCard : null,

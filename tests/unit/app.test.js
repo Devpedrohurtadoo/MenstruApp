@@ -15,7 +15,7 @@ Object.assign(globalThis, {
 });
 
 const app = await import('../../public/js/app.js');
-const { store, createProfile, unlock, beginRecovery, lock, lockoutStatus, saveDoc, updateSettings, localRecords, applyRemoteRecords, sessionGuard, SessionChangedError } = app;
+const { store, createProfile, unlock, beginRecovery, lock, lockoutStatus, saveDoc, saveDay, updateSettings, localRecords, applyRemoteRecords, sessionGuard, SessionChangedError, daysAgo } = app;
 const { MAX_ATTEMPTS } = await import('../../public/js/security/lockout.js');
 const { mergeRecords } = await import('../../public/js/pwa/sync.js');
 const { buildShareSnapshot } = await import('../../public/js/pwa/share.js');
@@ -128,5 +128,35 @@ describe('share links', () => {
     expect(minimal).not.toHaveProperty('symptoms');
     expect(minimal).not.toHaveProperty('notes');
     expect(minimal.name).toBe('Otra');
+  });
+});
+
+describe('what the app tells the cycle engine', () => {
+  it('flags any bleeding after the user said a year had passed without periods', async () => {
+    await updateSettings({ mode: 'perimenopause', menopause: { overAYear: true } });
+    expect(store.get().derived?.notices.some((n) => n.id === 'postmenopausalBleeding')).toBe(false);
+    await saveDay(daysAgo(1), { flow: 'spotting' });
+    expect(store.get().derived?.notices.some((n) => n.id === 'postmenopausalBleeding')).toBe(true);
+    await saveDay(daysAgo(1), {});
+  });
+
+  it('does not take lochia after a birth for a period', async () => {
+    await updateSettings({ mode: 'postpartum', postpartum: { birthDate: daysAgo(10), breastfeeding: 'partial', periodReturned: true } });
+    for (let i = 9; i >= 5; i--) await saveDay(daysAgo(i), { flow: 'heavy' });
+    expect(store.get().derived?.analysis.periods).toEqual([]);
+    for (let i = 9; i >= 5; i--) await saveDay(daysAgo(i), {});
+    await updateSettings({ mode: 'track' });
+  });
+});
+
+describe('reminder texts', () => {
+  it('say when a titled reminder falls, and nothing of it in discreet mode', async () => {
+    const { renderText } = await import('../../public/js/pwa/notifications.js');
+    const at = (/** @type {string} */ shownOn, /** @type {string} */ title) => ({ key: 'k', reminderId: 'r', type: 'appointment', at: 0, date: shownOn, params: { title, date: '2026-03-02' } });
+    expect(renderText(at('2026-03-02', 'Dentista'), false).body).toBe('Dentista · hoy');
+    expect(renderText(at('2026-03-01', 'Dentista'), false).body).toBe('Dentista · mañana');
+    expect(renderText(at('2026-02-26', 'Dentista'), false).body).toBe('Dentista · el 2 de marzo');
+    expect(renderText(at('2026-02-26', ''), false).body).toBe('Tienes una cita el 2 de marzo.');
+    expect(JSON.stringify(renderText(at('2026-03-02', 'Dentista'), true))).not.toContain('Dentista');
   });
 });

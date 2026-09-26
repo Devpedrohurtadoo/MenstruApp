@@ -16,6 +16,26 @@ test('Luna answers with personal data and puts red flags first', async ({ page }
   await expect(reply.locator('p').first()).toContainText('112');
 });
 
+test('with the combined pill the app speaks of withdrawal bleeds and shows no fertile days', async ({ page }) => {
+  await onboard(page, { lock: 'none', lastPeriodDaysAgo: 10 });
+  await page.goto('/#/settings/mode');
+  // Only the combined pill asks for a pill-free week; the minipill is taken every day.
+  await page.getByRole('button', { name: /^Minipíldora/ }).click();
+  await expect(page.getByRole('group', { name: 'Pauta de la píldora' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Píldora combinada' }).click();
+  await expect(page.getByRole('group', { name: 'Pauta de la píldora' })).toBeVisible();
+
+  await page.goto('/#/home');
+  await expect(page.getByText(/^Próximo sangrado por privación/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Me ha venido el sangrado' })).toBeVisible();
+  await expect(page.getByText(/Próxima regla/)).toHaveCount(0);
+
+  await page.goto('/#/luna');
+  await page.fill('#luna-input', '¿estoy en mis días fértiles?');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.msg--luna').last()).toContainText('no hay una ovulación natural');
+});
+
 test('English everywhere, persisted after reload', async ({ page }) => {
   await onboard(page, { lang: 'en', lock: 'none', lastPeriodDaysAgo: 3 });
   await expect(page.getByRole('link', { name: 'Calendar' })).toBeVisible();

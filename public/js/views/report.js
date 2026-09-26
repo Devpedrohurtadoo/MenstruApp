@@ -84,7 +84,9 @@ export function buildReport(data, d, o) {
 
   pdf.text('Menstruapp', { size: 10, color: '#8a3b6b', bold: true });
   pdf.text(t('report.title'), { size: 20, bold: true, gap: 4 });
-  const who = o.name && d.profile.name ? `${d.profile.name}${d.age ? ` · ${t('report.age', { count: d.age })}` : ''}` : d.age ? t('report.age', { count: d.age }) : '';
+  // Only the birth year is known, so the age is one of two values.
+  const age = d.age === null ? '' : t('report.age', { min: d.age, max: d.age + 1 });
+  const who = [o.name ? d.profile.name : '', age].filter(Boolean).join(' · ');
   if (who) pdf.text(who, { size: 11 });
   pdf.text(t('report.range', { from: fmtDate(from, 'long'), to: fmtDate(today, 'long') }), { size: 10, color: '#6d5e7a' });
   pdf.text(t('report.mode', { mode: t(`modes.${d.settings.mode}.title`) }), { size: 10, color: '#6d5e7a', gap: 8 });

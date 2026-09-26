@@ -111,9 +111,11 @@ function dayCell(d, m, c) {
   const future = d > c.today;
   const parts = [fmtDate(d, 'weekday')];
   if (d === c.today) parts.push(t('calendar.a11y.today'));
-  if (m.period === 'logged') parts.push(t('calendar.a11y.period'));
+  // With the combined pill, patch or ring the bleeds are withdrawal bleeds, not periods.
+  const bleed = c.flags.withdrawalBleeds;
+  if (m.period === 'logged') parts.push(t(bleed ? 'calendar.a11y.bleed' : 'calendar.a11y.period'));
   if (m.period === 'estimated') parts.push(t('calendar.a11y.periodEstimated'));
-  if (m.period === 'predicted') parts.push(t('calendar.a11y.periodPredicted'));
+  if (m.period === 'predicted') parts.push(t(bleed ? 'calendar.a11y.bleedPredicted' : 'calendar.a11y.periodPredicted'));
   if (m.spotting) parts.push(t('flow.spotting'));
   if (m.fertility) parts.push(t(`calendar.a11y.fertility.${m.fertility}`));
   if (m.ovulation) parts.push(t(`calendar.a11y.ovulation.${m.ovulation}`));
@@ -210,12 +212,12 @@ function onGridKey(e, month, ctx) {
 
 /** @param {any} flags */
 function legend(flags) {
-  const items = [
-    ['period-logged', 'calendar.legend.period'],
-    ['period-predicted', 'calendar.legend.predicted'],
-  ];
+  const bleed = flags.withdrawalBleeds;
+  const items = [['period-logged', bleed ? 'calendar.legend.bleed' : 'calendar.legend.period']];
+  if (flags.predictions) items.push(['period-predicted', bleed ? 'calendar.legend.predictedBleed' : 'calendar.legend.predicted']);
   if (flags.fertility) items.push(['fertile', 'calendar.legend.fertile'], ['ovulation', 'calendar.legend.ovulation']);
-  if (flags.predictions) items.push(['pms', 'calendar.legend.pms']);
+  // There is no premenstrual phase without a natural cycle.
+  if (flags.predictions && !bleed) items.push(['pms', 'calendar.legend.pms']);
   items.push(['data', 'calendar.legend.data']);
   return h(
     'ul',

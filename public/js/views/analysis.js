@@ -25,7 +25,7 @@ export function render(ctx) {
     return h('div', { class: 'view analysis' }, card({ children: emptyState({ title: t('analysis.emptyTitle'), text: t('analysis.emptyText'), action: button({ label: t('home.fullLog'), variant: 'primary', onClick: () => ctx.openLog() }) }) }));
   }
 
-  if (!insightsCache || insightsCache.version !== version) insightsCache = { version, value: computeInsights(analysis, data.days) };
+  if (!insightsCache || insightsCache.version !== version) insightsCache = { version, value: computeInsights(analysis, data.days, { age: derived.age }) };
   const insights = insightsCache.value;
   const stats = analysis.stats;
   const young = (derived.age !== null && derived.age < 18) || (derived.age === null && settings.experience === 'new');
