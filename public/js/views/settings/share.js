@@ -23,6 +23,7 @@ export function render(ctx) {
           label: t('share.create'),
           icon: 'link',
           variant: 'primary',
+          fk: 'share-create',
           onClick: async () => {
             const { confirmIdentity } = await import('../security-flows.js');
             if (await confirmIdentity(t('share.reauth'))) createDialog(rerender);
@@ -42,16 +43,18 @@ export function render(ctx) {
                 'li',
                 null,
                 h('span', { class: 'dated-list__text' }, h('strong', { text: s.label || t('share.untitled') }), h('span', { class: 'muted small', text: `${s.scope.map((/** @type {string} */ x) => t(`share.scopes.${x}`)).join(', ')} · ${t('share.expires', { date: fmtDateTime(s.expiresAt) })}` })),
-                iconButton({ icon: 'copy', label: t('share.copyLink'), onClick: () => copy(shareUrl(s)) }),
+                iconButton({ icon: 'copy', label: t('share.copyLinkNamed', { label: s.label || t('share.untitled') }), onClick: () => copy(shareUrl(s)) }),
                 iconButton({
                   icon: 'delete',
-                  label: t('share.revoke'),
+                  label: t('share.revokeNamed', { label: s.label || t('share.untitled') }),
                   onClick: async () => {
                     const ok = await confirmDialog({ title: t('share.revoke'), message: t('share.revokeText'), confirmLabel: t('share.revoke'), danger: true });
                     if (!ok) return;
                     try {
                       await revokeShare(s.id);
                       toast(t('share.revoked'));
+                      // The row is gone: keep focus in the page, on the "create" button.
+                      /** @type {HTMLElement | null} */ (document.querySelector('[data-fk="share-create"]'))?.focus();
                     } catch {
                       // Only forgotten once the server confirmed it: it can be revoked again later.
                       toast(t('share.revokeFailed'), { type: 'error', duration: 8000 });

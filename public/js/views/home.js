@@ -50,21 +50,26 @@ export function render(ctx) {
   for (const n of derived.notices) {
     const key = `${n.id}:${today}`;
     if (n.level === 'info' && dismissed.has(key)) continue;
-    blocks.push(
-      notice({
-        level: n.level,
-        title: t(`notices.${n.id}.title`, n.params),
-        text: t(`notices.${n.id}.text`, n.params),
-        action: n.article ? h('a', { class: 'link', href: `#/learn/article/${n.article}`, text: t('common.learnMore') }) : null,
-        onDismiss:
-          n.level === 'info'
-            ? () => {
-                dismissed.add(key);
-                ctx.navigate(ctx.route.path || 'home', { replace: true });
-              }
-            : undefined,
-      }),
-    );
+    const box = notice({
+      level: n.level,
+      announceKey: key,
+      title: t(`notices.${n.id}.title`, n.params),
+      text: t(`notices.${n.id}.text`, n.params),
+      action: n.article ? h('a', { class: 'link', href: `#/learn/article/${n.article}`, text: t('common.learnMore') }) : null,
+      onDismiss:
+        n.level === 'info'
+          ? () => {
+              dismissed.add(key);
+              // Remove just this notice and move focus to what comes next (a full re-render
+              // would drop keyboard focus back to the top of the page).
+              const next = /** @type {HTMLElement | null} */ (box.nextElementSibling?.querySelector('a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])') ?? null);
+              box.remove();
+              if (next) next.focus();
+              else /** @type {HTMLElement | null} */ (document.getElementById('main'))?.focus();
+            }
+          : undefined,
+    });
+    blocks.push(box);
   }
 
   if (flags.pregnancy && derived.pregnancy) blocks.push(pregnancyCard(derived, ctx));

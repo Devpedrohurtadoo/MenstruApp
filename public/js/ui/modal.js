@@ -59,6 +59,10 @@ function setBackgroundInert(on) {
 export function openModal(opts) {
   const id = `modal-${++seq}`;
   const previousFocus = /** @type {HTMLElement | null} */ (document.activeElement);
+  // The opener may be re-created while the dialog is open (views re-render on data changes):
+  // remember how to find it again.
+  const returnKey = previousFocus?.dataset?.fk ?? '';
+  const returnId = previousFocus && previousFocus !== document.body ? previousFocus.id : '';
   const dismissible = opts.dismissible ?? true;
   /** @type {(value: any) => void} */
   let resolveClosed = () => {};
@@ -122,7 +126,11 @@ export function openModal(opts) {
       const finish = () => {
         root.remove();
         setBackgroundInert(stack.length > 0);
-        if (previousFocus && document.contains(previousFocus)) previousFocus.focus({ preventScroll: true });
+        const target =
+          previousFocus && document.contains(previousFocus)
+            ? previousFocus
+            : /** @type {HTMLElement | null} */ (returnKey ? document.querySelector(`[data-fk="${CSS.escape(returnKey)}"]`) : returnId ? document.getElementById(returnId) : null);
+        target?.focus({ preventScroll: true });
       };
       const reduce = document.documentElement.dataset.motion === 'reduce' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (reduce) finish();

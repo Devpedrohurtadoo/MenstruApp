@@ -1,11 +1,11 @@
 // First-run onboarding: privacy first, then mode, cycle basics, profile, protection and
 // reminders. Data from Menstruapp v2 (plain localStorage) is detected and imported encrypted.
 
-import { h, replace, announce } from '../core/dom.js';
+import { h, replace, announce, preservingFocus } from '../core/dom.js';
 import { t, setLanguage, getLanguage, LANGUAGES } from '../core/i18n.js';
 import { todayISO, addDays, isISODate, rangeISO } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
-import { button, segmented, stepper, toggle, chipGroup, notice } from '../ui/components.js';
+import { button, segmented, stepper, toggle, chipGroup, notice, rovingRadios } from '../ui/components.js';
 import { toast } from '../ui/toast.js';
 import { openModal } from '../ui/modal.js';
 import { celebrate } from '../ui/effects.js';
@@ -72,13 +72,16 @@ export function renderOnboarding(root, opts) {
     heading?.focus();
   };
 
-  const errorBox = () => h('p', { class: 'field__error', role: 'alert', hidden: true });
+  // Validation errors are announced by fail() and linked to the fields (aria-describedby);
+  // no role="alert" here, or they would be read twice.
+  const errorBox = () => h('p', { class: 'field__error', id: 'ob-error', hidden: true });
 
   const dateInput = (/** @type {string} */ id, /** @type {string | null} */ value, /** @type {(v: string | null) => void} */ onChange, /** @type {{ min?: string, max?: string }} */ range = {}) =>
     h('input', {
       type: 'date',
       class: 'input',
       id,
+      'aria-describedby': 'ob-error',
       value: value ?? '',
       max: range.max ?? todayISO(),
       min: range.min ?? '1990-01-01',
@@ -92,6 +95,7 @@ export function renderOnboarding(root, opts) {
     welcome: () => {
       const langSwitch = segmented({
         label: t('onboarding.language'),
+        key: 'lang',
         hideLabel: true,
         options: LANGUAGES.map((l) => ({ value: l.code, label: l.label })),
         value: getLanguage(),
@@ -142,7 +146,7 @@ export function renderOnboarding(root, opts) {
       title: t('onboarding.modeTitle'),
       body: [
         h('p', { class: 'lead', text: t('onboarding.modeLead') }),
-        h(
+        rovingRadios(h(
           'div',
           { class: 'mode-grid', role: 'radiogroup', 'aria-label': t('onboarding.modeTitle') },
           MODES.map((m) =>
@@ -152,6 +156,7 @@ export function renderOnboarding(root, opts) {
                 type: 'button',
                 role: 'radio',
                 'aria-checked': String(s.mode === m),
+                dataset: { fk: `mode-${m}` },
                 class: ['mode-card', s.mode === m ? 'is-on' : ''],
                 onClick: () => {
                   s.mode = m;
@@ -163,7 +168,7 @@ export function renderOnboarding(root, opts) {
               h('span', { class: 'mode-card__desc', text: t(`modes.${m}.desc`) }),
             ),
           ),
-        ),
+        )),
       ],
       valid: () => Boolean(s.mode),
     }),
@@ -226,11 +231,11 @@ export function renderOnboarding(root, opts) {
                 ['today', todayISO()],
                 ['yesterday', addDays(todayISO(), -1)],
               ].map(([key, iso]) =>
-                h('button', { type: 'button', class: ['chip', s.lastPeriod === iso ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriod === iso), text: t(`common.${key}`), onClick: () => { s.lastPeriod = iso; s.lastPeriodUnknown = false; render(); } }),
-              ), h('button', { type: 'button', class: ['chip', s.lastPeriodUnknown ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriodUnknown), text: t('onboarding.dontRemember'), onClick: () => { s.lastPeriodUnknown = !s.lastPeriodUnknown; if (s.lastPeriodUnknown) s.lastPeriod = null; render(); } })),
+                h('button', { type: 'button', class: ['chip', s.lastPeriod === iso ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriod === iso), dataset: { fk: `quick-${key}` }, text: t(`common.${key}`), onClick: () => { s.lastPeriod = iso; s.lastPeriodUnknown = false; render(); } }),
+              ), h('button', { type: 'button', class: ['chip', s.lastPeriodUnknown ? 'chip--on' : ''], 'aria-pressed': String(s.lastPeriodUnknown), dataset: { fk: 'quick-unknown' }, text: t('onboarding.dontRemember'), onClick: () => { s.lastPeriodUnknown = !s.lastPeriodUnknown; if (s.lastPeriodUnknown) s.lastPeriod = null; render(); } })),
             ),
-            stepper({ label: t('onboarding.periodLength'), value: s.periodLength, min: 1, max: 12, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.periodLength = v) }),
-            stepper({ label: t('onboarding.cycleLength'), value: s.cycleLength, min: 18, max: 60, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.cycleLength = v) }),
+            stepper({ label: t('onboarding.periodLength'), key: 'period-length', value: s.periodLength, min: 1, max: 12, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.periodLength = v) }),
+            stepper({ label: t('onboarding.cycleLength'), key: 'cycle-length', value: s.cycleLength, min: 18, max: 60, unit: t('common.daysShort'), allowUnknown: true, onChange: (v) => (s.cycleLength = v) }),
             h('p', { class: 'field__hint', text: t('onboarding.cycleLengthHint') }),
           );
         }
@@ -310,13 +315,13 @@ export function renderOnboarding(root, opts) {
           yearInput,
           h('p', { class: 'field__hint', text: t('onboarding.birthYearHint') }),
           h('span', { class: 'field__label', id: 'avatar-label', text: t('onboarding.avatar') }),
-          h(
+          rovingRadios(h(
             'div',
             { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'avatar-label' },
-            AVATARS.map((a) =>
-              h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.avatar === a), 'aria-label': a, class: ['avatar-option', s.avatar === a ? 'is-on' : ''], text: a, onClick: () => { s.avatar = a; render(); } }),
+            AVATARS.map((a, i) =>
+              h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.avatar === a), 'aria-label': a, dataset: { fk: `avatar-${i}` }, class: ['avatar-option', s.avatar === a ? 'is-on' : ''], text: a, onClick: () => { s.avatar = a; render(); } }),
             ),
-          ),
+          )),
         ],
       };
     },
@@ -327,8 +332,8 @@ export function renderOnboarding(root, opts) {
       const inputs = [];
       if (s.lock !== 'none') {
         const isPin = s.lock === 'pin';
-        const a = h('input', { type: 'password', class: 'input', id: 'ob-secret', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret, onInput: (/** @type {Event} */ e) => (s.secret = /** @type {HTMLInputElement} */ (e.target).value) });
-        const b = h('input', { type: 'password', class: 'input', id: 'ob-secret2', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret2, onInput: (/** @type {Event} */ e) => (s.secret2 = /** @type {HTMLInputElement} */ (e.target).value) });
+        const a = h('input', { type: 'password', class: 'input', id: 'ob-secret', 'aria-describedby': 'ob-error', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret, onInput: (/** @type {Event} */ e) => (s.secret = /** @type {HTMLInputElement} */ (e.target).value) });
+        const b = h('input', { type: 'password', class: 'input', id: 'ob-secret2', 'aria-describedby': 'ob-error', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret2, onInput: (/** @type {Event} */ e) => (s.secret2 = /** @type {HTMLInputElement} */ (e.target).value) });
         inputs.push(
           // Lets a password manager file the secret under a recognizable account name.
           h('input', { type: 'text', autocomplete: 'username', value: s.name.trim() || 'Menstruapp', hidden: true, readOnly: true, tabIndex: -1 }),
@@ -530,13 +535,17 @@ export function renderOnboarding(root, opts) {
   // Kept only until the "done" screen is left, so biometrics can be enabled right away.
   let pendingSecret = '';
 
-  const render = () => {
+  const render = () => preservingFocus(() => renderStep());
+  const renderStep = () => {
     const name = STEPS[s.step];
     const view = views[/** @type {keyof typeof views} */ (name)]();
     const isLast = s.step === STEPS.length - 1;
+    // "Step N of 6" as real text (an aria-label on a plain div is not exposed), linked to the
+    // heading that receives focus on every step.
     const progress = h(
       'div',
-      { class: 'steps', 'aria-label': t('onboarding.progress', { current: s.step + 1, total: STEPS.length }) },
+      { class: 'steps' },
+      h('span', { class: 'sr-only', id: 'ob-progress', text: t('onboarding.progress', { current: s.step + 1, total: STEPS.length }) }),
       STEPS.map((_, i) => h('span', { class: ['steps__dot', i <= s.step ? 'is-on' : ''], 'aria-hidden': 'true' })),
     );
     const custom = /** @type {any} */ (view).footer;
@@ -558,7 +567,7 @@ export function renderOnboarding(root, opts) {
         'div',
         { class: 'onboarding__inner' },
         s.step === 0 ? brandMark() : progress,
-        h('h1', { class: 'onboarding__title', tabIndex: -1, text: view.title }),
+        h('h1', { class: 'onboarding__title', tabIndex: -1, 'aria-describedby': s.step === 0 ? null : 'ob-progress', text: view.title }),
         // A real form: Enter moves to the next step and password managers see the new secret.
         h(
           'form',

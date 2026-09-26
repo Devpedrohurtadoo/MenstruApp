@@ -1,6 +1,6 @@
 import { h } from '../../core/dom.js';
-import { t, fmtDate } from '../../core/i18n.js';
-import { todayISO, isISODate, isTime } from '../../core/dates.js';
+import { t, fmtDate, fmtTime } from '../../core/i18n.js';
+import { todayISO, isISODate, isTime, localTimestamp } from '../../core/dates.js';
 import { uid } from '../../core/store.js';
 import { icon } from '../../ui/icons.js';
 import { button, card, toggle, notice, iconButton, chipGroup } from '../../ui/components.js';
@@ -46,10 +46,10 @@ export async function render(ctx) {
           h(
             'div',
             { class: 'reminder-row__opts' },
-            h('label', { class: 'sr-only', for: `rt-${r.id}`, text: t('settings.reminders.time') }),
-            h('input', { type: 'time', class: 'input input--short', id: `rt-${r.id}`, value: r.time, onChange: (/** @type {Event} */ e) => { const v = /** @type {HTMLInputElement} */ (e.target).value; if (isTime(v)) update(r.id, { time: v }); } }),
+            h('label', { class: 'sr-only', for: `rt-${r.id}`, text: t('settings.reminders.timeFor', { name: t(`reminders.types.${r.type}.title`) }) }),
+            h('input', { type: 'time', class: 'input input--short', id: `rt-${r.id}`, dataset: { fk: `rt-${r.id}` }, value: r.time, onChange: (/** @type {Event} */ e) => { const v = /** @type {HTMLInputElement} */ (e.target).value; if (isTime(v)) update(r.id, { time: v }); } }),
             r.type === 'period_soon' || r.type === 'period_late' || r.type === 'injection'
-              ? h('label', { class: 'inline-field' }, h('span', { text: t(r.type === 'period_late' ? 'settings.reminders.daysAfter' : 'settings.reminders.daysBefore') }), h('input', { type: 'number', class: 'input input--tiny', min: r.type === 'period_late' ? 1 : 0, max: 14, value: r.daysBefore ?? 2, onChange: (/** @type {Event} */ e) => { const n = Number(/** @type {HTMLInputElement} */ (e.target).value); if (Number.isInteger(n) && n >= 0 && n <= 14) update(r.id, { daysBefore: n }); } }))
+              ? h('label', { class: 'inline-field' }, h('span', { text: t(r.type === 'period_late' ? 'settings.reminders.daysAfter' : 'settings.reminders.daysBefore') }), h('input', { type: 'number', class: 'input input--tiny', dataset: { fk: `rd-${r.id}` }, 'aria-label': t('settings.reminders.daysFor', { name: t(`reminders.types.${r.type}.title`) }), min: r.type === 'period_late' ? 1 : 0, max: 14, value: r.daysBefore ?? 2, onChange: (/** @type {Event} */ e) => { const n = Number(/** @type {HTMLInputElement} */ (e.target).value); if (Number.isInteger(n) && n >= 0 && n <= 14) update(r.id, { daysBefore: n }); } }))
               : null,
           ),
         ),
@@ -68,9 +68,17 @@ export async function render(ctx) {
                   'li',
                   null,
                   icon(r.type === 'appointment' ? 'stethoscope' : 'bell', { size: 18 }),
-                  h('span', { class: 'dated-list__text' }, h('strong', { text: r.title || t(`reminders.types.${r.type}.title`) }), h('span', { class: 'muted small', text: `${r.date ? fmtDate(r.date, 'medium') : t('settings.reminders.every')} · ${r.time} · ${t(`settings.reminders.repeat.${r.repeat ?? 'none'}`)}` })),
-                  toggle({ label: t('common.enabled'), checked: r.enabled, onChange: (v) => update(r.id, { enabled: v }) }),
-                  iconButton({ icon: 'delete', label: t('common.delete'), onClick: () => saveReminders(items.filter((x) => x.id !== r.id)) }),
+                  h('span', { class: 'dated-list__text' }, h('strong', { text: r.title || t(`reminders.types.${r.type}.title`) }), h('span', { class: 'muted small', text: `${r.date ? fmtDate(r.date, 'medium') : t('settings.reminders.every')} · ${fmtTime(localTimestamp(todayISO(), r.time))} · ${t(`settings.reminders.repeat.${r.repeat ?? 'none'}`)}` })),
+                  // Each row's controls say which reminder they act on.
+                  toggle({ label: t('common.enabled'), ariaLabel: t('settings.reminders.enableNamed', { title: r.title || t(`reminders.types.${r.type}.title`) }), fk: `rc-on-${r.id}`, checked: r.enabled, onChange: (v) => update(r.id, { enabled: v }) }),
+                  iconButton({
+                    icon: 'delete',
+                    label: t('settings.reminders.deleteNamed', { title: r.title || t(`reminders.types.${r.type}.title`) }),
+                    onClick: async () => {
+                      await saveReminders(items.filter((x) => x.id !== r.id));
+                      toast(t('settings.reminders.deleted'), { action: { label: t('common.undo'), onClick: () => saveReminders([...(ctx.state.data?.docs.reminders?.items ?? []).filter((x) => x.id !== r.id), r]) } });
+                    },
+                  }),
                 ),
               ),
             )

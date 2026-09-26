@@ -43,6 +43,10 @@
   --accent: #e0668f;
   --on-accent: #1d1024;
   --accent-text: #e0668f;
+  /* Accent for non-text marks (focus/selection rings, switches, charts): ≥3:1 on every surface. */
+  --accent-ui: #e0668f;
+  /* What primary buttons mix in on hover, so their text keeps its contrast (set by theme.js). */
+  --hover-mix: #000;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --accent-softer: color-mix(in oklab, var(--accent) 9%, transparent);
 
@@ -79,7 +83,7 @@
   --content-w: 680px;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
-  --bg-dim: 0.35;
+  --bg-dim: 0.75;
   --bg-color: #241a2e;
 }
 
@@ -93,16 +97,17 @@
   --surface-solid: #221a2c;
   --surface-raised: #2a2035;
   --border: rgb(255 255 255 / 0.11);
-  --border-strong: rgb(255 255 255 / 0.22);
+  --border-strong: rgb(255 255 255 / 0.38);
   --text: #f7f0fa;
   --text-2: #d6c9e0;
   --muted: #ab9bb9;
   --field: rgb(255 255 255 / 0.07);
-  --field-border: rgb(255 255 255 / 0.16);
+  --field-border: rgb(255 255 255 / 0.38);
   --overlay: rgb(8 4 12 / 0.62);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.25);
   --glass: rgb(26 19 34 / 0.72);
   --bg-veil: 0 0 0;
+  --c-danger-text: #ff8fa8;
 }
 
 [data-theme='light'] {
@@ -114,12 +119,12 @@
   --surface-solid: #ffffff;
   --surface-raised: #ffffff;
   --border: #eadcef;
-  --border-strong: #cdb9d6;
+  --border-strong: #948199;
   --text: #2a1f33;
   --text-2: #493b55;
   --muted: #6b5c78;
   --field: #ffffff;
-  --field-border: #d9c8e0;
+  --field-border: #948199;
   --overlay: rgb(40 20 50 / 0.42);
   --shadow: 0 1px 2px rgb(60 20 70 / 0.06), 0 10px 28px rgb(60 20 70 / 0.08);
   --glass: rgb(251 247 251 / 0.8);
@@ -128,6 +133,12 @@
   --c-fertile: #13806c;
   --c-ovulation: #0f7563;
   --c-pms: #b06f0e;
+  --c-danger-text: #b8284c;
+}
+
+/* Over a photo, small grey text is not readable enough: use the stronger secondary colour. */
+[data-bg='image'] {
+  --muted: var(--text-2);
 }
 
 [data-contrast='more'] {
@@ -154,6 +165,7 @@ html {
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   scroll-padding-top: calc(var(--topbar-h) + var(--safe-t) + 8px);
+  scroll-padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px);
 }
 
 body {
@@ -275,6 +287,8 @@ textarea {
   color: inherit;
 }
 
+label:has(+ input[type='file']:focus-visible),
+label:has(input[type='file']:focus-visible),
 :focus-visible {
   outline: 3px solid var(--accent-text);
   outline-offset: 2px;
@@ -625,7 +639,7 @@ hr {
   box-shadow: 0 6px 18px color-mix(in oklab, var(--accent) 30%, transparent);
 }
 .btn--primary:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--accent) 88%, #000);
+  background: color-mix(in oklab, var(--accent) 88%, var(--hover-mix));
 }
 .btn--secondary {
   background: var(--surface-2);
@@ -694,7 +708,7 @@ hr {
   color: var(--on-accent);
 }
 .icon-btn--primary:hover {
-  background: color-mix(in oklab, var(--accent) 88%, #000);
+  background: color-mix(in oklab, var(--accent) 88%, var(--hover-mix));
 }
 .icon-btn.is-hidden {
   visibility: hidden;
@@ -707,6 +721,7 @@ hr {
 .link-btn {
   border: 0;
   background: none;
+  min-height: 44px;
   padding: 6px 2px;
   color: var(--accent-text);
   font-weight: 600;
@@ -715,7 +730,7 @@ hr {
   text-underline-offset: 3px;
 }
 .link-btn--danger {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 .spinner {
@@ -740,10 +755,10 @@ hr {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 7px 14px;
   border-radius: var(--r-full);
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   background: var(--surface);
   color: var(--text);
   font-size: 0.9rem;
@@ -759,7 +774,7 @@ hr {
 }
 .chip--on {
   background: var(--accent-soft);
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
   font-weight: 650;
 }
 .chip--on::before {
@@ -767,7 +782,7 @@ hr {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-ui);
 }
 .chip--period.chip--on {
   background: var(--c-period-soft);
@@ -801,7 +816,7 @@ hr {
   padding: 4px;
   border-radius: var(--r-md);
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
 }
 .segmented__opt {
   flex: 1 1 auto;
@@ -809,7 +824,7 @@ hr {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 12px;
   border: 0;
   border-radius: var(--r-sm);
@@ -823,7 +838,9 @@ hr {
 .segmented__opt.is-on {
   background: var(--surface-raised);
   color: var(--text);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  box-shadow:
+    inset 0 0 0 2px var(--accent-ui),
+    0 1px 4px rgb(0 0 0 / 0.15);
 }
 [data-theme='dark'] .segmented__opt.is-on {
   background: color-mix(in oklab, var(--accent) 30%, var(--surface-solid));
@@ -882,7 +899,7 @@ hr {
   transition: transform var(--dur) var(--ease-out), background-color var(--dur) var(--ease);
 }
 .switch__input:checked + .switch__track {
-  background: var(--accent);
+  background: var(--accent-ui);
   border-color: var(--accent);
 }
 .switch__input:checked + .switch__track .switch__thumb {
@@ -931,7 +948,7 @@ hr {
 }
 .field__error {
   font-size: 0.87rem;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   font-weight: 600;
 }
 [data-theme='dark'] .field__error {
@@ -950,7 +967,7 @@ hr {
 }
 .input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .input[aria-invalid='true'] {
@@ -979,7 +996,7 @@ hr {
 }
 .range {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: var(--accent-ui);
 }
 .color-input {
   width: 48px;
@@ -1007,7 +1024,7 @@ hr {
   margin-top: 4px;
   width: 20px;
   height: 20px;
-  accent-color: var(--accent);
+  accent-color: var(--accent-ui);
   flex: none;
 }
 
@@ -1092,6 +1109,9 @@ hr {
   border: 1px solid var(--border);
   overflow: hidden;
 }
+.list > :focus-visible {
+  outline-offset: -3px;
+}
 .card .list {
   background: transparent;
   border: 0;
@@ -1147,7 +1167,7 @@ hr {
 }
 .list-item--danger,
 .list-item--danger .list-item__icon {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 .badge {
@@ -1227,9 +1247,9 @@ hr {
   color: var(--text-2);
 }
 .notice__close {
-  width: 32px;
-  height: 32px;
-  margin: -4px -4px 0 0;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px 0 0;
 }
 .notice--consult {
   border-color: color-mix(in oklab, var(--c-warn) 45%, var(--border));
@@ -1302,7 +1322,7 @@ hr {
 .progress__bar {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, #fff), var(--accent));
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent-ui) 70%, #fff), var(--accent-ui));
   transition: width var(--dur-slow) var(--ease-out);
 }
 
@@ -1530,7 +1550,7 @@ hr {
   color: var(--text-2);
 }
 .lock__profile.is-active {
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
 }
 .lock__profile-name {
   font-size: 0.8rem;
@@ -1550,13 +1570,13 @@ hr {
   transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .lock__dot.is-filled {
-  background: var(--accent);
+  background: var(--accent-ui);
   border-color: var(--accent);
   transform: scale(1.1);
 }
 .lock__error {
   min-height: 1.4em;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   font-weight: 650;
 }
 [data-theme='dark'] .lock__error {
@@ -1661,7 +1681,7 @@ hr {
   transition: background-color var(--dur) var(--ease);
 }
 .steps__dot.is-on {
-  background: var(--accent);
+  background: var(--accent-ui);
 }
 .promise-list {
   list-style: none;
@@ -1707,7 +1727,7 @@ hr {
   border-color: var(--border-strong);
 }
 .mode-card.is-on {
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
   background: var(--accent-softer);
 }
 .mode-card__icon {
@@ -1747,7 +1767,7 @@ hr {
   place-items: center;
 }
 .avatar-option.is-on {
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
   background: var(--accent-soft);
 }
 .reminder-choice {
@@ -1844,7 +1864,7 @@ hr {
 }
 .ring__progress {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--accent-ui);
   stroke-width: 4;
   stroke-linecap: round;
   opacity: 0.55;
@@ -1853,7 +1873,7 @@ hr {
 }
 .ring__today {
   fill: var(--surface-raised);
-  stroke: var(--accent);
+  stroke: var(--accent-ui);
   stroke-width: 5;
   filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.35));
 }
@@ -2028,16 +2048,22 @@ hr {
   transform: scale(0.92);
 }
 .cal__day.is-other {
-  opacity: 0.38;
+  color: var(--muted);
+  font-weight: 500;
 }
+/* Fertility levels: a tint plus a ring whose thickness shows the level (the tint alone is too
+   faint to tell states apart). */
 .cal__day.is-fertile-medium {
   background: var(--c-fertile-soft);
+  box-shadow: inset 0 0 0 2px var(--c-fertile);
 }
 .cal__day.is-fertile-high {
   background: color-mix(in oklab, var(--c-fertile) 34%, transparent);
+  box-shadow: inset 0 0 0 3px var(--c-fertile);
 }
 .cal__day.is-fertile-low {
   background: color-mix(in oklab, var(--c-fertile) 12%, transparent);
+  box-shadow: inset 0 0 0 1px var(--c-fertile);
 }
 .cal__day.is-pms::after {
   content: '';
@@ -2055,6 +2081,7 @@ hr {
 }
 .cal__day.is-period-estimated {
   background: var(--c-period-soft);
+  border: 2px dotted var(--c-period);
 }
 .cal__day.is-period-predicted {
   border: 2px dashed var(--c-period);
@@ -2062,9 +2089,18 @@ hr {
 .cal__day.is-spotting:not(.is-period-logged) {
   box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--c-period) 55%, transparent);
 }
-.cal__day.is-today {
-  outline: 3px solid var(--accent);
-  outline-offset: 1px;
+.cal__day.is-today::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-ui);
+  pointer-events: none;
+}
+/* Keyboard focus must look different from the "today" ring. */
+.cal__day:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 5px;
 }
 .cal__day.is-ovulation {
   border-color: var(--c-ovulation);
@@ -2085,7 +2121,7 @@ hr {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-ui);
 }
 .cal__day.is-period-logged .cal__dot {
   background: #fff;
@@ -2135,7 +2171,7 @@ hr {
 .legend__swatch--data {
   width: 6px;
   height: 6px;
-  background: var(--accent);
+  background: var(--accent-ui);
 }
 
 .cycle-list {
@@ -2292,7 +2328,7 @@ hr {
   fill: var(--c-fertile-soft);
 }
 .chart__bar {
-  fill: var(--accent);
+  fill: var(--accent-ui);
 }
 .chart__bar--muted {
   fill: var(--border-strong);
@@ -2314,13 +2350,13 @@ hr {
 }
 .chart__line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--accent-ui);
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 .chart__dot {
-  fill: var(--accent);
+  fill: var(--accent-ui);
 }
 .chart__dot--flag {
   fill: var(--c-warn);
@@ -2376,9 +2412,13 @@ hr {
   text-align: center;
   padding: 8px 4px;
   border-radius: var(--r-xs);
-  background: color-mix(in oklab, var(--accent) calc(var(--v, 0) * 70%), var(--surface-2));
+  background: color-mix(in oklab, var(--accent) calc(var(--v, 0) * var(--heat-max, 70%)), var(--surface-2));
   font-variant-numeric: tabular-nums;
   font-weight: 650;
+}
+/* In the dark theme a stronger tint would make the (light) numbers unreadable. */
+[data-theme='dark'] .heat__cell {
+  --heat-max: 50%;
 }
 .hbars {
   list-style: none;
@@ -2404,7 +2444,7 @@ hr {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--accent);
+  background: var(--accent-ui);
 }
 .hbars__value {
   color: var(--muted);
@@ -2439,7 +2479,7 @@ hr {
   border: 1px solid var(--field-border);
 }
 .search:focus-within {
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .search .icon {
@@ -2499,7 +2539,7 @@ hr {
   transition: transform var(--dur-fast) var(--ease), border-color var(--dur) var(--ease);
 }
 .cat:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-ui);
 }
 .cat__icon {
   color: var(--accent-text);
@@ -2587,7 +2627,7 @@ hr {
   background: color-mix(in oklab, var(--c-danger) 8%, transparent);
 }
 .consult--urgent h2 {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 [data-theme='dark'] .consult--urgent h2 {
   color: #ff8fa8;
@@ -2745,6 +2785,10 @@ hr {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
+.chat__form:focus-within {
+  border-color: var(--accent-ui);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .chat__input {
   flex: 1;
   min-height: 44px;
@@ -2812,8 +2856,8 @@ hr {
   color: var(--text);
 }
 .bg-preset.is-on {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent);
+  border-color: var(--accent-ui);
+  box-shadow: 0 0 0 2px var(--accent-ui);
 }
 .bg-preset__label {
   font-size: 0.75rem;
@@ -2900,7 +2944,12 @@ hr {
   flex: none;
 }
 .dated-list .switch__text {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .about-head {
   display: grid;
@@ -2962,6 +3011,7 @@ hr {
 }
 .calc__key--op {
   background: #f1a33b;
+  color: #1c1c1e;
 }
 .calc__key--wide {
   grid-column: span 2;
@@ -3096,15 +3146,46 @@ hr {
   .chip--on,
   .segmented__opt.is-on,
   .mode-card.is-on,
-  .cal__day.is-today,
-  .swatch.is-on {
+  .swatch.is-on,
+  .bg-preset.is-on,
+  .avatar-option.is-on,
+  .lock__profile.is-active {
     outline: 3px solid Highlight;
+  }
+  .cal__day.is-today::before {
+    border-color: Highlight;
   }
   .cal__day.is-period-logged {
     border: 3px solid CanvasText;
   }
+  .cal__day.is-period-estimated,
+  .cal__day.is-period-predicted {
+    border: 2px dashed CanvasText;
+  }
+  .cal__day.is-fertile-low,
+  .cal__day.is-fertile-medium,
+  .cal__day.is-fertile-high {
+    border: 2px dotted CanvasText;
+  }
   .switch__track {
     border: 2px solid CanvasText;
+  }
+  .switch__input:checked + .switch__track {
+    background: Highlight;
+  }
+  .switch__input:checked + .switch__track .switch__thumb {
+    background: HighlightText;
+  }
+  .input:focus,
+  .chat__form:focus-within {
+    outline: 3px solid Highlight;
+  }
+  .lock__dot {
+    border: 2px solid CanvasText;
+  }
+  .lock__dot.is-filled,
+  .progress__bar {
+    background: CanvasText;
   }
 }
 

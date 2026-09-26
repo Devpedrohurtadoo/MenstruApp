@@ -138,7 +138,7 @@ export async function render(ctx) {
       stats.count >= 2
         ? h('p', { class: 'hero__line', text: t('pregnancy.contractions.stats', { count: stats.count, duration: stats.avgDurationSec ?? 0, interval: fmtNumber(stats.avgIntervalMin ?? 0) }) })
         : null,
-      stats.pattern511 ? notice({ level: 'urgent', title: t('pregnancy.contractions.pattern'), text: t('pregnancy.contractions.patternText') }) : null,
+      stats.pattern511 ? notice({ level: 'urgent', announceKey: 'contractions-511', title: t('pregnancy.contractions.pattern'), text: t('pregnancy.contractions.patternText') }) : null,
       recentContractions.length
         ? h(
             'ul',
@@ -167,8 +167,8 @@ export async function render(ctx) {
       h(
         'div',
         { class: 'btn-row' },
-        button({ label: t('pregnancy.prevWeek'), icon: 'chevron-left', variant: 'ghost', size: 'sm', disabled: noteWeek <= 4, onClick: () => { noteWeek--; rerender(); } }),
-        button({ label: t('pregnancy.nextWeek'), iconAfter: 'chevron-right', variant: 'ghost', size: 'sm', disabled: noteWeek >= 42, onClick: () => { noteWeek++; rerender(); } }),
+        button({ label: t('pregnancy.prevWeek'), icon: 'chevron-left', variant: 'ghost', size: 'sm', fk: noteWeek - 1 <= 4 ? 'preg-week-edge' : 'preg-prev', disabled: noteWeek <= 4, onClick: () => { noteWeek--; rerender(); } }),
+        button({ label: t('pregnancy.nextWeek'), iconAfter: 'chevron-right', variant: 'ghost', size: 'sm', fk: noteWeek + 1 >= 42 ? 'preg-week-edge' : 'preg-next', disabled: noteWeek >= 42, onClick: () => { noteWeek++; rerender(); } }),
       ),
     ],
   });

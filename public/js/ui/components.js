@@ -1,8 +1,8 @@
 // Reusable, accessible UI building blocks.
 
-import { h, s, replace } from '../core/dom.js';
+import { h, s, replace, announce } from '../core/dom.js';
 import { icon } from './icons.js';
-import { t } from '../core/i18n.js';
+import { t, fmtNumber } from '../core/i18n.js';
 import { clamp } from '../core/store.js';
 
 let idSeq = 0;
@@ -80,7 +80,8 @@ export function chip(o) {
  * Single- or multi-select chip group with internal state.
  * @template {string | number} V
  * @param {{ label: string, options: Array<{ value: V, label: string, icon?: string, tone?: string }>, value: V | V[] | null | undefined,
- *   multiple?: boolean, allowNone?: boolean, onChange: (value: any) => void, hideLabel?: boolean, id?: string }} o
+ *   multiple?: boolean, allowNone?: boolean, onChange: (value: any) => void, hideLabel?: boolean, id?: string, key?: string }} o
+ *   `key`: stable (language-independent) name used to find the focused chip again after a re-render.
  */
 export function chipGroup(o) {
   const id = o.id ?? nextId('cg');
@@ -94,7 +95,7 @@ export function chipGroup(o) {
           label: opt.label,
           icon: opt.icon,
           tone: opt.tone,
-          fk: `cg-${o.label}-${String(opt.value)}`,
+          fk: `cg-${o.key ?? o.label}-${String(opt.value)}`,
           selected,
           onClick: () => {
             if (o.multiple) {
@@ -104,8 +105,9 @@ export function chipGroup(o) {
               current = selected && o.allowNone !== false ? null : opt.value;
             }
             render();
-            o.onChange(current);
+            // Refocus before notifying: the parent may re-render and looks the focused chip up again.
             /** @type {HTMLElement | null} */ (wrap.children[o.options.indexOf(opt)])?.focus();
+            o.onChange(current);
           },
         });
       }),
@@ -121,9 +123,34 @@ export function chipGroup(o) {
 }
 
 /**
+ * Keyboard pattern of a radio group (WAI-ARIA): one tab stop (the checked option), arrow keys
+ * and Home/End move to and select the next option.
+ * @param {HTMLElement} group element with role="radiogroup" whose options have role="radio"
+ */
+export function rovingRadios(group) {
+  const radios = () => /** @type {HTMLElement[]} */ ([...group.querySelectorAll('[role="radio"]')]);
+  const list = radios();
+  const checked = list.find((r) => r.getAttribute('aria-checked') === 'true') ?? list[0];
+  for (const r of list) r.tabIndex = r === checked ? 0 : -1;
+  group.addEventListener('keydown', (e) => {
+    const all = radios();
+    const i = all.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    if (i < 0) return;
+    const next = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: all.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const target = all[(next + all.length) % all.length];
+    target.focus();
+    target.click();
+  });
+  return group;
+}
+
+/**
  * Segmented control (one of a few options).
  * @template {string | number} V
- * @param {{ label: string, options: Array<{ value: V, label: string, icon?: string }>, value: V, onChange: (v: V) => void, hideLabel?: boolean }} o
+ * @param {{ label: string, options: Array<{ value: V, label: string, icon?: string }>, value: V, onChange: (v: V) => void, hideLabel?: boolean, key?: string }} o
+ *   `key`: stable (language-independent) name used to find the focused option again after a re-render.
  */
 export function segmented(o) {
   const id = nextId('seg');
@@ -141,17 +168,15 @@ export function segmented(o) {
             // Keep the group reachable with Tab even when nothing is selected yet.
             tabIndex: opt.value === current || (idx === 0 && !o.options.some((x) => x.value === current)) ? 0 : -1,
             class: ['segmented__opt', opt.value === current ? 'is-on' : ''],
-            dataset: { fk: `seg-${o.label}-${String(opt.value)}` },
+            dataset: { fk: `seg-${o.key ?? o.label}-${String(opt.value)}` },
             onClick: () => select(opt.value),
             onKeydown: (/** @type {KeyboardEvent} */ e) => {
               const i = o.options.findIndex((x) => x.value === current);
-              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                select(o.options[(i + 1) % o.options.length].value, true);
-              } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                select(o.options[(i - 1 + o.options.length) % o.options.length].value, true);
-              }
+              const n = o.options.length;
+              const next = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[e.key];
+              if (next === undefined) return;
+              e.preventDefault();
+              select(o.options[(next + n) % n].value, true);
             },
           },
           opt.icon ? icon(opt.icon, { size: 16 }) : null,
@@ -161,10 +186,12 @@ export function segmented(o) {
     );
   /** @param {V} v @param {boolean} [focus] */
   const select = (v, focus = false) => {
+    const hadFocus = group.contains(document.activeElement);
     current = v;
     render();
+    // Keep focus on the (re-created) checked option, then notify: the parent may re-render too.
+    if (focus || hadFocus) /** @type {HTMLElement | null} */ (group.querySelector('[aria-checked="true"]'))?.focus();
     o.onChange(v);
-    if (focus) /** @type {HTMLElement | null} */ (group.querySelector('[aria-checked="true"]'))?.focus();
   };
   render();
   return h('div', { class: 'field' }, h('span', { class: ['field__label', o.hideLabel ? 'sr-only' : ''], id: `${id}-label`, text: o.label }), group);
@@ -172,7 +199,8 @@ export function segmented(o) {
 
 /**
  * Switch (checkbox with role="switch").
- * @param {{ label: string, checked: boolean, onChange: (checked: boolean) => void, description?: string, disabled?: boolean, fk?: string }} o
+ * @param {{ label: string, checked: boolean, onChange: (checked: boolean) => void, description?: string, disabled?: boolean, fk?: string, ariaLabel?: string }} o
+ *   `ariaLabel` names the switch when the visible label alone is ambiguous (e.g. one per list row).
  */
 export function toggle(o) {
   const id = nextId('sw');
@@ -184,6 +212,7 @@ export function toggle(o) {
     checked: o.checked,
     disabled: o.disabled,
     dataset: { fk: o.fk ?? `tg-${o.label}` },
+    'aria-label': o.ariaLabel ?? null,
     'aria-describedby': o.description ? `${id}-desc` : null,
     onChange: (/** @type {Event} */ e) => o.onChange(/** @type {HTMLInputElement} */ (e.target).checked),
   });
@@ -203,7 +232,8 @@ export function toggle(o) {
 /**
  * Numeric stepper with − / + buttons.
  * @param {{ label: string, value: number | null, min: number, max: number, step?: number, unit?: string, onChange: (v: number | null) => void,
- *   allowUnknown?: boolean, unknownLabel?: string, decimals?: number }} o
+ *   allowUnknown?: boolean, unknownLabel?: string, decimals?: number, key?: string }} o
+ *   `unknownLabel` is what the value shows when unknown; the button always says "Don't know".
  */
 export function stepper(o) {
   const id = nextId('st');
@@ -211,11 +241,13 @@ export function stepper(o) {
   const step = o.step ?? 1;
   const decimals = o.decimals ?? 0;
   const display = h('output', { class: 'stepper__value', id: `${id}-out`, 'aria-live': 'polite' });
-  const unknownBtn = o.allowUnknown ? h('button', { type: 'button', class: 'link-btn', onClick: () => set(null) }) : null;
+  const fk = `st-${o.key ?? o.label}`;
+  const unknownBtn = o.allowUnknown ? h('button', { type: 'button', class: 'link-btn', dataset: { fk: `${fk}-unknown` }, onClick: () => set(null) }) : null;
   const render = () => {
-    display.textContent = value === null ? (o.unknownLabel ?? t('common.unknown')) : `${value.toFixed(decimals)}${o.unit ? ` ${o.unit}` : ''}`;
+    const shown = value === null ? null : fmtNumber(value, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    display.textContent = shown === null ? (o.unknownLabel ?? t('common.unknown')) : `${shown}${o.unit ? ` ${o.unit}` : ''}`;
     if (unknownBtn) {
-      unknownBtn.textContent = o.unknownLabel ?? t('common.dontKnow');
+      unknownBtn.textContent = t('common.dontKnow');
       unknownBtn.setAttribute('aria-pressed', String(value === null));
     }
     minus.disabled = value !== null && value <= o.min;
@@ -228,8 +260,8 @@ export function stepper(o) {
     o.onChange(value);
   };
   const start = () => (value === null ? Math.round((o.min + o.max) / 2) : value);
-  const minus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `st-${o.label}-minus` }, 'aria-label': t('common.decrease', { label: o.label }), onClick: () => set(start() - (value === null ? 0 : step)) }, icon('minus'));
-  const plus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `st-${o.label}-plus` }, 'aria-label': t('common.increase', { label: o.label }), onClick: () => set(start() + (value === null ? 0 : step)) }, icon('plus'));
+  const minus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `${fk}-minus` }, 'aria-label': t('common.decrease', { label: o.label }), onClick: () => set(start() - (value === null ? 0 : step)) }, icon('minus'));
+  const plus = h('button', { type: 'button', class: 'icon-btn', dataset: { fk: `${fk}-plus` }, 'aria-label': t('common.increase', { label: o.label }), onClick: () => set(start() + (value === null ? 0 : step)) }, icon('plus'));
   render();
   return h(
     'div',
@@ -264,9 +296,10 @@ export function field(o) {
 
 /**
  * @param {{ title?: string, icon?: string, tone?: string, children?: any, action?: Node | null, class?: string, headingLevel?: 2 | 3 }} o
+ *   Cards are the sections of a screen whose title (in the top bar) is the h1: h2 by default.
  */
 export function card(o) {
-  const tag = o.headingLevel === 2 ? 'h2' : 'h3';
+  const tag = o.headingLevel === 3 ? 'h3' : 'h2';
   return h(
     'section',
     { class: ['card', o.tone ? `card--${o.tone}` : '', o.class ?? ''] },
@@ -320,15 +353,24 @@ export function badge(text, tone = 'neutral') {
   return h('span', { class: ['badge', `badge--${tone}`], text });
 }
 
+/** Urgent notices already announced in this session. */
+const announcedNotices = new Set();
+
 /**
- * Notice banner (info / consult / urgent).
- * @param {{ level: 'info' | 'consult' | 'urgent' | 'success', title?: string, text?: string, action?: Node | null, onDismiss?: () => void }} o
+ * Notice banner (info / consult / urgent). Notices are part of the page, not live regions: a
+ * view re-renders often and a role="alert" would be read again every time. An urgent notice
+ * with an `announceKey` is announced once instead.
+ * @param {{ level: 'info' | 'consult' | 'urgent' | 'success', title?: string, text?: string, action?: Node | null, onDismiss?: () => void, announceKey?: string }} o
  */
 export function notice(o) {
   const iconName = o.level === 'urgent' ? 'siren' : o.level === 'consult' ? 'stethoscope' : o.level === 'success' ? 'circle-check' : 'info';
+  if (o.level === 'urgent' && o.announceKey && !announcedNotices.has(o.announceKey)) {
+    announcedNotices.add(o.announceKey);
+    announce([o.title, o.text].filter(Boolean).join('. '), 'assertive');
+  }
   return h(
     'div',
-    { class: ['notice', `notice--${o.level}`], role: o.level === 'urgent' ? 'alert' : null },
+    { class: ['notice', `notice--${o.level}`] },
     h('span', { class: 'notice__icon' }, icon(iconName, { size: 20 })),
     h('div', { class: 'notice__body' }, o.title ? h('p', { class: 'notice__title', text: o.title }) : null, o.text ? h('p', { class: 'notice__text', text: o.text }) : null, o.action ?? null),
     o.onDismiss ? iconButton({ icon: 'close', label: t('common.dismiss'), onClick: o.onDismiss, size: 16, class: 'notice__close' }) : null,

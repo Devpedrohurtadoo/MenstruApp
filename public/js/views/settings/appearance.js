@@ -1,11 +1,11 @@
 import { h } from '../../core/dom.js';
 import { t } from '../../core/i18n.js';
-import { put, del } from '../../data/idb.js';
-import { card, segmented, toggle, button, notice } from '../../ui/components.js';
+import { put, del, get } from '../../data/idb.js';
+import { card, segmented, toggle, button, notice, rovingRadios } from '../../ui/components.js';
 import { toast } from '../../ui/toast.js';
 import { setPrefs, store } from '../../app.js';
 import { ACCENTS, BACKGROUND_PRESETS } from '../../data/prefs.js';
-import { accentReport, resolvedTheme, prepareBackgroundImage } from '../../ui/theme.js';
+import { accentReport, resolvedTheme, prepareBackgroundImage, readableBackground, MIN_IMAGE_DIM } from '../../ui/theme.js';
 
 /** @param {import('../shell.js').ViewContext} ctx */
 export function render(ctx) {
@@ -18,7 +18,7 @@ export function render(ctx) {
     rerender();
   };
 
-  const swatches = h(
+  const swatches = rovingRadios(h(
     'div',
     { class: 'swatches', role: 'radiogroup', 'aria-label': t('settings.appearance.accent') },
     Object.entries(ACCENTS).map(([name, color]) =>
@@ -33,11 +33,12 @@ export function render(ctx) {
         onClick: () => set({ accent: color }),
       }),
     ),
-  );
+  ));
   const custom = h('input', {
     type: 'color',
     class: 'color-input',
     id: 'accent-custom',
+    dataset: { fk: 'accent-custom' },
     value: prefs.accent,
     onChange: (/** @type {Event} */ e) => {
       const v = /** @type {HTMLInputElement} */ (e.target).value;
@@ -46,7 +47,7 @@ export function render(ctx) {
   });
 
   const bg = prefs.background;
-  const bgPresets = h(
+  const bgPresets = rovingRadios(h(
     'div',
     { class: 'bg-presets', role: 'radiogroup', 'aria-label': t('settings.appearance.bgPresets') },
     BACKGROUND_PRESETS.map((p) =>
@@ -63,11 +64,12 @@ export function render(ctx) {
         h('span', { class: 'bg-preset__label', text: t(`settings.appearance.bgs.${p}`) }),
       ),
     ),
-  );
+  ));
   const colorInput = h('input', {
     type: 'color',
     class: 'color-input',
     id: 'bg-color',
+    dataset: { fk: 'bg-color' },
     value: bg.color,
     onChange: (/** @type {Event} */ e) => {
       const v = /** @type {HTMLInputElement} */ (e.target).value;
@@ -87,27 +89,31 @@ export function render(ctx) {
         const db = store.get().db;
         if (!db) return;
         await put(db, 'blobs', blob, 'background');
-        set({ background: { ...bg, type: 'image' } });
+        set({ background: { ...bg, type: 'image', dim: Math.max(bg.dim, 0.75) } });
         toast(t('settings.appearance.bgSaved'), { type: 'success' });
       } catch {
         toast(t('settings.appearance.bgError'), { type: 'error' });
       }
     },
   });
+  // Below MIN_IMAGE_DIM text over the photo is not readable, whatever the photo.
   const dim = h('input', {
     type: 'range',
     class: 'range',
     id: 'bg-dim',
-    min: 0,
-    max: 0.85,
+    dataset: { fk: 'bg-dim' },
+    min: MIN_IMAGE_DIM,
+    max: 0.95,
     step: 0.05,
-    value: bg.dim,
+    value: Math.max(MIN_IMAGE_DIM, bg.dim),
+    'aria-valuetext': `${Math.round(Math.max(MIN_IMAGE_DIM, bg.dim) * 100)}%`,
     onChange: (/** @type {Event} */ e) => set({ background: { ...bg, dim: Number(/** @type {HTMLInputElement} */ (e.target).value) } }),
   });
   const scale = h('input', {
     type: 'range',
     class: 'range',
     id: 'text-scale',
+    dataset: { fk: 'text-scale' },
     min: 0.85,
     max: 1.6,
     step: 0.05,
@@ -150,7 +156,8 @@ export function render(ctx) {
       children: [
         bgPresets,
         h('div', { class: 'inline-field' }, h('label', { for: 'bg-color', text: t('settings.appearance.bgColor') }), colorInput),
-        h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'bg-file', text: t('settings.appearance.bgImage') }), fileInput, bg.type === 'image' ? button({ label: t('settings.appearance.bgRemove'), variant: 'ghost', size: 'sm', onClick: async () => { const db = store.get().db; if (db) await del(db, 'blobs', 'background'); set({ background: { ...bg, type: 'preset' } }); } }) : null),
+        bg.type === 'color' && readableBackground(bg.color, theme) !== bg.color ? notice({ level: 'info', text: t('settings.appearance.bgAdjusted') }) : null,
+        h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'bg-file', text: t('settings.appearance.bgImage') }), fileInput, bg.type === 'image' ? button({ label: t('settings.appearance.bgRemove'), variant: 'ghost', size: 'sm', onClick: () => removeImage(bg, set) }) : null),
         bg.type === 'image' ? h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'bg-dim', text: t('settings.appearance.bgDim') }), dim) : null,
         h('p', { class: 'muted small', text: t('settings.appearance.bgPrivacy') }),
       ],
@@ -186,4 +193,27 @@ export function render(ctx) {
       ],
     }),
   );
+}
+
+/**
+ * Removes the background image, with a way back (the photo is kept until the toast is gone).
+ * @param {import('../../data/prefs.js').Prefs['background']} bg
+ * @param {(patch: Partial<import('../../data/prefs.js').Prefs>) => void} set
+ */
+async function removeImage(bg, set) {
+  const db = store.get().db;
+  if (!db) return;
+  const image = await get(db, 'blobs', 'background');
+  await del(db, 'blobs', 'background');
+  set({ background: { ...bg, type: 'preset' } });
+  toast(t('settings.appearance.bgRemoved'), {
+    action: {
+      label: t('common.undo'),
+      onClick: async () => {
+        if (!image) return;
+        await put(db, 'blobs', image, 'background');
+        set({ background: { ...bg, type: 'image' } });
+      },
+    },
+  });
 }

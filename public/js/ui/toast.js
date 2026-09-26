@@ -6,6 +6,8 @@ let container = null;
 
 function ensureContainer() {
   if (container && document.body.contains(container)) return container;
+  // One live region that exists before any toast is added; toasts themselves carry no live
+  // role (nested live regions would be read twice).
   container = h('div', { class: 'toasts', 'aria-live': 'polite', 'aria-relevant': 'additions' });
   document.body.append(container);
   return container;
@@ -21,7 +23,7 @@ export function toast(message, opts = {}) {
   const iconName = type === 'success' ? 'circle-check' : type === 'error' ? 'circle-alert' : 'info';
   const el = h(
     'div',
-    { class: ['toast', `toast--${type}`], role: type === 'error' ? 'alert' : 'status' },
+    { class: ['toast', `toast--${type}`] },
     icon(iconName, { size: 18 }),
     h('span', { class: 'toast__text', text: message }),
     opts.action
@@ -42,6 +44,22 @@ export function toast(message, opts = {}) {
   };
   box.append(el);
   while (box.children.length > 3) box.firstElementChild?.remove();
-  setTimeout(dismiss, opts.duration ?? (opts.action ? 7000 : 3500));
+  // Time to read and act (WCAG 2.2.1): longer with an action, paused while hovered or focused.
+  let remaining = opts.duration ?? (opts.action ? 10_000 : 4000);
+  let started = Date.now();
+  let timer = setTimeout(dismiss, remaining);
+  const pause = () => {
+    clearTimeout(timer);
+    remaining -= Date.now() - started;
+  };
+  const resume = () => {
+    started = Date.now();
+    clearTimeout(timer);
+    timer = setTimeout(dismiss, Math.max(2000, remaining));
+  };
+  el.addEventListener('mouseenter', pause);
+  el.addEventListener('mouseleave', resume);
+  el.addEventListener('focusin', pause);
+  el.addEventListener('focusout', resume);
   return dismiss;
 }

@@ -1,6 +1,6 @@
 // Lock screen: profile picker, PIN pad / passphrase, biometrics, throttling and recovery.
 
-import { h, replace, announce } from '../core/dom.js';
+import { h, replace } from '../core/dom.js';
 import { t, fmtNumber } from '../core/i18n.js';
 import { icon } from '../ui/icons.js';
 import { avatar, button } from '../ui/components.js';
@@ -79,8 +79,7 @@ export async function renderLock(root, opts) {
             ? t('lock.biometricFailed')
             : t('lock.unlockError');
       errorMessage = msg;
-      await render();
-      announce(msg, 'assertive');
+      await render(); // the error is a role="alert": announced once, no extra announcement
       screen.querySelector('.lock__dots')?.classList.add('shake');
     }
   };
@@ -131,15 +130,20 @@ export async function renderLock(root, opts) {
     const hideNames = store.get().prefs.hideProfileNames;
     clearInterval(countdown);
     const errorEl = h('p', { class: 'lock__error', role: 'alert', text: errorMessage });
+    // The countdown is updated every second, so it must not be a live region (it would be read
+    // out every second); the alert above says once how long to wait.
+    const countdownEl = h('p', { class: 'lock__countdown muted small' });
     if (status.locked) {
+      if (!errorMessage) errorEl.textContent = t('lock.waitSeconds', { count: Math.ceil(status.remainingMs / 1000) });
       const update = async () => {
         const s = await lockoutStatus(profileId);
         if (!s.locked) {
           clearInterval(countdown);
+          errorMessage = '';
           render();
           return;
         }
-        errorEl.textContent = t('lock.waitSeconds', { count: Math.ceil(s.remainingMs / 1000) });
+        countdownEl.textContent = t('lock.countdown', { count: Math.ceil(s.remainingMs / 1000) });
       };
       update();
       countdown = setInterval(update, 1000);
@@ -194,6 +198,7 @@ export async function renderLock(root, opts) {
           button({ label: busy ? t('lock.checking') : t('lock.unlock'), variant: 'primary', type: 'submit', full: true, busy }),
         ),
         errorEl,
+        countdownEl,
         h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.backToPin'), onClick: () => { recoveryMode = false; errorMessage = ''; render(); } }), h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile })),
       ];
     } else if (!info.needsSecret) {
@@ -201,6 +206,7 @@ export async function renderLock(root, opts) {
         h('p', { class: 'lock__subtitle', text: t('lock.noLockProfile') }),
         button({ label: t('lock.enter'), variant: 'primary', full: true, busy, onClick: () => tryUnlock({ type: 'device' }) }),
         errorEl,
+        countdownEl,
       ];
     } else if (info.primary === 'pin') {
       const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', info.hasBiometric ? 'bio' : '', '0', 'back'];
@@ -209,6 +215,7 @@ export async function renderLock(root, opts) {
         dots,
         h('p', { class: 'sr-only lock__pin-status', 'aria-live': 'polite' }),
         errorEl,
+        countdownEl,
         h(
           'div',
           { class: ['keypad', status.locked || busy ? 'is-disabled' : ''], role: 'group', 'aria-label': t('lock.keypad') },
@@ -240,6 +247,7 @@ export async function renderLock(root, opts) {
         ),
         info.hasBiometric ? button({ label: t('lock.useBiometric'), icon: 'fingerprint', variant: 'ghost', full: true, disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) }) : null,
         errorEl,
+        countdownEl,
         h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPassphrase'), onClick: () => { recoveryMode = true; errorMessage = ''; render(); } })),
       ];
     }

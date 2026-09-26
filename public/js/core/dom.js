@@ -159,6 +159,22 @@ export function replace(el, ...children) {
   el.replaceChildren(...nodes);
 }
 
+/**
+ * Runs a re-render and gives keyboard focus back to the "same" control in the new content,
+ * found by its data-fk (focus key) or id. Without this, focus falls back to <body> and keyboard
+ * and screen-reader users have to start again from the top of the page.
+ * @param {() => void} renderFn
+ */
+export function preservingFocus(renderFn) {
+  const active = /** @type {HTMLElement | null} */ (document.activeElement);
+  const fk = active?.dataset?.fk;
+  const id = active && active !== document.body ? active.id : '';
+  renderFn();
+  if (!active || document.contains(active)) return;
+  const target = fk ? document.querySelector(`[data-fk="${CSS.escape(fk)}"]`) : id ? document.getElementById(id) : null;
+  /** @type {HTMLElement | null} */ (target)?.focus({ preventScroll: true });
+}
+
 /** A span that is only read by assistive technology. @param {string} text */
 export function srOnly(text) {
   return h('span', { class: 'sr-only', text });

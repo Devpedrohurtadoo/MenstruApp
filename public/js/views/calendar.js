@@ -1,7 +1,7 @@
 // Month calendar with period/fertility/ovulation marks, keyboard navigation (roving tabindex),
 // quick "edit period" mode and the cycle history.
 
-import { h } from '../core/dom.js';
+import { h, announce } from '../core/dom.js';
 import { t, fmtMonth, fmtDate, weekdayLabels, localeWeekStart, fmtNumber } from '../core/i18n.js';
 import { monthKey, monthGrid, addMonths, addDays, isISODate, diffDays } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
@@ -27,12 +27,17 @@ export function render(ctx) {
   const flags = derived.flags;
   const marks = calendarMarks(derived.analysis, data.days, dates, { showFertility: flags.fertility, showPredictions: flags.predictions });
 
-  const go = (/** @type {number} */ delta) => ctx.navigate(`calendar/${addMonths(month, delta)}`, { replace: true });
+  const go = (/** @type {number} */ delta) => {
+    const next = addMonths(month, delta);
+    ctx.navigate(`calendar/${next}`, { replace: true });
+    // The month title is rebuilt with the view, so it cannot announce itself: say it.
+    announce(fmtMonth(next));
+  };
   const header = h(
     'div',
     { class: 'cal__header' },
     iconButton({ icon: 'chevron-left', label: t('calendar.prevMonth'), onClick: () => go(-1), fk: 'cal-prev' }),
-    h('h2', { class: 'cal__month', id: 'cal-month', 'aria-live': 'polite', text: fmtMonth(month) }),
+    h('h2', { class: 'cal__month', id: 'cal-month', text: fmtMonth(month) }),
     iconButton({ icon: 'chevron-right', label: t('calendar.nextMonth'), onClick: () => go(1), fk: 'cal-next' }),
   );
 

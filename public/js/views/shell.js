@@ -65,14 +65,14 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
         if (tab.name === 'log') {
           return h(
             'button',
-            { type: 'button', class: 'tabbar__add', 'aria-label': t('nav.log'), onClick: () => openLog() },
+            { type: 'button', class: 'tabbar__add', 'aria-label': t('nav.log'), dataset: { fk: 'tab-log' }, onClick: () => openLog() },
             h('span', { class: 'tabbar__add-inner' }, icon('plus', { size: 26 })),
           );
         }
         const on = active === tab.name;
         return h(
           'a',
-          { class: ['tabbar__item', on ? 'is-active' : ''], href: `#/${tab.name}`, 'aria-current': on ? 'page' : null },
+          { class: ['tabbar__item', on ? 'is-active' : ''], href: `#/${tab.name}`, 'aria-current': on ? 'page' : null, dataset: { fk: `tab-${tab.name}` } },
           icon(tab.icon, { size: 22 }),
           h('span', { class: 'tabbar__label', text: t(`nav.${tab.name}`) }),
         );
@@ -81,21 +81,31 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
   };
 
   const renderHeader = (/** @type {import('./router.js').Route} */ route, /** @type {string} */ viewTitle) => {
+    // Texts created once with the shell follow a language change.
+    back.setAttribute('aria-label', t('common.back'));
+    back.title = t('common.back');
+    skip.textContent = t('nav.skip');
+    tabbar.setAttribute('aria-label', t('nav.label'));
     const topLevel = TABS.some((tab) => tab.name === route.name) && route.segments.length === 0;
     back.hidden = topLevel;
     title.textContent = viewTitle;
     const state = store.get();
     const btns = [];
     if (state.session?.vaultInfo.needsSecret) {
-      btns.push(iconButton({ icon: 'shield', label: t('shell.safeScreen'), onClick: () => import('./camouflage.js').then((m) => m.showCamouflage()) }));
-      btns.push(iconButton({ icon: 'lock', label: t('shell.lockNow'), onClick: () => lock('manual') }));
+      btns.push(iconButton({ icon: 'shield', label: t('shell.safeScreen'), fk: 'top-safe', onClick: () => import('./camouflage.js').then((m) => m.showCamouflage()) }));
+      btns.push(iconButton({ icon: 'lock', label: t('shell.lockNow'), fk: 'top-lock', onClick: () => lock('manual') }));
     }
-    if (route.name !== 'settings') btns.push(iconButton({ icon: 'settings', label: t('nav.settings'), onClick: () => navigate('settings') }));
+    if (route.name !== 'settings') btns.push(iconButton({ icon: 'settings', label: t('nav.settings'), fk: 'top-settings', onClick: () => navigate('settings') }));
     replace(actions, btns);
   };
 
+  let bannerState = '';
   const renderBanners = () => {
     const state = store.get();
+    // Rebuilding an unchanged live region would announce "offline" again on every save.
+    const signature = `${state.online}:${state.updateReady}`;
+    if (signature === bannerState) return;
+    bannerState = signature;
     const items = [];
     if (!state.online) items.push(h('div', { class: 'banner banner--muted' }, icon('wifi-off', { size: 16 }), h('span', { text: t('shell.offline') })));
     if (state.updateReady) {
@@ -134,7 +144,9 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
     if (!state.session) return;
     /** @type {ViewContext} */
     const ctx = { route, state, navigate, openLog };
-    const focusKey = /** @type {HTMLElement | null} */ (document.activeElement)?.dataset?.fk ?? null;
+    const active = /** @type {HTMLElement | null} */ (document.activeElement);
+    const focusKey = active?.dataset?.fk ?? null;
+    const focusId = !focusKey && active && active !== document.body && active !== main ? active.id : '';
     const scrollY = window.scrollY;
     if (viewChanged && activeModule?.cleanup) activeModule.cleanup();
     const node = await mod.render(ctx);
@@ -165,7 +177,12 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
       }
     } else {
       window.scrollTo(0, scrollY);
-      if (focusKey) /** @type {HTMLElement | null} */ (main.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`))?.focus({ preventScroll: true });
+      // The tab bar and top bar are rebuilt too: look everywhere in the app, by key or id.
+      const target = focusKey ? appRoot.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`) : focusId ? document.getElementById(focusId) : null;
+      if (target && target !== document.activeElement) /** @type {HTMLElement} */ (target).focus({ preventScroll: true });
+      // The focused control is gone (e.g. "my period started" once it has started): continue
+      // from the start of the main content instead of the top of the page.
+      else if (!target && active && active !== document.body && !document.contains(active)) main.focus({ preventScroll: true });
     }
     lastRoutePath = route.path;
     lastRouteName = route.name;

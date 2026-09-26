@@ -1,6 +1,6 @@
 import { h } from '../../core/dom.js';
 import { t } from '../../core/i18n.js';
-import { avatar, button, card, listItem } from '../../ui/components.js';
+import { avatar, button, card, listItem, rovingRadios } from '../../ui/components.js';
 import { toast } from '../../ui/toast.js';
 import { confirmDialog } from '../../ui/modal.js';
 import { updateProfile, lock, bus, deleteCurrentProfile } from '../../app.js';
@@ -39,11 +39,11 @@ export function render(ctx) {
       children: [
         h('div', { class: 'profile-edit' }, avatar({ name: profile.name, avatar: profile.avatar, photo: profile.photo }, 72), h('div', { class: 'btn-row' }, h('label', { class: 'btn btn--soft btn--sm', for: 'p-photo', text: t('settings.profile.uploadPhoto') }), fileInput, profile.photo ? button({ label: t('settings.profile.removePhoto'), variant: 'ghost', size: 'sm', onClick: () => updateProfile({ photo: null }) }) : null)),
         h('span', { class: 'field__label', id: 'emoji-label', text: t('onboarding.avatar') }),
-        h(
+        rovingRadios(h(
           'div',
-          { class: 'avatar-picker', role: 'group', 'aria-labelledby': 'emoji-label' },
-          AVATARS.map((a) => h('button', { type: 'button', class: ['avatar-option', profile.avatar === a ? 'is-on' : ''], 'aria-pressed': String(profile.avatar === a), 'aria-label': a, text: a, onClick: () => updateProfile({ avatar: a }) })),
-        ),
+          { class: 'avatar-picker', role: 'radiogroup', 'aria-labelledby': 'emoji-label' },
+          AVATARS.map((a, i) => h('button', { type: 'button', role: 'radio', class: ['avatar-option', profile.avatar === a ? 'is-on' : ''], 'aria-checked': String(profile.avatar === a), 'aria-label': a, dataset: { fk: `p-avatar-${i}` }, text: a, onClick: () => updateProfile({ avatar: a }) })),
+        )),
         h(
           'form',
           {

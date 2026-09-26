@@ -1,8 +1,8 @@
 // Full daily log in a bottom sheet. Changes are saved with "Save" or automatically when the
 // sheet is closed, so nothing typed is ever lost.
 
-import { h, replace } from '../core/dom.js';
-import { t, fmtDate } from '../core/i18n.js';
+import { h, replace, preservingFocus, announce } from '../core/dom.js';
+import { t, fmtDate, fmtNumber } from '../core/i18n.js';
 import { addDays, todayISO } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
 import { button, chip, chipGroup, iconButton, segmented, stepper, toggle } from '../ui/components.js';
@@ -33,6 +33,37 @@ import {
   WEIGHT_RANGE_KG,
 } from '../domain/catalog.js';
 import { logSections } from '../domain/modes.js';
+
+/**
+ * A decimal number field that accepts both "36,5" and "36.5" (type="number" silently empties
+ * a value typed with the other separator, which would erase the entry) and explains the valid
+ * range next to the field when a value is out of it.
+ * @param {{ id: string, value: number | null, min: number, max: number, unit: string, decimals: number, onValue: (v: number | undefined) => void }} o
+ */
+function decimalField(o) {
+  const error = h('p', { class: 'field__error', id: `${o.id}-err`, role: 'alert', hidden: true });
+  const fmt = (/** @type {number} */ n) => fmtNumber(n, { maximumFractionDigits: o.decimals, useGrouping: false });
+  const input = h('input', {
+    class: 'input input--short',
+    id: o.id,
+    type: 'text',
+    inputMode: 'decimal',
+    autocomplete: 'off',
+    'aria-describedby': `${o.id}-err`,
+    value: o.value === null ? '' : fmt(o.value),
+    onChange: (/** @type {Event} */ e) => {
+      const el = /** @type {HTMLInputElement} */ (e.target);
+      const text = el.value.trim();
+      const n = Number(text.replace(',', '.'));
+      const ok = !text || (Number.isFinite(n) && n >= o.min && n <= o.max);
+      el.setAttribute('aria-invalid', String(!ok));
+      error.hidden = ok;
+      error.textContent = ok ? '' : t('log.rangeError', { min: fmt(o.min), max: fmt(o.max), unit: o.unit });
+      if (ok) o.onValue(text ? n : undefined);
+    },
+  });
+  return { input, error };
+}
 
 /** @param {string} [initialIso] */
 export function openDayLog(initialIso) {
@@ -80,6 +111,9 @@ export function openDayLog(initialIso) {
     iso = next;
     load();
     modalTitle();
+    announce(titleFor(iso));
+    // On today "next day" disappears: keep focus on the other arrow.
+    if (!content.contains(document.activeElement)) /** @type {HTMLElement | null} */ (content.querySelector('[data-fk="log-prev"]'))?.focus();
   };
 
   const modalTitle = () => {
@@ -87,7 +121,9 @@ export function openDayLog(initialIso) {
     if (el) el.textContent = titleFor(iso);
   };
 
-  const render = () => {
+  // Re-rendering the sheet (another day, a flow that shows more fields) keeps keyboard focus.
+  const render = () => preservingFocus(() => renderSheet());
+  const renderSheet = () => {
     const derived = store.get().derived;
     if (!derived) return;
     const mode = derived.settings.mode;
@@ -97,9 +133,9 @@ export function openDayLog(initialIso) {
     const nav = h(
       'div',
       { class: 'daylog__nav' },
-      iconButton({ icon: 'chevron-left', label: t('log.prevDay'), onClick: () => changeDay(-1) }),
+      iconButton({ icon: 'chevron-left', label: t('log.prevDay'), fk: 'log-prev', onClick: () => changeDay(-1) }),
       h('span', { class: 'daylog__date', text: fmtDate(iso, 'weekdayShort') }),
-      iconButton({ icon: 'chevron-right', label: t('log.nextDay'), onClick: () => changeDay(1), class: iso >= todayISO() ? 'is-hidden' : '' }),
+      iconButton({ icon: 'chevron-right', label: t('log.nextDay'), fk: 'log-next', onClick: () => changeDay(1), class: iso >= todayISO() ? 'is-hidden' : '' }),
     );
     /** @type {Node[]} */
     const blocks = [nav];
@@ -112,7 +148,7 @@ export function openDayLog(initialIso) {
         const flowOptions = FLOW.map((f) => ({ value: f, label: t(`flow.${f}`), tone: f === 'none' ? undefined : 'period' }));
         /** @type {Node[]} */
         const children = [
-          chipGroup({ label: t(name === 'bleeding' ? 'log.bleeding' : 'log.flow'), options: flowOptions, value: entry.flow, onChange: (v) => { set('flow', v); render(); } }),
+          chipGroup({ label: t(name === 'bleeding' ? 'log.bleeding' : 'log.flow'), key: 'flow', options: flowOptions, value: entry.flow, onChange: (v) => { set('flow', v); render(); } }),
         ];
         if (BLEEDING.has(entry.flow ?? '') || entry.flow === 'spotting') {
           children.push(
@@ -131,46 +167,38 @@ export function openDayLog(initialIso) {
             chipGroup({ label: t('log.moods'), options: MOODS.map((m) => ({ value: m, label: t(`moods.${m}`) })), value: entry.moods ?? [], multiple: true, onChange: (v) => set('moods', v) }),
             segmented({
               label: t('log.energy'),
+              key: 'energy',
               options: [1, 2, 3, 4, 5].map((n) => ({ value: n, label: t(`energy.${n}`) })),
               value: entry.energy ?? 0,
-              onChange: (v) => set('energy', v),
+              onChange: (v) => {
+                set('energy', v);
+                render();
+              },
             }),
+            // A chosen energy level can be taken back.
+            entry.energy ? h('button', { type: 'button', class: 'link-btn small', dataset: { fk: 'energy-clear' }, text: t('log.clearEnergy'), onClick: () => { set('energy', undefined); render(); /** @type {HTMLElement | null} */ (content.querySelector('[data-fk^="seg-energy-"]'))?.focus(); } }) : null,
             chipGroup({ label: t('log.libido'), options: LIBIDO.map((l) => ({ value: l, label: t(`libido.${l}`) })), value: entry.libido, onChange: (v) => set('libido', v) }),
           ]),
         );
       }
       if (name === 'fertility') {
-        const bbtValue = typeof entry.bbt === 'number' ? (tempUnit === 'F' ? cToF(entry.bbt) : entry.bbt) : '';
         const [minC, maxC] = BBT_RANGE_C;
-        const bbtInput = h('input', {
-          class: 'input input--short',
+        const inF = tempUnit === 'F';
+        const bbt = decimalField({
           id: 'log-bbt',
-          type: 'number',
-          inputMode: 'decimal',
-          step: '0.01',
-          min: tempUnit === 'F' ? cToF(minC) : minC,
-          max: tempUnit === 'F' ? cToF(maxC) : maxC,
-          value: bbtValue,
-          onChange: (/** @type {Event} */ e) => {
-            const el = /** @type {HTMLInputElement} */ (e.target);
-            const raw = parseFloat(el.value.replace(',', '.'));
-            if (!el.value) return set('bbt', undefined);
-            const c = tempUnit === 'F' ? fToC(raw) : raw;
-            if (!Number.isFinite(c) || c < minC || c > maxC) {
-              el.setAttribute('aria-invalid', 'true');
-              toast(t('log.bbtInvalid'), { type: 'error' });
-              return;
-            }
-            el.removeAttribute('aria-invalid');
-            set('bbt', Math.round(c * 100) / 100);
-          },
+          value: typeof entry.bbt === 'number' ? (inF ? cToF(entry.bbt) : entry.bbt) : null,
+          min: inF ? cToF(minC) : minC,
+          max: inF ? cToF(maxC) : maxC,
+          unit: inF ? '°F' : '°C',
+          decimals: 2,
+          onValue: (v) => set('bbt', v === undefined ? undefined : Math.round((inF ? fToC(v) : v) * 100) / 100),
         });
         blocks.push(
           section(
             'fertility',
             'thermometer',
             [
-              h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-bbt', text: t('log.bbt', { unit: tempUnit === 'F' ? '°F' : '°C' }) }), bbtInput, h('p', { class: 'field__hint', text: t('log.bbtHint') })),
+              h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-bbt', text: t('log.bbt', { unit: tempUnit === 'F' ? '°F' : '°C' }) }), bbt.input, bbt.error, h('p', { class: 'field__hint', text: t('log.bbtHint') })),
               toggle({ label: t('log.bbtDisturbed'), description: t('log.bbtDisturbedDesc'), checked: Boolean(entry.bbtDisturbed), onChange: (v) => set('bbtDisturbed', v || undefined) }),
               chipGroup({ label: t('log.mucus'), options: MUCUS.map((m) => ({ value: m, label: t(`mucus.${m}`) })), value: entry.mucus, onChange: (v) => set('mucus', v) }),
               chipGroup({ label: t('log.lh'), options: LH.map((m) => ({ value: m, label: t(`lh.${m}`) })), value: entry.lh, onChange: (v) => set('lh', v) }),
@@ -193,44 +221,33 @@ export function openDayLog(initialIso) {
         blocks.push(section('contraception', 'pill', children, Boolean(entry.meds?.length || entry.contraceptionTaken !== undefined)));
       }
       if (name === 'body') {
-        const weightValue = typeof entry.weight === 'number' ? (weightUnit === 'lb' ? kgToLb(entry.weight) : entry.weight) : '';
-        const weightInput = h('input', {
-          class: 'input input--short',
+        const [minKg, maxKg] = WEIGHT_RANGE_KG;
+        const inLb = weightUnit === 'lb';
+        const weight = decimalField({
           id: 'log-weight',
-          type: 'number',
-          inputMode: 'decimal',
-          step: '0.1',
-          value: weightValue,
-          onChange: (/** @type {Event} */ e) => {
-            const el = /** @type {HTMLInputElement} */ (e.target);
-            if (!el.value) return set('weight', undefined);
-            const raw = parseFloat(el.value.replace(',', '.'));
-            const kg = weightUnit === 'lb' ? lbToKg(raw) : raw;
-            if (!Number.isFinite(kg) || kg < WEIGHT_RANGE_KG[0] || kg > WEIGHT_RANGE_KG[1]) {
-              el.setAttribute('aria-invalid', 'true');
-              toast(t('log.weightInvalid'), { type: 'error' });
-              return;
-            }
-            el.removeAttribute('aria-invalid');
-            set('weight', Math.round(kg * 10) / 10);
-          },
+          value: typeof entry.weight === 'number' ? (inLb ? kgToLb(entry.weight) : entry.weight) : null,
+          min: inLb ? kgToLb(minKg) : minKg,
+          max: inLb ? kgToLb(maxKg) : maxKg,
+          unit: weightUnit,
+          decimals: 1,
+          onValue: (v) => set('weight', v === undefined ? undefined : Math.round((inLb ? lbToKg(v) : v) * 10) / 10),
         });
         blocks.push(
           section(
             'body',
             'bed',
             [
-              stepper({ label: t('log.sleep'), value: entry.sleepHours ?? null, min: 0, max: 24, step: 0.5, decimals: 1, unit: t('common.hoursShort'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('sleepHours', v ?? undefined) }),
-              stepper({ label: t('log.water'), value: entry.water ?? null, min: 0, max: 40, unit: t('log.glasses'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('water', v ?? undefined) }),
+              stepper({ label: t('log.sleep'), key: 'sleep', value: entry.sleepHours ?? null, min: 0, max: 24, step: 0.5, decimals: 1, unit: t('common.hoursShort'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('sleepHours', v ?? undefined) }),
+              stepper({ label: t('log.water'), key: 'water', value: entry.water ?? null, min: 0, max: 40, unit: t('log.glasses'), allowUnknown: true, unknownLabel: '—', onChange: (v) => set('water', v ?? undefined) }),
               chipGroup({ label: t('log.exercise'), options: EXERCISE.map((m) => ({ value: m, label: t(`exercise.${m}`) })), value: entry.exercise, onChange: (v) => set('exercise', v) }),
-              h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-weight', text: t('log.weight', { unit: weightUnit }) }), weightInput),
+              h('div', { class: 'field' }, h('label', { class: 'field__label', for: 'log-weight', text: t('log.weight', { unit: weightUnit }) }), weight.input, weight.error),
             ],
             Boolean(entry.sleepHours || entry.water || entry.exercise || entry.weight),
           ),
         );
       }
       if (name === 'notes') {
-        const counter = h('span', { class: 'field__hint', 'aria-live': 'polite', text: t('log.charsLeft', { count: 2000 - (entry.notes?.length ?? 0) }) });
+        const counter = h('span', { class: 'field__hint', id: 'log-notes-count', text: t('log.charsLeft', { count: 2000 - (entry.notes?.length ?? 0) }) });
         blocks.push(
           section(
             'notes',
@@ -240,6 +257,7 @@ export function openDayLog(initialIso) {
               h('textarea', {
                 class: 'input textarea',
                 id: 'log-notes',
+                'aria-describedby': 'log-notes-count',
                 rows: 4,
                 maxLength: 2000,
                 placeholder: t('log.notesPlaceholder'),
@@ -268,7 +286,7 @@ export function openDayLog(initialIso) {
       return h(
         'div',
         { class: ['symptom-group', group === 'warning' ? 'symptom-group--warning' : ''] },
-        h('h4', { class: 'symptom-group__title', text: t(`symptomGroups.${group}`) }),
+        h('h3', { class: 'symptom-group__title', text: t(`symptomGroups.${group}`) }),
         group === 'warning' ? h('p', { class: 'muted small', text: t('log.warningSymptomsNote') }) : null,
         h(
           'div',
@@ -322,9 +340,14 @@ export function openDayLog(initialIso) {
                     icon: 'close',
                     label: t('log.removeMed', { name: m.name }),
                     size: 16,
+                    fk: `med-remove-${i}`,
                     onClick: () => {
                       set('meds', meds.filter((_, j) => j !== i));
                       draw();
+                      // Focus the item that took its place (or the name field when none is left).
+                      const nextBtn = wrap.querySelector(`[data-fk="med-remove-${Math.min(i, meds.length - 2)}"]`) ?? wrap.querySelector('#med-name');
+                      /** @type {HTMLElement | null} */ (nextBtn)?.focus();
+                      announce(t('log.medRemoved', { name: m.name }));
                     },
                   }),
                 ),

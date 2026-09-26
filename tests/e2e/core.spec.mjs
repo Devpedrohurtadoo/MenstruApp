@@ -13,7 +13,7 @@ test('onboarding with PIN, lock, wrong PIN, unlock and persistence', async ({ pa
   await page.getByRole('button', { name: 'Bloquear ahora' }).click();
   await expect(page.getByText('Introduce tu PIN')).toBeVisible();
   await typePin(page, '1111');
-  await expect(page.locator('.lock__error')).toHaveText('PIN incorrecto');
+  await expect(page.locator('.lock__error')).toContainText('PIN incorrecto');
   await typePin(page, '4827');
   await expect(page.locator('.tabbar')).toBeVisible();
 
