@@ -20,10 +20,12 @@ const policy =
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
   const hadController = Boolean(navigator.serviceWorker.controller);
+  let accepted = false;
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // Only reload for updates the user accepted, never on the very first install.
-    if (!hadController || reloading) return;
+    // Reload for an update (accepted here or in another window), never on the very first
+    // install — but a first-visit page that accepts an update must reload too.
+    if ((!hadController && !accepted) || reloading) return;
     reloading = true;
     location.reload();
   });
@@ -44,8 +46,10 @@ export function registerServiceWorker() {
     .catch((err) => console.warn('[sw] registration failed', err));
   bus.on('apply-update', () => {
     const waiting = registration?.waiting;
-    if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' });
-    else location.reload();
+    if (waiting) {
+      accepted = true;
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else location.reload();
   });
 }
 

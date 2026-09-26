@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: No known vulnerabilities in deployed dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Service worker is stamped
         run: node scripts/stamp-sw.mjs && git diff --exit-code public/sw.js
       - run: npx eslint .

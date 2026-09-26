@@ -2,7 +2,7 @@
 // Local development server that behaves like the Netlify deploy:
 //  - serves public/ with the exact headers from public/_headers (CSP, Trusted Types, HSTS…)
 //  - routes /api/* to netlify/functions/api.mjs with an in-memory store
-//  - no dependencies. Usage: node scripts/serve.mjs [--port 8888]
+//  - no dependencies. Usage: node scripts/serve.mjs [--port 8888] [--root <dir>]
 
 import http from 'node:http';
 import zlib from 'node:zlib';
@@ -11,9 +11,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PUBLIC = path.join(ROOT, 'public');
+// --root serves another copy of public/ (the e2e update test publishes a "new version" there).
+const argRoot = process.argv.indexOf('--root');
+const PUBLIC = argRoot > -1 ? path.resolve(process.argv[argRoot + 1]) : path.join(ROOT, 'public');
 const argPort = process.argv.indexOf('--port');
-const PORT = Number(argPort > -1 ? process.argv[argPort + 1] : process.env.PORT ?? 8888);
+const PORT = Number(argPort > -1 ? process.argv[argPort + 1] : (process.env.PORT ?? 8888));
 process.env.MENSTRUAPP_STORE ??= 'memory';
 
 const TYPES = {
@@ -71,7 +73,8 @@ const server = http.createServer(async (req, res) => {
     let pathname = decodeURIComponent(url.pathname);
     if (pathname === '/') pathname = '/index.html';
     const file = path.normalize(path.join(PUBLIC, pathname));
-    if (!file.startsWith(PUBLIC) || path.basename(file).startsWith('_')) throw Object.assign(new Error('forbidden'), { code: 'ENOENT' });
+    // Inside the served folder only (a bare prefix check would also match "public-x/").
+    if (!file.startsWith(PUBLIC + path.sep) || path.basename(file).startsWith('_')) throw Object.assign(new Error('forbidden'), { code: 'ENOENT' });
     const data = await fs.readFile(file);
     /** @type {Record<string, string>} */
     const headers = { 'Content-Type': TYPES[/** @type {keyof typeof TYPES} */ (path.extname(file))] ?? 'application/octet-stream' };
