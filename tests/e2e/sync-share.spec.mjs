@@ -1,6 +1,7 @@
 // Optional backend features against the local server (in-memory store):
 // end-to-end encrypted sync between two devices and read-only share links.
 import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { onboard } from './helpers.mjs';
 
 test('sync keeps two devices in step without the server seeing the data', async ({ browser }) => {
@@ -54,6 +55,9 @@ test('a share link shows a read-only summary and can be revoked', async ({ page,
   await expect(doctor.getByText(/Próxima regla estimada/)).toBeVisible();
   // The key is removed from the address bar once read.
   expect(new URL(doctor.url()).hash).toBe('');
+  // The shared page is accessible too (WCAG 2.2 AA + best practices, any impact).
+  const axe = await new AxeBuilder({ page: doctor }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']).analyze();
+  expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
 
   await page.goto('/#/settings/share');
   await page.getByRole('button', { name: 'Revocar' }).click();
