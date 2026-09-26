@@ -1,5 +1,5 @@
 // PWA behaviour: installability, service worker precache, offline start and headers.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 import { onboard, typePin } from './helpers.mjs';
 
 test('the manifest and service worker make the app installable', async ({ page, context }) => {

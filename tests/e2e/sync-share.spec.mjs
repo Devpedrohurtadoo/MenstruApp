@@ -1,12 +1,13 @@
 // Optional backend features against the local server (in-memory store):
 // end-to-end encrypted sync between two devices and read-only share links.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 import AxeBuilder from '@axe-core/playwright';
-import { onboard } from './helpers.mjs';
+import { onboard, watchErrors } from './helpers.mjs';
 
 test('sync keeps two devices in step without the server seeing the data', async ({ browser }) => {
   const a = await (await browser.newContext()).newPage();
   const b = await (await browser.newContext()).newPage();
+  const watches = [await watchErrors(a), await watchErrors(b)];
 
   await onboard(a, { lock: 'none', lastPeriodDaysAgo: 6, name: 'Dispositivo A' });
   await a.goto('/#/settings/data');
@@ -35,6 +36,7 @@ test('sync keeps two devices in step without the server seeing the data', async 
   // What the server stores is opaque ciphertext.
   const raw = await a.request.get('/api/health');
   expect(raw.ok()).toBe(true);
+  for (const w of watches) await w.assertClean();
 });
 
 test('a share link shows a read-only summary and can be revoked', async ({ page, context, browser }) => {
@@ -50,6 +52,7 @@ test('a share link shows a read-only summary and can be revoked', async ({ page,
   expect(link).toMatch(/\/share\.html#[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
   const doctor = await (await browser.newContext()).newPage();
+  const watchDoctor = await watchErrors(doctor);
   await doctor.goto(link);
   await expect(doctor.getByRole('heading', { name: 'Resumen compartido' })).toBeVisible();
   await expect(doctor.getByText(/Próxima regla estimada/)).toBeVisible();
@@ -64,4 +67,5 @@ test('a share link shows a read-only summary and can be revoked', async ({ page,
   await page.getByRole('dialog').getByRole('button', { name: 'Revocar' }).click();
   await doctor.goto(link);
   await expect(doctor.getByRole('heading', { name: 'Enlace caducado' })).toBeVisible();
+  await watchDoctor.assertClean();
 });

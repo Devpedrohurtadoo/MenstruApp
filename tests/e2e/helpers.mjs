@@ -1,8 +1,12 @@
 // Shared helpers for the end-to-end tests.
 import { expect } from '@playwright/test';
 
-/** Collects page errors, console errors and CSP / Trusted Types violations. */
-export async function watchErrors(/** @type {import('@playwright/test').Page} */ page) {
+/**
+ * Collects page errors, console errors, CSP / Trusted Types violations and third-party requests.
+ * @param {import('@playwright/test').Page} page
+ * @param {RegExp[]} [allowed] console messages the test provokes on purpose
+ */
+export async function watchErrors(page, allowed = []) {
   /** @type {string[]} */
   const errors = [];
   await page.addInitScript(() => {
@@ -15,7 +19,8 @@ export async function watchErrors(/** @type {import('@playwright/test').Page} */
   });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error' && !/Failed to load resource: the server responded with a status of 404/.test(m.text())) errors.push(`console: ${m.text()}`);
+    if (m.type() !== 'error' || /Failed to load resource: the server responded with a status of 404/.test(m.text())) return;
+    if (!allowed.some((re) => re.test(m.text()))) errors.push(`console: ${m.text()}`);
   });
   page.on('request', (r) => {
     const url = new URL(r.url());
@@ -26,7 +31,7 @@ export async function watchErrors(/** @type {import('@playwright/test').Page} */
   return {
     errors,
     async assertClean() {
-      const csp = await page.evaluate(() => /** @type {any} */ (window).__cspViolations ?? []);
+      const csp = page.isClosed() ? [] : await page.evaluate(() => /** @type {any} */ (window).__cspViolations ?? []).catch(() => []);
       expect([...errors, ...csp.map((/** @type {string} */ v) => `csp: ${v}`)]).toEqual([]);
     },
   };

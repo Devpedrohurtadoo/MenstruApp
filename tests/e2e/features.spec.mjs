@@ -1,7 +1,7 @@
 // Feature journeys: Luna, languages, backups, deleting everything, pregnancy mode and the report.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 import fs from 'node:fs';
-import { onboard, watchErrors } from './helpers.mjs';
+import { onboard } from './helpers.mjs';
 
 test('Luna answers with personal data and puts red flags first', async ({ page }) => {
   await onboard(page, { lock: 'none', lastPeriodDaysAgo: 9 });
@@ -17,7 +17,6 @@ test('Luna answers with personal data and puts red flags first', async ({ page }
 });
 
 test('English everywhere, persisted after reload', async ({ page }) => {
-  const watch = await watchErrors(page);
   await onboard(page, { lang: 'en', lock: 'none', lastPeriodDaysAgo: 3 });
   await expect(page.getByRole('link', { name: 'Calendar' })).toBeVisible();
   await expect(page.locator('.ring__day')).toHaveText('Day 4');
@@ -26,7 +25,6 @@ test('English everywhere, persisted after reload', async ({ page }) => {
   await page.goto('/#/settings/language');
   await page.getByRole('radio', { name: 'Español' }).click();
   await expect(page.getByRole('link', { name: 'Calendario' })).toBeVisible();
-  await watch.assertClean();
 });
 
 test('encrypted backup, delete everything and restore', async ({ page }, testInfo) => {

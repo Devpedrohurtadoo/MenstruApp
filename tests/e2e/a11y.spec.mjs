@@ -1,7 +1,7 @@
 // Automated accessibility audit (axe-core): WCAG 2.2 A/AA plus axe best practices, violations of
 // ANY impact fail. Every screen, the dialogs and the discreet screens, in light and dark themes and
 // with the "more contrast" setting.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { onboard } from './helpers.mjs';
 

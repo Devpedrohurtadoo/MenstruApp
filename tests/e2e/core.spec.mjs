@@ -1,9 +1,8 @@
 // Core journeys: onboarding, locking, logging, calendar and privacy at rest.
-import { test, expect } from '@playwright/test';
-import { onboard, typePin, watchErrors, localDate } from './helpers.mjs';
+import { test, expect } from './fixtures.mjs';
+import { onboard, typePin, localDate } from './helpers.mjs';
 
 test('onboarding with PIN, lock, wrong PIN, unlock and persistence', async ({ page }) => {
-  const watch = await watchErrors(page);
   const recovery = await onboard(page, { name: 'Ana', lastPeriodDaysAgo: 10 });
   expect(recovery).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{2,4})+$/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Ana');
@@ -22,7 +21,6 @@ test('onboarding with PIN, lock, wrong PIN, unlock and persistence', async ({ pa
   await expect(page.getByText('Introduce tu PIN')).toBeVisible();
   await typePin(page, '4827');
   await expect(page.locator('.ring__day')).toHaveText('Día 11');
-  await watch.assertClean();
 });
 
 test('recovery code unlocks and forces a new PIN', async ({ page }) => {
@@ -72,7 +70,6 @@ test('taking data out of the app (exports) asks for the PIN again', async ({ pag
 });
 
 test('logging a period, symptoms and notes; calendar and insights update', async ({ page }) => {
-  const watch = await watchErrors(page);
   await onboard(page, { lock: 'none', lastPeriodDaysAgo: 28 });
   // Late / due today → start a period from the home screen.
   await page.getByRole('button', { name: 'Me ha venido la regla' }).click();
@@ -103,11 +100,9 @@ test('logging a period, symptoms and notes; calendar and insights update', async
 
   await page.getByRole('link', { name: 'Análisis', exact: true }).click();
   await expect(page.getByText('Ciclo medio')).toBeVisible();
-  await watch.assertClean();
 });
 
 test('fast navigation always shows the view of the current address', async ({ page }) => {
-  const watch = await watchErrors(page);
   await onboard(page, { lock: 'none', lastPeriodDaysAgo: 6 });
   // Right after the shell mounts, while its first view may still be rendering…
   await page.goto('/#/report');
@@ -119,7 +114,6 @@ test('fast navigation always shows the view of the current address', async ({ pa
   await expect(page.locator('.topbar__title')).toHaveText('Calendario');
   await expect(page.locator('.cal__day').first()).toBeVisible();
   await expect(page.locator('.tabbar__item[aria-current="page"]')).toHaveText('Calendario');
-  await watch.assertClean();
 });
 
 test('health data is encrypted at rest (never plaintext in IndexedDB or localStorage)', async ({ page }) => {
