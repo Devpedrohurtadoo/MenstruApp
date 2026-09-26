@@ -29,12 +29,12 @@ test('English everywhere, persisted after reload', async ({ page }) => {
   await watch.assertClean();
 });
 
-test('encrypted backup → delete everything → restore', async ({ page }, testInfo) => {
+test('encrypted backup, delete everything and restore', async ({ page }, testInfo) => {
   await onboard(page, { lock: 'none', lastPeriodDaysAgo: 15, name: 'Copia' });
   await page.goto('/#/settings/data');
   await page.getByRole('button', { name: /Copia de seguridad cifrada/ }).click();
   const ask = page.getByRole('dialog');
-  await ask.locator('input').first().fill('clave-de-prueba-9');
+  await ask.getByLabel('Contraseña de la copia').fill('clave-de-prueba-9');
   const [download] = await Promise.all([page.waitForEvent('download'), ask.getByRole('button', { name: /Continuar|Confirmar|Descargar/ }).last().click()]);
   const file = testInfo.outputPath('backup.json');
   await download.saveAs(file);
@@ -46,7 +46,9 @@ test('encrypted backup → delete everything → restore', async ({ page }, test
   await page.getByRole('button', { name: 'Borrar todo' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Continuar' }).click();
   const confirm = page.getByRole('dialog');
-  await confirm.locator('input').fill('BORRAR');
+  // The confirmation word is typed in a visible text field, not a password field.
+  await expect(confirm.getByLabel('Escribe BORRAR para confirmar')).toHaveAttribute('type', 'text');
+  await confirm.getByLabel('Escribe BORRAR para confirmar').fill('BORRAR');
   await confirm.getByRole('button', { name: 'Eliminar' }).click();
   await expect(page.getByRole('heading', { name: 'Tu ciclo, tus datos' })).toBeVisible();
   // The fresh start recreates an empty database: no vaults, no records.
@@ -63,16 +65,20 @@ test('encrypted backup → delete everything → restore', async ({ page }, test
         const r = idb.transaction(name).objectStore(name).count();
         r.onsuccess = () => res(r.result);
       });
-    return { vaults: await count('vaults'), records: await count('records') };
+    const result = { vaults: await count('vaults'), records: await count('records') };
+    /** @type {IDBDatabase} */ (db).close();
+    return result;
   });
   expect(counts).toEqual({ vaults: 0, records: 0 });
 
   // Start again and restore the backup.
   await onboard(page, { lock: 'none' });
   await page.goto('/#/settings/data');
-  await page.setInputFiles('#import-file', file);
+  await expect(page.getByRole('heading', { name: 'Importar' })).toBeVisible();
+  // A buffer rather than a path: Chromium's file chooser cannot read some non-ASCII paths.
+  await page.setInputFiles('#import-file', { name: 'menstruapp-backup.json', mimeType: 'application/json', buffer: fs.readFileSync(file) });
   const pass = page.getByRole('dialog');
-  await pass.locator('input').first().fill('clave-de-prueba-9');
+  await pass.getByLabel('Contraseña de la copia').fill('clave-de-prueba-9');
   await pass.getByRole('button', { name: /Continuar|Confirmar/ }).last().click();
   const importDialog = page.getByRole('dialog');
   await expect(importDialog.getByText(/Días con datos en la copia/)).toBeVisible();
@@ -82,13 +88,30 @@ test('encrypted backup → delete everything → restore', async ({ page }, test
   await expect(page.locator('.ring__day')).toHaveText('Día 16');
 });
 
-test('pregnancy mode: weeks, due date, kick counter', async ({ page }) => {
+test('pregnancy mode: early weeks show the weekly guide and when the tools arrive', async ({ page }) => {
   await onboard(page, { lock: 'none', mode: /^Embarazo/, pregnancyDaysAgo: 75 });
-  await expect(page.locator('.preg__weeks')).toContainText('semanas');
+  await expect(page.locator('.preg__weeks')).toContainText('10+5 semanas');
+  await page.getByRole('button', { name: 'Tu embarazo semana a semana' }).click();
+  await expect(page.getByRole('heading', { name: 'Semana 10' })).toBeVisible();
+  await expect(page.getByText(/Desde la semana 24 podrás usar aquí el contador/)).toBeVisible();
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await expect(page.getByRole('heading', { name: 'Semana 11' })).toBeVisible();
+});
+
+test('pregnancy mode: kick counter and contraction timer in the third trimester', async ({ page }) => {
+  await onboard(page, { lock: 'none', mode: /^Embarazo/, pregnancyDaysAgo: 200 });
+  await expect(page.locator('.preg__weeks')).toContainText('28+4 semanas');
   await page.getByRole('button', { name: 'Pataditas y contracciones' }).click();
   await page.getByRole('button', { name: 'Empezar a contar' }).click();
   for (let i = 0; i < 10; i++) await page.getByRole('button', { name: /Toca con cada movimiento/ }).click();
-  await expect(page.getByText(/10 movimientos en/)).toBeVisible();
+  await expect(page.getByText(/¡10 movimientos en \d+ min!/)).toBeVisible();
+  await expect(page.getByText(/Última sesión .*10 movimientos/)).toBeVisible();
+  // Two contractions give a duration and an interval.
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'Empieza una contracción' }).click();
+    await page.getByRole('button', { name: 'Terminó' }).click();
+  }
+  await expect(page.getByText(/2 contracciones · duración media/)).toBeVisible();
 });
 
 test('PDF report for the doctor', async ({ page }) => {

@@ -918,6 +918,9 @@ export default {
     overdue: { one: "You're 1 day past your due date", other: "You're {count} days past your due date" },
     thisWeek: 'Week {week}',
     tools: 'Kicks and contractions',
+    weekByWeek: 'Your pregnancy week by week',
+    laterTools: 'From week 24 you can use the kick counter here, and from week 28, the contraction timer.',
+    laterContractions: 'From week 28 you can time your contractions here.',
     toolsTitle: 'Pregnancy tools',
     notActive: 'Turn on pregnancy mode in Settings to use these tools.',
     prevWeek: 'Previous week',
@@ -1340,6 +1343,8 @@ export default {
       deleteWord: 'DELETE',
       typeDelete: 'Type {word} to confirm',
       deleteCancelled: 'Nothing was deleted.',
+      deleting: 'Deleting all your data…',
+      backupAccount: 'Menstruapp backup',
     },
     language: {
       language: 'Language',

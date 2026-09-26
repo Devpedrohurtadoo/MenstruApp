@@ -362,7 +362,8 @@ function pregnancyCard(d, ctx) {
       h('p', { class: 'hero__line' }, icon('calendar-check', { size: 16 }), h('span', { text: p.overdue ? t('pregnancy.overdue', { count: -p.daysToDue }) : t('pregnancy.dueIn', { date: fmtDate(p.dueDate, 'long'), count: p.daysToDue }) })),
       h('h3', { class: 'card__subtitle', text: t('pregnancy.thisWeek', { week: p.noteWeek }) }),
       weekNote,
-      h('div', { class: 'btn-row' }, button({ label: t('pregnancy.tools'), icon: 'footprints', variant: 'soft', onClick: () => ctx.navigate('pregnancy') })),
+      // The kick counter starts at week 24: before that the tools page is the week-by-week guide.
+      h('div', { class: 'btn-row' }, button({ label: t(p.weeks >= 24 ? 'pregnancy.tools' : 'pregnancy.weekByWeek'), icon: p.weeks >= 24 ? 'footprints' : 'baby', variant: 'soft', onClick: () => ctx.navigate('pregnancy') })),
       h('p', { class: 'muted small', text: t('pregnancy.disclaimer') }),
     ],
   });

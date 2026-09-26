@@ -1617,6 +1617,11 @@ hr {
   font-weight: 600;
   outline: none;
 }
+.onboarding__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 .onboarding__footer {
   display: flex;
   gap: 10px;

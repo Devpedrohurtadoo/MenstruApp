@@ -322,7 +322,7 @@ export function badge(text, tone = 'neutral') {
 
 /**
  * Notice banner (info / consult / urgent).
- * @param {{ level: 'info' | 'consult' | 'urgent' | 'success', title: string, text?: string, action?: Node | null, onDismiss?: () => void }} o
+ * @param {{ level: 'info' | 'consult' | 'urgent' | 'success', title?: string, text?: string, action?: Node | null, onDismiss?: () => void }} o
  */
 export function notice(o) {
   const iconName = o.level === 'urgent' ? 'siren' : o.level === 'consult' ? 'stethoscope' : o.level === 'success' ? 'circle-check' : 'info';
@@ -330,7 +330,7 @@ export function notice(o) {
     'div',
     { class: ['notice', `notice--${o.level}`], role: o.level === 'urgent' ? 'alert' : null },
     h('span', { class: 'notice__icon' }, icon(iconName, { size: 20 })),
-    h('div', { class: 'notice__body' }, h('p', { class: 'notice__title', text: o.title }), o.text ? h('p', { class: 'notice__text', text: o.text }) : null, o.action ?? null),
+    h('div', { class: 'notice__body' }, o.title ? h('p', { class: 'notice__title', text: o.title }) : null, o.text ? h('p', { class: 'notice__text', text: o.text }) : null, o.action ?? null),
     o.onDismiss ? iconButton({ icon: 'close', label: t('common.dismiss'), onClick: o.onDismiss, size: 16, class: 'notice__close' }) : null,
   );
 }

@@ -11,9 +11,12 @@ import { registerServiceWorker } from './pwa/sw-register.js';
 import { initInstallPrompt } from './pwa/install.js';
 import { closeAllModals } from './ui/modal.js';
 import { icon } from './ui/icons.js';
+import { spinner } from './ui/components.js';
 
 const appRoot = /** @type {HTMLElement} */ (document.getElementById('app'));
 let onboardingActive = false;
+/** "Delete everything" is running: nothing else may render until the page reloads. */
+let deleting = false;
 /** @type {null | (() => void)} */
 let unmountShell = null;
 
@@ -93,13 +96,23 @@ async function boot() {
   }
   await applyTheme(prefs, store.get().db);
 
-  bus.on('unlocked', () => showApp());
+  bus.on('unlocked', () => {
+    if (!deleting) showApp();
+  });
   bus.on('locked', (/** @type {{ reason?: string }} */ e) => {
+    if (deleting) return;
     if (e?.reason === 'camouflage') showDiscreet('camouflage');
     else if (e?.reason === 'guest') showDiscreet('guest');
     else showLock();
   });
   bus.on('add-profile', () => showOnboarding());
+  bus.on('before-delete-everything', () => {
+    deleting = true;
+    unmountShell?.();
+    unmountShell = null;
+    closeAllModals();
+    replace(appRoot, h('main', { class: 'screen screen--center' }, h('div', { class: 'fatal', role: 'status' }, spinner(), h('p', { text: t('settings.data.deleting') }))));
+  });
   bus.on('prefs-changed', async (/** @type {import('./data/prefs.js').Prefs} */ next) => {
     await applyTheme(next, store.get().db);
     setParticleLevel(next.particles);

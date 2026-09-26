@@ -15,6 +15,48 @@ async function freshRepo() {
   return { db, repo: new ProfileRepo(db, 'profile-a', keys), keys };
 }
 
+describe('database schema', () => {
+  const STORES = ['blobs', 'meta', 'notifications', 'records', 'vaults'];
+  /** @param {string} name @param {number} [version] @returns {Promise<IDBDatabase>} */
+  const rawOpen = (name, version) =>
+    new Promise((resolve, reject) => {
+      const r = version ? indexedDB.open(name, version) : indexedDB.open(name);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+
+  it('repairs a database that exists at our version but without stores', async () => {
+    const name = `schema-${++dbName}`;
+    (await rawOpen(name)).close(); // e.g. created empty by devtools or an extension
+    const db = await openDatabase(name);
+    expect([...db.objectStoreNames].sort()).toEqual(STORES);
+    expect(db.version).toBe(2);
+    db.close();
+    // Later opens work normally at the repaired version.
+    const again = await openDatabase(name);
+    expect(again.version).toBe(2);
+    again.close();
+  });
+
+  it('opens a database left at a newer version without VersionError', async () => {
+    const name = `schema-${++dbName}`;
+    (await openDatabase(name)).close();
+    (await rawOpen(name, 7)).close();
+    const db = await openDatabase(name);
+    expect(db.version).toBe(7);
+    expect([...db.objectStoreNames].sort()).toEqual(STORES);
+    db.close();
+  });
+
+  it('releases its connection when another context deletes the database', async () => {
+    const name = `schema-${++dbName}`;
+    const db = await openDatabase(name);
+    await deleteDatabase(name);
+    // The connection closed itself on "versionchange" instead of blocking the deletion.
+    expect(() => db.transaction('meta')).toThrow();
+  });
+});
+
 describe('encrypted repository', () => {
   it('stores days and documents encrypted with opaque ids', async () => {
     const { db, repo } = await freshRepo();

@@ -188,18 +188,21 @@ export function confirmDialog(opts) {
 }
 
 /**
- * Asks for a secret (password) without ever echoing it in the DOM.
- * @param {{ title: string, label: string, hint?: string, confirmLabel?: string, minLength?: number, autocomplete?: string }} opts
+ * Asks for a secret (password) without ever echoing it in the DOM, or, with `plain`, for a
+ * visible typed confirmation (e.g. "type DELETE").
+ * @param {{ title: string, label: string, hint?: string, confirmLabel?: string, minLength?: number, autocomplete?: string, plain?: boolean, account?: string }} opts
  * @returns {Promise<string | null>}
  */
 export function askSecret(opts) {
   /** @type {string | null} */
   let value = null;
   const input = h('input', {
-    type: 'password',
+    type: opts.plain ? 'text' : 'password',
     class: 'input',
     id: 'ask-secret-input',
-    autocomplete: opts.autocomplete ?? 'current-password',
+    autocomplete: opts.autocomplete ?? (opts.plain ? 'off' : 'current-password'),
+    autocapitalize: opts.plain ? 'characters' : null,
+    spellcheck: false,
     minLength: opts.minLength ?? 1,
     maxLength: 256,
     required: true,
@@ -220,6 +223,8 @@ export function askSecret(opts) {
         handle.close({ result: value });
       },
     },
+    // Lets a password manager file the secret under a recognizable account name.
+    opts.account && !opts.plain ? h('input', { type: 'text', autocomplete: 'username', value: opts.account, hidden: true, readOnly: true, tabIndex: -1 }) : null,
     h('label', { class: 'field__label', for: 'ask-secret-input', text: opts.label }),
     input,
     opts.hint ? h('p', { class: 'field__hint', text: opts.hint }) : null,

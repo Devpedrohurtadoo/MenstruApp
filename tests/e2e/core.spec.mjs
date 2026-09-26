@@ -76,8 +76,24 @@ test('logging a period, symptoms and notes; calendar and insights update', async
   await expect(yesterday).toHaveClass(/is-period-logged/);
   await page.getByRole('button', { name: 'Hecho' }).click();
 
-  await page.getByRole('link', { name: 'Análisis' }).click();
+  await page.getByRole('link', { name: 'Análisis', exact: true }).click();
   await expect(page.getByText('Ciclo medio')).toBeVisible();
+  await watch.assertClean();
+});
+
+test('fast navigation always shows the view of the current address', async ({ page }) => {
+  const watch = await watchErrors(page);
+  await onboard(page, { lock: 'none', lastPeriodDaysAgo: 6 });
+  // Right after the shell mounts, while its first view may still be rendering…
+  await page.goto('/#/report');
+  await expect(page.locator('.topbar__title')).toHaveText('Informe para tu consulta');
+  await expect(page.getByRole('button', { name: 'Descargar PDF' })).toBeVisible();
+  // …and tapping through the tabs without waiting for each view to appear.
+  for (const name of ['Calendario', 'Análisis', 'Aprende', 'Hoy', 'Calendario']) await page.getByRole('link', { name, exact: true }).click();
+  await expect(page).toHaveURL(/#\/calendar$/);
+  await expect(page.locator('.topbar__title')).toHaveText('Calendario');
+  await expect(page.locator('.cal__day').first()).toBeVisible();
+  await expect(page.locator('.tabbar__item[aria-current="page"]')).toHaveText('Calendario');
   await watch.assertClean();
 });
 

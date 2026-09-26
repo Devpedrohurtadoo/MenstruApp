@@ -138,19 +138,23 @@ export function mountShell(/** @type {HTMLElement} */ appRoot) {
     if (seq !== renderSeq) return;
     const viewTitle = mod.title ? mod.title(ctx) : t(`nav.${route.name}`);
     const swap = () => {
+      // A view transition runs this callback later (and a skipped transition still runs it):
+      // if a newer navigation has rendered meanwhile, this stale view must not replace it.
+      if (seq !== renderSeq) return;
       renderHeader(route, viewTitle);
       renderTabs(route.name);
       renderBanners();
       replace(main, node);
     };
-    const canAnimate = routeChanged && 'startViewTransition' in document && !prefersReducedMotion();
+    // The first paint is not animated: there is no previous view to transition from.
+    const canAnimate = routeChanged && lastRouteName !== '' && 'startViewTransition' in document && !prefersReducedMotion();
     if (canAnimate) /** @type {any} */ (document).startViewTransition(swap);
     else swap();
     activeModule = mod;
     document.title = `${viewTitle} · Menstruapp`;
     if (routeChanged) {
       window.scrollTo(0, 0);
-      if (lastRoutePath) {
+      if (lastRouteName) {
         main.focus({ preventScroll: true });
         announce(viewTitle);
       }

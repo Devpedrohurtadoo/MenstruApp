@@ -21,6 +21,8 @@ export async function renderLock(root, opts) {
   let pin = '';
   let busy = false;
   let recoveryMode = false;
+  /** Last error shown under the keypad/form (kept across re-renders). */
+  let errorMessage = '';
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let countdown;
   /** @type {ReturnType<typeof describeVault>} */
@@ -63,7 +65,6 @@ export async function renderLock(root, opts) {
         return;
       }
       const status = err?.status;
-      render();
       const msg =
         err?.name === 'WrongSecretError'
           ? status?.locked
@@ -72,8 +73,8 @@ export async function renderLock(root, opts) {
           : attempt.type === 'webauthn'
             ? t('lock.biometricFailed')
             : t('lock.unlockError');
-      const errEl = screen.querySelector('.lock__error');
-      if (errEl) errEl.textContent = msg;
+      errorMessage = msg;
+      await render();
       announce(msg, 'assertive');
       screen.querySelector('.lock__dots')?.classList.add('shake');
     }
@@ -98,6 +99,12 @@ export async function renderLock(root, opts) {
     if (busy) return;
     if (key === 'back') pin = pin.slice(0, -1);
     else if (pin.length < (info.pinDigits ?? 8)) pin += key;
+    if (errorMessage && pin.length) {
+      // A new attempt starts: clear the previous error.
+      errorMessage = '';
+      const el = screen.querySelector('.lock__error');
+      if (el) el.textContent = '';
+    }
     renderDots();
     if (pin.length === info.pinDigits) tryUnlock({ type: 'pin', secret: pin });
   };
@@ -118,7 +125,7 @@ export async function renderLock(root, opts) {
     const profile = profiles.find((p) => p.id === profileId);
     const hideNames = store.get().prefs.hideProfileNames;
     clearInterval(countdown);
-    const errorEl = h('p', { class: 'lock__error', role: 'alert' });
+    const errorEl = h('p', { class: 'lock__error', role: 'alert', text: errorMessage });
     if (status.locked) {
       const update = async () => {
         const s = await lockoutStatus(profileId);
@@ -181,7 +188,7 @@ export async function renderLock(root, opts) {
           button({ label: busy ? t('lock.checking') : t('lock.unlock'), variant: 'primary', type: 'submit', full: true, busy, disabled: status.locked }),
         ),
         errorEl,
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.backToPin'), onClick: () => { recoveryMode = false; render(); } }), h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile })),
+        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.backToPin'), onClick: () => { recoveryMode = false; errorMessage = ''; render(); } }), h('button', { type: 'button', class: 'link-btn link-btn--danger', text: t('lock.noRecovery'), onClick: resetProfile })),
       ];
     } else if (!info.needsSecret) {
       body = [
@@ -206,7 +213,7 @@ export async function renderLock(root, opts) {
             return h('button', { type: 'button', class: 'keypad__key', disabled: status.locked || busy, onClick: () => press(k), text: fmtNumber(Number(k)) });
           }),
         ),
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPin'), onClick: () => { recoveryMode = true; render(); } })),
+        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPin'), onClick: () => { recoveryMode = true; errorMessage = ''; render(); } })),
       ];
     } else {
       const input = h('input', { type: 'password', class: 'input', id: 'pass-input', autocomplete: 'current-password', maxLength: 256 });
@@ -227,7 +234,7 @@ export async function renderLock(root, opts) {
         ),
         info.hasBiometric ? button({ label: t('lock.useBiometric'), icon: 'fingerprint', variant: 'ghost', full: true, disabled: busy, onClick: () => tryUnlock({ type: 'webauthn' }) }) : null,
         errorEl,
-        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPassphrase'), onClick: () => { recoveryMode = true; render(); } })),
+        h('div', { class: 'lock__links' }, h('button', { type: 'button', class: 'link-btn', text: t('lock.forgotPassphrase'), onClick: () => { recoveryMode = true; errorMessage = ''; render(); } })),
       ];
     }
 

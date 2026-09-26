@@ -2,7 +2,7 @@
 
 import { h, replace, downloadBlob, announce, prefersReducedMotion } from '../core/dom.js';
 import { t, getLanguage, fmtDate, fmtTime, fmtDateTime } from '../core/i18n.js';
-import { diffDays } from '../core/dates.js';
+import { diffDays, todayISO } from '../core/dates.js';
 import { icon } from '../ui/icons.js';
 import { button, iconButton, chip } from '../ui/components.js';
 import { createLuna } from '../domain/luna.js';
@@ -195,7 +195,7 @@ export async function render(ctx) {
         size: 'sm',
         onClick: () => {
           const text = messages.map((m) => `[${fmtDateTime(m.at)}] ${m.from === 'luna' ? 'Luna' : t('luna.you')}:\n${m.text.join('\n')}`).join('\n\n');
-          downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), `luna-${new Date().toISOString().slice(0, 10)}.txt`);
+          downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), `luna-${todayISO()}.txt`);
         },
       }),
       button({

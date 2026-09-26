@@ -330,6 +330,8 @@ export function renderOnboarding(root, opts) {
         const a = h('input', { type: 'password', class: 'input', id: 'ob-secret', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret, onInput: (/** @type {Event} */ e) => (s.secret = /** @type {HTMLInputElement} */ (e.target).value) });
         const b = h('input', { type: 'password', class: 'input', id: 'ob-secret2', inputMode: isPin ? 'numeric' : 'text', maxLength: isPin ? 8 : 256, autocomplete: 'new-password', value: s.secret2, onInput: (/** @type {Event} */ e) => (s.secret2 = /** @type {HTMLInputElement} */ (e.target).value) });
         inputs.push(
+          // Lets a password manager file the secret under a recognizable account name.
+          h('input', { type: 'text', autocomplete: 'username', value: s.name.trim() || 'Menstruapp', hidden: true, readOnly: true, tabIndex: -1 }),
           h('label', { class: 'field__label', for: 'ob-secret', text: t(isPin ? 'lock.newPin' : 'lock.newPassphrase') }),
           a,
           h('p', { class: 'field__hint', text: t(isPin ? 'lock.pinHint' : 'lock.passphraseHint') }),
@@ -537,20 +539,18 @@ export function renderOnboarding(root, opts) {
       { class: 'steps', 'aria-label': t('onboarding.progress', { current: s.step + 1, total: STEPS.length }) },
       STEPS.map((_, i) => h('span', { class: ['steps__dot', i <= s.step ? 'is-on' : ''], 'aria-hidden': 'true' })),
     );
-    const next = /** @type {any} */ (view).footer ?? [
+    const custom = /** @type {any} */ (view).footer;
+    const next = () => {
+      if (s.busy) return;
+      const valid = /** @type {any} */ (view).valid;
+      if (valid && !valid()) return;
+      if (name === 'protect') pendingSecret = s.secret;
+      if (isLast) finish();
+      else go(1);
+    };
+    const footer = custom ?? [
       s.step > 0 ? button({ label: t('common.back'), variant: 'ghost', onClick: () => go(-1), disabled: s.busy }) : null,
-      button({
-        label: s.busy ? t('onboarding.creating') : (/** @type {any} */ (view).nextLabel ?? t('common.continue')),
-        variant: 'primary',
-        busy: s.busy,
-        onClick: () => {
-          const valid = /** @type {any} */ (view).valid;
-          if (valid && !valid()) return;
-          if (name === 'protect') pendingSecret = s.secret;
-          if (isLast) finish();
-          else go(1);
-        },
-      }),
+      button({ label: s.busy ? t('onboarding.creating') : (/** @type {any} */ (view).nextLabel ?? t('common.continue')), variant: 'primary', type: 'submit', busy: s.busy }),
     ];
     replace(
       screen,
@@ -559,8 +559,20 @@ export function renderOnboarding(root, opts) {
         { class: 'onboarding__inner' },
         s.step === 0 ? brandMark() : progress,
         h('h1', { class: 'onboarding__title', tabIndex: -1, text: view.title }),
-        h('div', { class: 'stack' }, view.body),
-        h('div', { class: 'onboarding__footer' }, next),
+        // A real form: Enter moves to the next step and password managers see the new secret.
+        h(
+          'form',
+          {
+            class: 'onboarding__form',
+            noValidate: true,
+            onSubmit: (/** @type {SubmitEvent} */ e) => {
+              e.preventDefault();
+              if (!custom) next();
+            },
+          },
+          h('div', { class: 'stack' }, view.body),
+          h('div', { class: 'onboarding__footer' }, footer),
+        ),
       ),
     );
   };

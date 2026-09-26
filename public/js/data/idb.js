@@ -26,31 +26,62 @@ export function done(tx) {
   });
 }
 
-/** @param {string} [name] @returns {Promise<IDBDatabase>} */
-export function openDatabase(name = DB_NAME) {
-  if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB unavailable'));
+/** Object stores of the current schema. */
+const STORES = /** @type {const} */ (['meta', 'vaults', 'records', 'blobs', 'notifications']);
+
+/** Creates whatever store is missing (idempotent, so it also repairs a damaged schema). @param {IDBDatabase} db */
+function createStores(db) {
+  if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+  if (!db.objectStoreNames.contains('vaults')) db.createObjectStore('vaults', { keyPath: 'profileId' });
+  if (!db.objectStoreNames.contains('records')) {
+    const records = db.createObjectStore('records', { keyPath: 'id' });
+    records.createIndex('profileId', 'profileId', { unique: false });
+  }
+  if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
+  if (!db.objectStoreNames.contains('notifications')) db.createObjectStore('notifications', { keyPath: 'id' });
+}
+
+/** @param {string} name @param {number} [version] @returns {Promise<IDBDatabase>} */
+function openAt(name, version) {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
-      if (!db.objectStoreNames.contains('vaults')) db.createObjectStore('vaults', { keyPath: 'profileId' });
-      if (!db.objectStoreNames.contains('records')) {
-        const records = db.createObjectStore('records', { keyPath: 'id' });
-        records.createIndex('profileId', 'profileId', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
-      if (!db.objectStoreNames.contains('notifications')) db.createObjectStore('notifications', { keyPath: 'id' });
-    };
+    const request = version === undefined ? indexedDB.open(name) : indexedDB.open(name, version);
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let blockedTimer;
+    request.onupgradeneeded = () => createStores(request.result);
     request.onsuccess = () => {
+      clearTimeout(blockedTimer);
       const db = request.result;
-      // Another tab upgrading the schema: release our connection instead of blocking it.
+      // Another tab upgrading the schema, or "delete everything": release our connection.
       db.onversionchange = () => db.close();
       resolve(db);
     };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('IndexedDB upgrade blocked by another tab'));
+    request.onerror = () => {
+      clearTimeout(blockedTimer);
+      reject(request.error);
+    };
+    // "blocked" is transient (another connection is being closed): keep waiting, and only
+    // give up if it is never released.
+    request.onblocked = () => {
+      blockedTimer ??= setTimeout(() => reject(new Error('IndexedDB upgrade blocked by another tab')), 15_000);
+    };
   });
+}
+
+/**
+ * Opens the database, creating or repairing the schema when needed. It first opens whatever
+ * version exists (so a newer database never fails with VersionError) and, if that version is
+ * older than ours or some store is missing (e.g. an empty database created by devtools or an
+ * extension), upgrades once more to create them.
+ * @param {string} [name]
+ * @returns {Promise<IDBDatabase>}
+ */
+export async function openDatabase(name = DB_NAME) {
+  if (typeof indexedDB === 'undefined') throw new Error('IndexedDB unavailable');
+  const db = await openAt(name);
+  if (db.version >= DB_VERSION && STORES.every((store) => db.objectStoreNames.contains(store))) return db;
+  const version = Math.max(DB_VERSION, db.version + 1);
+  db.close();
+  return openAt(name, version);
 }
 
 /**

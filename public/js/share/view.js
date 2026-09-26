@@ -14,7 +14,12 @@ function message(title, text) {
   replace(root, h('div', { class: 'share-view' }, brandMark(), h('div', { class: 'card' }, h('h1', { class: 'card__title', text: title }), h('p', { text }))));
 }
 
+let loadSeq = 0;
+
 async function main() {
+  const seq = ++loadSeq;
+  // Another link opened meanwhile (see the hashchange listener): drop this older one.
+  const stale = () => seq !== loadSeq;
   setLanguage(detectLanguage());
   const [id, key] = location.hash.replace(/^#/, '').split('.');
   // Remove the key from the address bar/history as soon as we have it.
@@ -23,11 +28,13 @@ async function main() {
   let json;
   try {
     const res = await fetch(`/api/share/${encodeURIComponent(id)}`, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' });
+    if (stale()) return;
     if (res.status === 404 || res.status === 410) return message(t('shareView.goneTitle'), t('shareView.gone'));
     if (!res.ok) throw new Error(String(res.status));
     json = await res.json();
   } catch {
-    return message(t('shareView.errorTitle'), t('shareView.error'));
+    if (!stale()) message(t('shareView.errorTitle'), t('shareView.error'));
+    return;
   }
   /** @type {any} */
   let snap;
@@ -35,8 +42,10 @@ async function main() {
     const cryptoKey = await crypto.subtle.importKey('raw', fromB64Url(key), 'AES-GCM', false, ['decrypt']);
     snap = await decryptJSON(cryptoKey, { iv: json.iv, ct: json.ct }, `menstruapp-share-v1:${id}`);
   } catch {
-    return message(t('shareView.invalidTitle'), t('shareView.invalid'));
+    if (!stale()) message(t('shareView.invalidTitle'), t('shareView.invalid'));
+    return;
   }
+  if (stale()) return;
   if (snap?.lang === 'es' || snap?.lang === 'en') setLanguage(snap.lang);
   const blocks = [];
   blocks.push(h('p', { class: 'muted small', text: t('shareView.createdAt', { date: fmtDateTime(Number(snap.createdAt) || Date.now()) }) }));
@@ -101,3 +110,7 @@ async function main() {
 }
 
 main();
+// Opening another link in this same tab only changes the fragment (no page load): load it too.
+window.addEventListener('hashchange', () => {
+  if (location.hash.length > 1) main();
+});

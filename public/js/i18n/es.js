@@ -919,6 +919,9 @@ export default {
     overdue: { one: 'Has superado en 1 día la fecha probable de parto', other: 'Has superado en {count} días la fecha probable de parto' },
     thisWeek: 'Semana {week}',
     tools: 'Pataditas y contracciones',
+    weekByWeek: 'Tu embarazo semana a semana',
+    laterTools: 'Desde la semana 24 podrás usar aquí el contador de movimientos, y desde la 28, el cronómetro de contracciones.',
+    laterContractions: 'Desde la semana 28 podrás cronometrar aquí tus contracciones.',
     toolsTitle: 'Herramientas de embarazo',
     notActive: 'Activa el modo embarazo en Ajustes para usar estas herramientas.',
     prevWeek: 'Semana anterior',
@@ -1341,6 +1344,8 @@ export default {
       deleteWord: 'BORRAR',
       typeDelete: 'Escribe {word} para confirmar',
       deleteCancelled: 'No se ha borrado nada.',
+      deleting: 'Borrando todos tus datos…',
+      backupAccount: 'Copia de seguridad de Menstruapp',
     },
     language: {
       language: 'Idioma',

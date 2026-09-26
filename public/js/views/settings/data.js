@@ -45,7 +45,7 @@ export async function render(ctx) {
             title: t('settings.data.encryptedBackup'),
             subtitle: t('settings.data.encryptedBackupDesc'),
             onClick: async () => {
-              const password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword'), hint: t('settings.data.backupPasswordHint'), minLength: 8, autocomplete: 'new-password' });
+              const password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword'), hint: t('settings.data.backupPasswordHint'), minLength: 8, autocomplete: 'new-password', account: t('settings.data.backupAccount') });
               if (!password) return;
               const blob = await encryptedBackupBlob(data, password);
               downloadBlob(blob, exportName('menstruapp'));
@@ -122,7 +122,7 @@ export async function render(ctx) {
           onClick: async () => {
             const first = await confirmDialog({ title: t('settings.data.deleteAll'), message: t('settings.data.deleteAllText'), confirmLabel: t('common.continue'), danger: true });
             if (!first) return;
-            const word = await askSecret({ title: t('settings.data.deleteAll'), label: t('settings.data.typeDelete', { word: t('settings.data.deleteWord') }), confirmLabel: t('common.delete'), autocomplete: 'off' });
+            const word = await askSecret({ title: t('settings.data.deleteAll'), label: t('settings.data.typeDelete', { word: t('settings.data.deleteWord') }), confirmLabel: t('common.delete'), plain: true });
             if (!word || word.trim().toUpperCase() !== t('settings.data.deleteWord').toUpperCase()) return toast(t('settings.data.deleteCancelled'));
             try {
               const remote = await import('../../pwa/services.js');
@@ -165,7 +165,7 @@ async function handleImport(file) {
           payload = await readBackup(text);
         } catch (err) {
           if (!(err instanceof BackupError) || err.code !== 'needsPassword') throw err;
-          password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword') });
+          password = await askSecret({ title: t('settings.data.encryptedBackup'), label: t('settings.data.backupPassword'), account: t('settings.data.backupAccount') });
           if (!password) return;
           payload = await readBackup(text, password);
         }

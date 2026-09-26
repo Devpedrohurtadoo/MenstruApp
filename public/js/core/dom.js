@@ -38,6 +38,9 @@ function flatten(child, out) {
   }
 }
 
+/** Boolean DOM properties that default to true, so an explicit `false` must be applied. */
+const TRUE_BY_DEFAULT = new Set(['spellcheck', 'translate']);
+
 /**
  * @param {Element} el
  * @param {Record<string, any>} props
@@ -45,7 +48,8 @@ function flatten(child, out) {
  */
 function applyProps(el, props, isSvg) {
   for (const [key, value] of Object.entries(props)) {
-    if (value === undefined || value === null || value === false) continue;
+    // `false` means "leave the default", except for properties whose default is true.
+    if (value === undefined || value === null || (value === false && !TRUE_BY_DEFAULT.has(key))) continue;
     if (key === 'class' || key === 'className') {
       const cls = classNames(value);
       if (cls) el.setAttribute('class', cls);

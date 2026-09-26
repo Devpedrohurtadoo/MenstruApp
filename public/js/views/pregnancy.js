@@ -2,16 +2,20 @@
 
 import { h, announce } from '../core/dom.js';
 import { t, fmtDate, fmtTime, getLanguage, fmtNumber } from '../core/i18n.js';
+import { todayISO } from '../core/dates.js';
 import { card, button, emptyState, notice, progressBar } from '../ui/components.js';
 import { toast } from '../ui/toast.js';
 import { saveDoc } from '../app.js';
 import { contractionStats, lastKickSession } from '../domain/pregnancy.js';
 
+// A kick session or a running contraction survives switching tabs (you may check the
+// calendar mid-count), but belongs to one profile: another profile never sees it.
 /** @type {{ start: number, count: number } | null} */
 let kickSession = null;
 /** @type {number | null} */
 let contractionStart = null;
 let noteWeek = 0;
+let ownerProfile = '';
 /** @type {ReturnType<typeof setInterval> | undefined} */
 let ticker;
 
@@ -27,6 +31,13 @@ export async function render(ctx) {
     return h('div', { class: 'view' }, card({ children: emptyState({ title: t('pregnancy.notActive'), action: h('a', { class: 'btn btn--soft', href: '#/settings/mode', text: t('settings.sections.mode') }) }) }));
   }
   const p = d.pregnancy;
+  const profileId = ctx.state.session?.profileId ?? '';
+  if (profileId !== ownerProfile) {
+    ownerProfile = profileId;
+    kickSession = null;
+    contractionStart = null;
+    noteWeek = 0;
+  }
   if (!noteWeek) noteWeek = p.noteWeek;
   const notes = (await import(`../content/pregnancy-${getLanguage()}.js`)).default;
   const rerender = () => ctx.navigate('pregnancy', { replace: true });
@@ -94,7 +105,7 @@ export async function render(ctx) {
             ),
           ]
         : button({ label: t('pregnancy.kicks.start'), icon: 'play', variant: 'primary', onClick: () => { kickSession = { start: Date.now(), count: 0 }; rerender(); } }),
-      lastKick ? h('p', { class: 'muted small', text: t('pregnancy.kicks.last', { count: lastKick.count, minutes: lastKick.minutes, date: fmtDate(new Date(lastKick.start).toISOString().slice(0, 10), 'short') }) }) : null,
+      lastKick ? h('p', { class: 'muted small', text: t('pregnancy.kicks.last', { count: lastKick.count, minutes: lastKick.minutes, date: fmtDate(todayISO(new Date(lastKick.start)), 'short') }) }) : null,
       notice({ level: 'consult', title: t('pregnancy.kicks.warnTitle'), text: t('pregnancy.kicks.warnText') }),
     ],
   });
@@ -169,6 +180,7 @@ export async function render(ctx) {
     weekCard,
     p.weeks >= 24 ? kickCard : null,
     p.weeks >= 28 ? contractionCard : null,
+    p.weeks < 28 ? notice({ level: 'info', text: t(p.weeks < 24 ? 'pregnancy.laterTools' : 'pregnancy.laterContractions') }) : null,
     h('a', { class: 'link', href: '#/learn/article/embarazo-alarma', text: t('pregnancy.warningSigns') }),
     h('p', { class: 'disclaimer', text: t('pregnancy.disclaimer') }),
   );
@@ -182,4 +194,6 @@ function elapsed(start) {
 
 export function cleanup() {
   clearInterval(ticker);
+  // Coming back later shows the current week again.
+  noteWeek = 0;
 }
