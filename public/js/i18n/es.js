@@ -412,11 +412,11 @@ export default {
       text: { one: 'Si llevas 1 mes o más buscando embarazo con relaciones regulares sin protección, puedes pedir una valoración de fertilidad.', other: 'Si llevas {count} meses o más buscando embarazo con relaciones regulares sin protección, se recomienda pedir una valoración de fertilidad (antes si tus ciclos son muy irregulares o tienes antecedentes conocidos).' },
     },
     emergencyContraception: {
-      title: 'Relación sin protección en días fértiles',
+      title: 'Relación sin protección',
       text: {
-        zero: 'Hoy registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
-        one: 'Ayer registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
-        other: 'Hace {count} días registraste una relación sin protección en días posiblemente fértiles. La anticoncepción de urgencia es más eficaz cuanto antes: la píldora sirve hasta 3–5 días después según el tipo y el DIU de cobre hasta 5 días. Pregunta en tu farmacia o centro de salud.',
+        zero: 'Hoy registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
+        one: 'Ayer registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
+        other: 'Hace {count} días registraste una relación sin protección. Si no quieres un embarazo, la anticoncepción de urgencia funciona mejor cuanto antes, sea cual sea el día del ciclo: la píldora de levonorgestrel sirve hasta 3 días (72 h) después, y la de ulipristal y el DIU de cobre (el método más eficaz), hasta 5 días (120 h). Pregunta hoy en tu farmacia o centro de salud.',
       },
     },
   },

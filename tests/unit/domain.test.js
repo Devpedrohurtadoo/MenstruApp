@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyze } from '../../public/js/domain/cycle.js';
-import { computeNotices, computeInsights, frequencies } from '../../public/js/domain/insights.js';
+import { computeNotices, computeInsights, frequencies, normalVariation } from '../../public/js/domain/insights.js';
 import { pregnancyInfo, contractionStats } from '../../public/js/domain/pregnancy.js';
 import { upcomingOccurrences, contraceptionAction, repeatDates } from '../../public/js/domain/reminders.js';
 import { loggingStreak, newAchievements } from '../../public/js/domain/streaks.js';
@@ -55,6 +55,88 @@ describe('notices', () => {
     const a = analyze(days, { today: '2024-03-10', settings: {} });
     const ids = computeNotices(a, days, { ...baseCtx, mode: 'avoid', today: '2024-03-10' }).map((n) => n.id);
     expect(ids).toContain('emergencyContraception');
+  });
+
+  it('mentions emergency contraception after any unprotected sex while it still works, even without predictions', () => {
+    // Day 3 of the cycle: outside any estimated fertile window.
+    const days = { ...periodsEvery('2024-01-01', 28, 3), '2024-02-28': { sex: 'unprotected' } };
+    const at = (/** @type {string} */ today, /** @type {Record<string, any>} */ d = days) =>
+      computeNotices(analyze(d, { today, settings: {} }), d, { ...baseCtx, mode: 'avoid', today }).find((n) => n.id === 'emergencyContraception');
+    expect(at('2024-03-02')).toMatchObject({ level: 'consult', params: { count: 3 } });
+    expect(at('2024-03-04')).toMatchObject({ params: { count: 5 } });
+    expect(at('2024-03-05')).toBeUndefined();
+    // No cycle data at all.
+    expect(at('2024-03-02', { '2024-03-01': { sex: 'unprotected' } })).toMatchObject({ params: { count: 1 } });
+    // Only in avoid mode.
+    expect(computeNotices(analyze(days, { today: '2024-03-02', settings: {} }), days, { ...baseCtx, today: '2024-03-02' }).map((n) => n.id)).not.toContain('emergencyContraception');
+  });
+
+  it('flags bleeding longer than 8 days, including episodes over 15 days and ongoing ones', () => {
+    const ids = (/** @type {Record<string, any>} */ days, /** @type {string} */ today) =>
+      computeNotices(analyze(days, { today, settings: {} }), days, { ...baseCtx, today }).map((n) => n.id);
+    expect(ids(periodsEvery('2024-01-01', 30, 2, 5), '2024-02-20')).not.toContain('longPeriod');
+    expect(ids(periodsEvery('2024-01-01', 30, 2, 12), '2024-02-20')).toContain('longPeriod');
+    expect(ids(periodsEvery('2024-01-01', 30, 2, 20), '2024-02-28')).toContain('longPeriod');
+    // Still bleeding on day 10.
+    expect(ids(periodsEvery('2024-03-01', 30, 1, 10), '2024-03-10')).toContain('longPeriod');
+  });
+
+  it('flags spotting after 12 months without a period (perimenopause)', () => {
+    const periods = periodsEvery('2022-01-01', 30, 2);
+    const ids = (/** @type {Record<string, any>} */ days, /** @type {Record<string, any>} */ extra = {}) =>
+      computeNotices(analyze(days, { today: '2024-03-10', settings: { mode: 'perimenopause' } }), days, { ...baseCtx, mode: 'perimenopause', today: '2024-03-10', ...extra }).map((n) => n.id);
+    expect(ids({ ...periods, '2024-03-08': { flow: 'spotting' } })).toContain('postmenopausalBleeding');
+    expect(ids(periods)).not.toContain('postmenopausalBleeding');
+    // Spotting a few months after the last period is not postmenopausal.
+    expect(ids({ ...periodsEvery('2023-12-01', 30, 1), '2024-03-08': { flow: 'spotting' } })).not.toContain('postmenopausalBleeding');
+    // She said she had gone over a year without a period, and no period was logged since.
+    expect(ids({ '2024-03-08': { flow: 'spotting' } }, { postmenopausal: true })).toContain('postmenopausalBleeding');
+    expect(ids({ '2024-03-08': { flow: 'spotting' } })).not.toContain('postmenopausalBleeding');
+  });
+
+  it('flags large clots or heavy bleeding after the first week postpartum as urgent', () => {
+    const notice = (/** @type {Record<string, any>} */ entry, /** @type {string} */ today) => {
+      const days = { [today]: entry };
+      return computeNotices(analyze(days, { today, settings: { mode: 'postpartum' } }), days, { ...baseCtx, mode: 'postpartum', postpartumBirthDate: '2024-03-01', today }).find((n) => n.id === 'postpartumHeavyBleeding');
+    };
+    expect(notice({ flow: 'medium', clots: 'large' }, '2024-03-20')).toMatchObject({ level: 'urgent' });
+    expect(notice({ flow: 'heavy' }, '2024-03-12')).toMatchObject({ level: 'urgent' });
+    // Heavy lochia in the first days is expected.
+    expect(notice({ flow: 'heavy' }, '2024-03-04')).toBeUndefined();
+    expect(notice({ flow: 'heavy', clots: 'large' }, '2024-03-04')).toMatchObject({ level: 'urgent' });
+    expect(notice({ flow: 'heavy', clots: 'large' }, '2024-07-01')).toBeUndefined();
+  });
+
+  it('does not pause predictions after a birth or around menopause', () => {
+    const days = periodsEvery('2023-01-01', 28, 3);
+    const a = analyze(days, { today: '2024-01-01', settings: {} });
+    expect(a.current?.stale).toBe(true);
+    const ids = (/** @type {string} */ mode) => computeNotices(a, days, { ...baseCtx, mode, today: '2024-01-01' }).map((n) => n.id);
+    expect(ids('track')).toContain('stale');
+    expect(ids('postpartum')).not.toContain('stale');
+    expect(ids('perimenopause')).not.toContain('stale');
+  });
+
+  it('counts days without a period from the end of the last one', () => {
+    const days = periodsEvery('2024-01-01', 28, 1);
+    for (let i = 0; i < 10; i++) days[addDays('2024-03-25', i)] = { moods: ['calm'] };
+    const notices = computeNotices(analyze(days, { today: '2024-04-05', settings: {} }), days, { ...baseCtx, today: '2024-04-05' });
+    // Last period 2024-01-01 → 2024-01-05.
+    expect(notices.find((n) => n.id === 'amenorrhea')?.params).toEqual({ count: 91 });
+  });
+
+  it('uses the same age-dependent variation for the "irregular" notice and the regularity label', () => {
+    // Cycles of 28, 36, 30 and 29 days: 8 days of variation.
+    const days = periodsEvery('2024-01-01', 28, 1);
+    for (const start of ['2024-01-29', '2024-03-05', '2024-04-04', '2024-05-03']) Object.assign(days, periodsEvery(start, 30, 1));
+    const a = analyze(days, { today: '2024-05-10', settings: {} });
+    const irregular = (/** @type {number} */ age) => computeNotices(a, days, { ...baseCtx, age, today: '2024-05-10' }).some((n) => n.id === 'irregular');
+    expect(irregular(30)).toBe(true);
+    expect(computeInsights(a, days, { age: 30 }).regularity).toBe('variable');
+    expect(irregular(22)).toBe(false);
+    expect(computeInsights(a, days, { age: 22 }).regularity).toBe('regular');
+    expect(normalVariation(null)).toBe(9);
+    expect(normalVariation(26)).toBe(7);
   });
 });
 

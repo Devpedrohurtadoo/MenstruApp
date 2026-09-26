@@ -411,11 +411,11 @@ export default {
       text: { one: "If you've been trying for 1 month or more with regular unprotected sex, you can ask for a fertility assessment.", other: "If you've been trying for {count} months or more with regular unprotected sex, it's recommended to ask for a fertility assessment (sooner if your cycles are very irregular or you have known risk factors)." },
     },
     emergencyContraception: {
-      title: 'Unprotected sex on fertile days',
+      title: 'Unprotected sex',
       text: {
-        zero: "Today you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
-        one: "Yesterday you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
-        other: "{count} days ago you logged unprotected sex on possibly fertile days. Emergency contraception works best the sooner it's used: the pill works up to 3–5 days after depending on the type, and the copper IUD up to 5 days. Ask at a pharmacy or health centre.",
+        zero: "Today you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
+        one: "Yesterday you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
+        other: "{count} days ago you logged unprotected sex. If you don't want to get pregnant, emergency contraception works best the sooner it's used, whatever day of your cycle it is: the levonorgestrel pill works up to 3 days (72 h) after, and the ulipristal pill and the copper IUD (the most effective option) up to 5 days (120 h). Ask at a pharmacy or health centre today.",
       },
     },
   },
