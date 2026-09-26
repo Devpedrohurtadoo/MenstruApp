@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.local
+.scratch/
+test-results/
+playwright-report/
+
+# Local tooling (agent worktrees, editor state)
+.claude/worktrees/

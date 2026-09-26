@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /share.html
+Disallow: /api/
