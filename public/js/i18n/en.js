@@ -232,6 +232,7 @@ export default {
     linkDevice: 'Link with my sync code',
     progress: 'Step {current} of {total}',
     errors: {
+      birthYear: 'Enter a year between {min} and {max}, or leave it blank.',
       birthDate: "Enter your baby's date of birth.",
       pregDate: 'Enter a valid date to calculate your weeks.',
       noneAck: 'Tick the box to confirm you want to continue without a lock.',

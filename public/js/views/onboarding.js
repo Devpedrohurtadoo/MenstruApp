@@ -299,9 +299,12 @@ export function renderOnboarding(root, opts) {
 
     profile: () => {
       const nameInput = h('input', { class: 'input', id: 'ob-name', value: s.name, maxLength: 40, autocomplete: 'nickname', onInput: (/** @type {Event} */ e) => (s.name = /** @type {HTMLInputElement} */ (e.target).value) });
+      const err = errorBox();
+      const maxYear = new Date().getFullYear() - 8;
       const yearInput = h('input', {
         class: 'input',
         id: 'ob-year',
+        'aria-describedby': 'ob-error',
         type: 'number',
         inputMode: 'numeric',
         min: 1930,
@@ -321,6 +324,7 @@ export function renderOnboarding(root, opts) {
           h('label', { class: 'field__label', for: 'ob-year', text: t('onboarding.birthYear') }),
           yearInput,
           h('p', { class: 'field__hint', text: t('onboarding.birthYearHint') }),
+          err,
           h('span', { class: 'field__label', id: 'avatar-label', text: t('onboarding.avatar') }),
           rovingRadios(h(
             'div',
@@ -330,6 +334,15 @@ export function renderOnboarding(root, opts) {
             ),
           )),
         ],
+        // The year is optional, but a typed year out of range is pointed out, not dropped silently.
+        valid: () => {
+          if (!yearInput.value.trim() || s.birthYear !== null) return true;
+          err.textContent = t('onboarding.errors.birthYear', { min: 1930, max: maxYear });
+          err.hidden = false;
+          announce(err.textContent, 'assertive');
+          yearInput.focus();
+          return false;
+        },
       };
     },
 

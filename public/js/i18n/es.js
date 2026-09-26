@@ -233,6 +233,7 @@ export default {
     linkDevice: 'Vincular con mi código de sincronización',
     progress: 'Paso {current} de {total}',
     errors: {
+      birthYear: 'Escribe un año entre {min} y {max}, o déjalo en blanco.',
       birthDate: 'Indica la fecha del parto.',
       pregDate: 'Indica una fecha válida para calcular tus semanas.',
       noneAck: 'Marca la casilla para confirmar que continúas sin bloqueo.',

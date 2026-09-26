@@ -680,7 +680,7 @@ hr {
   color: var(--accent-text);
 }
 .btn--sm {
-  min-height: 36px;
+  min-height: 44px;
   padding: 6px 14px;
   font-size: 0.87rem;
 }
@@ -995,7 +995,7 @@ hr {
 }
 .input--select {
   width: auto;
-  min-height: 36px;
+  min-height: 44px;
   padding: 4px 10px;
 }
 .textarea {
@@ -1513,7 +1513,8 @@ hr {
   color: var(--accent-text);
   font-weight: 700;
   cursor: pointer;
-  padding: 6px;
+  min-height: 44px;
+  padding: 6px 10px;
 }
 .toast--out {
   opacity: 0;
@@ -2836,8 +2837,8 @@ hr {
   gap: 10px;
 }
 .swatch {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 3px solid var(--bg);
   background: var(--swatch);
